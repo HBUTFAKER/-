@@ -233,11 +233,13 @@
           };
           ctx.save();
           ctx.translate(it.x, it.y);
-          // 直刺拉长压扁、上撩整体转向上方
+          // 直刺拉长压扁、上撩整体转向上方、横甩压成一道宽横扇
           const st = it.style || 'arc';
           if (st === 'lift') ctx.rotate(-1.02);
           else if (st === 'thrust') ctx.rotate(-0.1);
-          ctx.scale(it.dir * (st === 'thrust' ? 2.15 : 1), st === 'thrust' ? 0.52 : 1);
+          else if (st === 'sweep') ctx.rotate(0.1);
+          ctx.scale(it.dir * (st === 'thrust' ? 2.15 : (st === 'sweep' ? 1.58 : 1)),
+            st === 'thrust' ? 0.52 : (st === 'sweep' ? 0.84 : 1));
           // 外辉光（叠加发光）
           ctx.globalCompositeOperation = 'lighter';
           ctx.globalAlpha = A(0.18) * fade;
@@ -265,6 +267,44 @@
           ctx.beginPath();
           ctx.arc(tipX * 0.55, tipY * 0.55, Math.max(1, 2.4 * it.scale * (1 - p)), 0, Math.PI * 2);
           ctx.fill();
+          // —— 每招的"签名"：直刺一根白线、横甩两圈错开的扇、上挑一串上升碎光 ——
+          if (st === 'thrust') {
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.globalAlpha = Math.min(1, A(0.75) * fade);
+            ctx.strokeStyle = '#fffdf0';
+            ctx.lineWidth = Math.max(1.2, 3.4 * it.scale * (1 - p));
+            ctx.beginPath();
+            ctx.moveTo(-r * 0.5, 0);
+            ctx.lineTo(r * 1.52, 0);
+            ctx.stroke();
+            ctx.globalAlpha = Math.min(1, A(0.32) * fade);
+            ctx.fillStyle = it.color;
+            ctx.beginPath();
+            ctx.moveTo(r * 1.5, -3.6 * it.scale);
+            ctx.lineTo(r * 2.02, 0);
+            ctx.lineTo(r * 1.5, 3.6 * it.scale);
+            ctx.closePath();
+            ctx.fill();
+          } else if (st === 'sweep') {
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.globalAlpha = Math.min(1, A(0.22) * fade);
+            ctx.fillStyle = it.color;
+            swoosh((16 - 7 * p) * it.scale, -3.4 * it.scale);
+            ctx.globalAlpha = Math.min(1, A(0.15) * fade);
+            swoosh((11 - 4 * p) * it.scale, 4.6 * it.scale);
+          } else if (st === 'lift') {
+            ctx.globalCompositeOperation = 'lighter';
+            for (let i = 0; i < 4; i++) {
+              const q = i / 3;
+              const aa = a0 + (a1 - a0) * (0.25 + q * 0.7);
+              const rr2 = r * (0.75 + q * 0.5);
+              ctx.globalAlpha = Math.min(1, A(0.5) * fade * (1 - q * 0.5));
+              ctx.fillStyle = '#fff6d8';
+              ctx.beginPath();
+              ctx.arc(Math.cos(aa) * rr2, Math.sin(aa) * rr2 - p * 9, Math.max(1, 2.6 * it.scale * (1 - p)), 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
           ctx.restore();
         } else if (it.type === 'giantStaff') {
           // 十丈金箍棒：放大 → 抡下来 → 压在身前

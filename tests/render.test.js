@@ -312,12 +312,14 @@ test.it('键位：WASD 可移动/跳跃，J 普攻有攻击动作与刀光', () 
   assert.ok(pl.vy < 0, 'W 应产生向上速度，实际 vy=' + pl.vy);
   assert.ok(pl.y <= y0 + 0.001, '起跳当帧不应下沉');
 
-  // 普攻动作
-  const fxBefore = g.fx.items.length;
+  // 普攻动作（刀光与判定都压在 strike 那一帧，所以要走到动作中段）
   tap('KeyJ'); tick(1);
   assert.ok(pl.attackUntil > g.now, '普攻应进入攻击动作时间窗');
   assert.ok(pl.pose(g.now).attackP !== undefined, '应能取到攻击进度');
-  assert.ok(g.fx.items.length > fxBefore, '普攻应产生刀光特效');
+  const hasSlash = () => g.fx.items.some((it) => it.type === 'slash');
+  assert.ok(!hasSlash(), '刀光不该在出招第一帧就冒出来（要等兵器打出去）');
+  tick(12);
+  assert.ok(hasSlash(), '普攻应产生刀光特效');
 });
 
 // —— 回归：技能倍率缺失导致 -NaN、怪物杀不死（用户 2026-10-28 反馈）——
@@ -375,6 +377,8 @@ test.it('普攻可击杀并正常结算经验与掉落', () => {
     g.now = t;
     const a = pl.tryBasic(g.now);
     if (a) g.act(a);
+    g.now = t + 200;                 // 走到 strike 之后
+    g.update(0.016);                 // 推进一帧，让延迟判定真正落地
     assert.ok(Number.isFinite(e.hp), '普攻后血量必须有限，实际 ' + e.hp);
   }
   assert.strictEqual(e.alive, false, '普攻应能打死小妖');
@@ -480,23 +484,38 @@ test.it('三关主题立绘：任意相机位置均可绘制，无非法颜色/�
 });
 
 // —— 用户 2026-10-28 需求：悟空招式重做 + 盔甲盔缨 ——
-test.it('普攻三式为「劈/戳/挑」，判定长度各不相同', () => {
+test.it('普攻四式为「劈/戳/挑/甩」，判定与手感各不相同', () => {
   badLog.length = 0;
   const g = fresh();
   g.charIndex = 0; g.initRun(); g.startLevel(0);
   const pl = g.player;
   const kinds = [], ranges = [];
   let t = 3000;
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 8; i++) {
     t += 500;                       // 超过 820ms 会回到第一段，用 500ms 保持连段节奏
     const a = pl.tryBasic(t);
     assert.ok(a, '第 ' + (i + 1) + ' 次普攻应可释放');
     kinds.push(a.atkKind); ranges.push(a.range);
     assert.strictEqual(pl.pose(t).attackKind, a.atkKind, '姿态层应带上招式类型');
   }
-  assert.deepStrictEqual(kinds.slice(0, 3), [0, 1, 2], '连段应为 劈→戳→挑，实际 ' + kinds);
-  assert.strictEqual(new Set(ranges.slice(0, 3)).size, 3, '三段判定长度应互不相同，实际 ' + ranges);
+  assert.deepStrictEqual(kinds.slice(0, 4), [0, 1, 2, 3], '连段应为 劈→戳→挑→甩，实际 ' + kinds);
+  assert.deepStrictEqual(kinds.slice(4, 8), [0, 1, 2, 3], '四段之后应回到第一段，实际 ' + kinds);
+  assert.strictEqual(new Set(ranges.slice(0, 4)).size, 4, '四段判定长度应互不相同，实际 ' + ranges);
   assert.ok(ranges[1] > ranges[0], '戳比劈探得更远');
+  const cfg = XY.BASIC_COMBO;
+  assert.strictEqual(cfg.length, 4, '招式表应为四段');
+  const styles = cfg.map((c) => c.style);
+  assert.strictEqual(new Set(styles).size, 4, '四段刀光样式应各不相同，实际 ' + styles);
+  for (const c of cfg) {
+    assert.ok(c.dur > 0 && c.mult > 0 && c.range > 0 && c.strike > 0 && c.strike < 1, c.name + ' 的招式参数不全');
+    for (let q = 0; q <= 1.0001; q += 0.05) {
+      const sp = XY.Art.swingProfile(cfg.indexOf(c), q);
+      assert.ok(Number.isFinite(sp.arm) && Number.isFinite(sp.wpn) && Number.isFinite(sp.g || 0), c.name + ' 的轨迹在 p=' + q + ' 出现非法值');
+      const mv = XY.Art.attackMotion(cfg.indexOf(c), q);
+      assert.ok(Number.isFinite(mv.tilt) && Number.isFinite(mv.x) && Number.isFinite(mv.y), c.name + ' 的身体动作在 p=' + q + ' 出现非法值');
+    }
+  }
+  assert.ok(cfg[3].back > 0, '甩应能扫到身后');
 });
 
 test.it('如意棒击：金箍棒暴涨重劈，特效生成且延迟到落点才结算伤害', () => {

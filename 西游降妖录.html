@@ -152,6 +152,33 @@
   // ===== 成长曲线：每升一级自动提升（商店买到的属性另算）=====
   XY.GROWTH = { maxHp: 22, attack: 4, defense: 2, critRate: 0.004, moveSpeed: 1.2 };
 
+  // ===== 普攻连段：四段四种招式 =====
+  // 动作曲线在 art.js（swingProfile / attackMotion），刀光在 fx.js（style）
+  // dur=动作时长(ms) ready=下次可出手 range=身前判定 mult=倍率 lunge=前冲
+  // hitLag=命中顿帧(ms) shake=震屏 style=刀光样式 back=反手横扫的背面判定系数
+  XY.BASIC_COMBO = [
+    {
+      key: 'chop', name: '劈', style: 'arc', sfx: 'swing',
+      dur: 260, ready: 300, range: 68, mult: 0.92, lunge: 44, strike: 0.52,
+      hitLag: 40, shake: 2.6,
+    },
+    {
+      key: 'thrust', name: '戳', style: 'thrust', sfx: 'thrust',
+      dur: 200, ready: 252, range: 104, mult: 0.88, lunge: 190, strike: 0.46,
+      hitLag: 46, shake: 2.0,
+    },
+    {
+      key: 'lift', name: '挑', style: 'lift', sfx: 'swingHeavy',
+      dur: 310, ready: 384, range: 82, mult: 1.16, lunge: 16, strike: 0.56,
+      hitLag: 58, shake: 3.6,
+    },
+    {
+      key: 'sweep', name: '甩', style: 'sweep', sfx: 'sweep',
+      dur: 360, ready: 470, range: 106, mult: 1.40, lunge: 76, strike: 0.5,
+      hitLag: 74, shake: 5.4, back: 0.62,   // 反手回扫也能扫到身后 62%
+    },
+  ];
+
   // ===== 货币（三种，各管一摊）=====
   XY.CURRENCIES = {
     gold: { id: 'gold', name: '金币', color: '#f4c430', use: '属性商店' },
@@ -891,6 +918,18 @@
       noise(c, d, t, 0.19, 0.18, 'bandpass', 600, 1.4, 2200);
       blip(c, d, t, { type: 'triangle', f0: 260, f1: 110, dur: 0.16, gain: 0.1 });
     },
+    // 戳：又短又脆的破空声，尾巴带一点金属"钉"的一声
+    thrust(c, t, d) {
+      noise(c, d, t, 0.17, 0.15, 'bandpass', 1500, 2.2, 4200);
+      blip(c, d, t + 0.015, { type: 'triangle', f0: 760, f1: 230, dur: 0.09, gain: 0.08 });
+      bell(c, d, t + 0.05, 2400, 0.16, 0.045);
+    },
+    // 甩：一整圈的长风声，比劈多一层低鸣，听感更"重"
+    sweep(c, t, d) {
+      noise(c, d, t, 0.36, 0.17, 'bandpass', 280, 1.1, 2600);
+      noise(c, d, t + 0.07, 0.24, 0.1, 'bandpass', 1100, 1.5, 1700);
+      blip(c, d, t, { type: 'sine', f0: 180, f1: 90, dur: 0.3, gain: 0.09 });
+    },
     hit(c, t, d) {
       blip(c, d, t, { type: 'sine', f0: 175, f1: 58, glide: 0.07, dur: 0.12, gain: 0.36 });
       noise(c, d, t, 0.07, 0.26, 'bandpass', 1500, 0.9, 700);
@@ -1292,20 +1331,74 @@
     if (sprint) ctx.rotate(0.085);
     ctx.translate(0, -bob);
 
-    // 出招时的重心变化（同样以脚底为轴）：劈/戳前压，挑先沉后起
-    let bodyTilt = 0;
+    // 出招时的重心变化（同样以脚底为轴）：每段招式一套自己的重心/弓步/低头
+    let bodyTilt = 0, bodyShift = null, headDx = 0, headDy = 0;
     if (hurt !== undefined) {
       // 受击：被顶得向后仰，再慢慢把重心收回来
       bodyTilt = -0.34 * Math.sin(Math.min(1, hurt * 1.25) * Math.PI);
       ctx.translate(-7 * hurtK, 3 * hurtK);
     } else if (atk !== undefined) {
-      const k = pose.attackKind || 0;
-      if (k === 0) bodyTilt = -0.05 + easeOut(seg(atk, 0.32, 0.82)) * 0.17;
-      else if (k === 1) bodyTilt = -0.02 + easeOut(seg(atk, 0.28, 0.52)) * 0.13;
-      else bodyTilt = -0.1 + easeOut(seg(atk, 0.28, 0.68)) * 0.04;
+      const m = attackMotion(pose.attackKind || 0, atk);
+      bodyTilt = m.tilt;
+      legA += m.legA; legB += m.legB;      // 弓步/马步：腿也跟着招式走
+      headDx = m.headX; headDy = m.headY;  // 头比躯干慢半拍
+      bodyShift = m;
     } else if (state === 'dash') bodyTilt = 0.17;
     else if (pose.castId === 'wk_smash') bodyTilt = -0.08;
     if (bodyTilt) ctx.rotate(bodyTilt);
+    if (bodyShift) ctx.translate(bodyShift.x, bodyShift.y);
+
+    // —— 手臂 / 兵器姿态：先算好，才知道要不要画在躯干后面 ——
+    // 手臂与兵器分开驱动：arm 控手臂，wpn 是兵器的绝对角 → 兵器始终握在手里。
+    // weaponBehind：像"甩"的反手蓄力，棒子要甩到背脊后面去，画在躯干前会从脸上穿过去。
+    const SHX = 6, SHY = -41, ARM = 14;   // 肩点、手臂长度（角色坐标）
+    let armAng, wpnAng, offX = 0, offY = 0, wpnShift = 0, weaponBehind = false, armLen = ARM;
+    if (hurt !== undefined) {
+      // 挨打：手臂被甩到身后，兵器顺手往下滑，护不住架势
+      armAng = 0.62 + 0.5 * hurtK; wpnAng = 0.2 + 1.05 * hurtK;
+      offX = -2 * hurtK; offY = 2 * hurtK;
+    } else if (atk !== undefined) {
+      const sp = swingProfile(pose.attackKind || 0, atk);
+      armAng = sp.arm; wpnAng = sp.wpn; offX = sp.x; offY = sp.y; wpnShift = sp.g || 0;
+      armLen = sp.armLen || ARM;   // 手臂跟着招式伸缩，握点不会飞离手掌
+      weaponBehind = !!sp.behind;
+    } else if (pose.castId === 'wk_smash') {
+      const q = cast === undefined ? 0 : cast;
+      armAng = -2.0 + q * 0.2; wpnAng = -0.5 + q * 0.14;      // 举棒过顶，蓄力
+    } else if (pose.castId === 'wk_spin') {
+      armAng = -0.95 + (cast === undefined ? 0 : cast) * 0.9; // 抖腕掷出
+      wpnAng = 0.55;
+    } else if (state === 'dash') {
+      armAng = 1.0; wpnAng = -0.46;                            // 棒背身后
+    } else if (cast !== undefined) {
+      armAng = -0.62; wpnAng = -0.5;                           // 其余施法：抬臂
+    } else {
+      // 站立：棒子斜靠在身侧。倾斜给足，不然一根竖着的棒正好压在脸上
+      armAng = armBase * 0.5 - 0.34; wpnAng = 0.46 + armBase * 0.12;
+    }
+    // 握点：肩点 + 手臂旋转（+ 招式带来的前送/下沉）
+    const handX = SHX - Math.sin(armAng) * armLen + offX;
+    const handY = SHY + Math.cos(armAng) * armLen + offY;
+
+    const drawArmAndWeapon = () => {
+      ctx.save();
+      ctx.translate(SHX, SHY);
+      ctx.rotate(armAng);
+      drawArm(ctx, 0, 0, 0, A, armLen);
+      ctx.restore();
+      if (!pose.noWeapon) {
+        ctx.save();
+        ctx.translate(handX + 1.2, handY);
+        ctx.rotate(wpnAng);
+        if (wpnShift) ctx.translate(0, wpnShift);
+        drawWeapon(ctx, A);
+        ctx.restore();
+        // 手（画在兵器之后，形成"握住"的遮挡关系）
+        circle(ctx, handX + 1.2, handY, 3.6); shape(ctx, A.skin, 1.1);
+        circle(ctx, handX + 1.2, handY, 1.6); ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fill();
+      }
+    };
+    if (weaponBehind) drawArmAndWeapon();
 
     // —— 奔跑速度线（身后拖几道细线，强化"更快"的感觉）——
     if (sprint) {
@@ -1415,72 +1508,10 @@
     // —— 头 ——
     const mood = state === 'attack' ? 'angry' : (state === 'hurt' ? 'hurt' : 'calm');
     // 受击时头比身体更"慢半步"：先往后一挫，再跟着躯干回正
-    Art.drawFace(ctx, 1 - 2.8 * hurtK, -56 + 1.4 * hurtK, 10, charId, { t: t, mood: mood, wind: windAmt, hurt: hurtK });
+    Art.drawFace(ctx, 1 + headDx - 2.8 * hurtK, -56 + headDy + 1.4 * hurtK, 10, charId, { t: t, mood: mood, wind: windAmt, hurt: hurtK });
+    if (!weaponBehind) drawArmAndWeapon();
 
-    // —— 前臂 + 武器 ——
-    // 手臂与兵器分开驱动：arm 控手臂，wpn 是兵器的绝对角 → 兵器始终握在手里、不穿身。
-    const SHX = 6, SHY = -41, ARM = 14;   // 肩点、手臂长度（角色坐标）
-    let armAng, wpnAng, offX = 0, offY = 0, wpnShift = 0;
-    if (hurt !== undefined) {
-      // 挨打：手臂被甩到身后，兵器顺手往下滑，护不住架势
-      armAng = 0.62 + 0.5 * hurtK; wpnAng = 0.2 + 1.05 * hurtK;
-      offX = -2 * hurtK; offY = 2 * hurtK;
-    } else if (atk !== undefined) {
-      const sp = swingProfile(pose.attackKind || 0, atk);
-      armAng = sp.arm; wpnAng = sp.wpn; offX = sp.x; offY = sp.y; wpnShift = sp.g || 0;
-    } else if (pose.castId === 'wk_smash') {
-      const q = cast === undefined ? 0 : cast;
-      armAng = -2.0 + q * 0.2; wpnAng = -0.5 + q * 0.14;      // 举棒过顶，蓄力
-    } else if (pose.castId === 'wk_spin') {
-      armAng = -0.95 + (cast === undefined ? 0 : cast) * 0.9; // 抖腕掷出
-      wpnAng = 0.55;
-    } else if (state === 'dash') {
-      armAng = 1.0; wpnAng = -0.46;                            // 棒背身后
-    } else if (cast !== undefined) {
-      armAng = -0.62; wpnAng = -0.5;                           // 其余施法：抬臂
-    } else {
-      // 站立：棒子略微前倾、握在身侧，别挡住脸
-      armAng = armBase * 0.5 - 0.34; wpnAng = 0.14 + armBase * 0.12;
-    }
 
-    // 兵器残影：沿同一条挥动曲线回退几帧 → 棒影连成一片，动作与兵器是一体的
-    if (atk !== undefined) {
-      for (let g = 8; g >= 1; g--) {
-        const gp = atk - g * 0.032;
-        if (gp < 0) break;
-        const sp = swingProfile(pose.attackKind || 0, gp);
-        const ghx = SHX - Math.sin(sp.arm) * ARM + sp.x;
-        const ghy = SHY + Math.cos(sp.arm) * ARM + sp.y;
-        ctx.save();
-        ctx.translate(ghx + 1.2, ghy);
-        ctx.rotate(sp.wpn);
-        ctx.translate(0, sp.g || 0);
-        ctx.globalAlpha = 0.05 + 0.012 * (8 - g);
-        drawWeapon(ctx, A);
-        ctx.restore();
-      }
-    }
-
-    // 握点：肩点 + 手臂旋转（+ 招式带来的前送/下沉）。兵器在角色坐标系里按绝对角摆放，
-    // 所以无论手臂怎么甩，棒子始终落在手里。
-    const handX = SHX - Math.sin(armAng) * ARM + offX;
-    const handY = SHY + Math.cos(armAng) * ARM + offY;
-    ctx.save();
-    ctx.translate(SHX, SHY);
-    ctx.rotate(armAng);
-    drawArm(ctx, 0, 0, 0, A, ARM);
-    ctx.restore();
-    if (!pose.noWeapon) {
-      ctx.save();
-      ctx.translate(handX + 1.2, handY);
-      ctx.rotate(wpnAng);
-      if (wpnShift) ctx.translate(0, wpnShift);
-      drawWeapon(ctx, A);
-      ctx.restore();
-      // 手（画在兵器之后，形成"握住"的遮挡关系）
-      circle(ctx, handX + 1.2, handY, 3.6); shape(ctx, A.skin, 1.1);
-      circle(ctx, handX + 1.2, handY, 1.6); ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fill();
-    }
 
     // —— 护肩（贴在前臂根部，做出重甲感）——
     ctx.beginPath();
@@ -1517,44 +1548,127 @@
     ctx.restore();
   }
 
+  // —— 普攻的身体语言 ——
+  // 光靠手臂甩看起来就是"抖手腕"，所以每段招式还要给重心、倾斜、弓步、头部各一套参数。
+  // 返回：tilt 躯干倾角 / x,y 整体位移（y 正=下沉）/ headX,headY 头部滞后 / legA,legB 前后腿
+  function attackMotion(kind, p) {
+    if (kind === 1) {                       // 戳：沉腰后坐 → 弓步捅出去，身体几乎不上下
+      const back = easeOut(seg(p, 0, 0.22));
+      const out = easeOut(seg(p, 0.3, 0.5));
+      const ret = seg(p, 0.7, 1);
+      return {
+        tilt: -0.2 * back + 0.44 * out - 0.2 * ret,
+        x: -9 * back + 17 * out - 10 * ret,
+        y: 3.4 - 2 * out + 1.4 * ret,
+        headX: 2.6 * out - 1.6 * ret, headY: 2 * back + 2.2 * out - 3 * ret,
+        legA: 0.18 - 0.92 * out + 0.68 * ret,
+        legB: -0.05 + 0.7 * back + 0.26 * out - 0.42 * ret,
+      };
+    }
+    if (kind === 2) {                       // 挑：先蹲到底 → 拔身撩起，整个人往上"长"
+      const low = easeOut(seg(p, 0, 0.26));
+      const up = easeOut(seg(p, 0.34, 0.62));
+      const ret = seg(p, 0.8, 1);
+      return {
+        tilt: 0.24 * low - 0.42 * up + 0.2 * ret,
+        x: -3 * low + 6 * up - 3 * ret,
+        y: 8 * low - 8 * up + 3 * ret,
+        headX: -1.4 * low + 1.4 * up, headY: 4 * low - 7 * up + 3.5 * ret,
+        legA: -0.1 + 0.5 * low - 0.3 * up,
+        legB: 0.16 + 0.7 * low - 0.35 * up,
+      };
+    }
+    if (kind === 3) {                       // 甩：拧腰蓄力 → 一圈横扫 → 收势偏后、腿扎马步
+      const wind = easeOut(seg(p, 0, 0.24));
+      const sw = easeOut(seg(p, 0.32, 0.6));
+      const ret = seg(p, 0.76, 1);
+      return {
+        tilt: -0.26 * wind + 0.46 * sw - 0.24 * ret,
+        x: -9 * wind + 17 * sw - 10 * ret,
+        y: 3 + 2 * wind - 3 * sw + 1.5 * ret,
+        headX: -3 * wind + 4.5 * sw - 1.5 * ret, headY: 1.6 * wind + 1.6 * sw,
+        legA: -0.3 - 0.35 * wind + 0.3 * sw,
+        legB: 0.35 + 0.28 * wind - 0.2 * sw,
+      };
+    }
+    // 劈：举棒过顶（后仰、踮起）→ 劈下来（前压、屈膝、扎马步）→ 压住重心
+    const rai = easeOut(seg(p, 0, 0.26));
+    const down = easeOut(seg(p, 0.34, 0.58));
+    const ret = seg(p, 0.8, 1);
+    return {
+      tilt: -0.22 * rai + 0.55 * down - 0.32 * ret,
+      x: -4 * rai + 12 * down - 8 * ret,
+      y: -3 * rai + 7 * down - 4 * ret,
+      headX: 2 * down - 2 * ret, headY: -2 * rai + 5 * down - 3 * ret,
+      legA: 0.15 - 0.85 * down + 0.6 * ret,
+      legB: -0.06 + 0.5 * rai + 0.2 * down,
+    };
+  }
+  Art.attackMotion = attackMotion;
+
   // —— 三段普攻的兵器轨迹 ——
   // 返回：手臂角 arm、兵器绝对角 wpn、握点偏移 x/y。p 为动作进度 0..1。
   function seg(p, a, b) { return Math.min(1, Math.max(0, (p - a) / (b - a))); }
   function easeOut(p) { return 1 - (1 - p) * (1 - p); }
+  function easeIn(p) { return p * p; }
   function swingProfile(kind, p) {
-    if (kind === 1) {              // 戳：收棒蓄力 → 直刺 → 回收
-      const back = easeOut(seg(p, 0, 0.3));
-      const out = easeOut(seg(p, 0.3, 0.54));
-      const ret = seg(p, 0.66, 1);
+    if (kind === 1) {              // 戳：斜举蓄势 → 手往前一送、棒子平捅出去 → 收回
+      // 不做"把棒子拖到身后"的蓄力：那会让棒尾从后脑勺穿出来。
+      // 改成身前平推，握点始终在身体前方，读起来就是一下"捅"。
+      const out = easeOut(seg(p, 0.14, 0.42));
+      const hold = seg(p, 0.42, 0.58);      // 捅到底那一瞬停住，力道才顶得出去
+      const ret = seg(p, 0.72, 1);
       return {
-        arm: 0.12 + back * 0.62 - out * 0.66 - ret * 0.08,
-        wpn: -0.16 + back * 1.5 + out * 0.04 - ret * 1.4,
-        x: -back * 8 + out * 26 - ret * 18,
-        y: -7 - back * 3,
-        g: 11,                     // 握点前移：棒尾不穿身，刺出去的是前半截
+        arm: 0.36 - out * 0.92 - hold * 0.03 + ret * 0.55,
+        wpn: 0.5 + out * 0.86 - ret * 1.1,
+        armLen: 12.5 + out * 3.4 - ret * 3,
+        x: -1.5 + out * 8.5 - ret * 6,
+        y: -9 + out * 0.5 + ret * 4,
+        g: -2 - out * 5,             // 握点前移：棒尾留在胸前，刺出去的是前半截
       };
     }
-    if (kind === 2) {              // 挑：棒梢沉到身前 → 一路撩起
-      const low = easeOut(seg(p, 0, 0.3));
-      const up = easeOut(seg(p, 0.3, 0.68));
-      const ret = seg(p, 0.68, 1);
+    if (kind === 2) {              // 挑：棒梢压到前下方 → 一路撩到头顶 → 落回
+      const low = easeOut(seg(p, 0, 0.26));
+      const up = easeOut(seg(p, 0.34, 0.62));
+      const over = seg(p, 0.62, 0.76);     // 撩过头的一点余势
+      const ret = seg(p, 0.8, 1);
       return {
-        arm: -0.08 + low * 0.72 - up * 1.5 + ret * 0.12,
-        wpn: -0.12 + low * 2.55 - up * 2.15 + ret * 0.3,
-        x: -low * 2 + up * 4,
-        y: low * 3 - up * 6 + ret * 2,
+        arm: -0.06 + low * 0.66 - up * 1.9 - over * 0.16 + ret * 1.1,
+        wpn: -0.14 + low * 2.42 - up * 2.17 - over * 0.14 + ret * 0.05,
+        armLen: 14 + low * 1 - up * 2.5 - over * 1 + ret * 2.5,
+        x: -low * 2 + up * 3 + over * 1 - ret * 2,
+        y: low * 4 - up * 7 - over * 2 + ret * 5,
+        g: low * 3 - up * 2,
       };
     }
-    // 劈：举棒过顶 → 砸向前下（第三段之外，普攻首段也是这个）
-    const rai = easeOut(seg(p, 0, 0.34));
-    const down = easeOut(seg(p, 0.34, 0.8));
+    if (kind === 3) {              // 甩：棒子甩到背后（画在躯干后）→ 抡一圈横抽 → 收势
+      const wind = easeOut(seg(p, 0, 0.24));
+      const sw = easeOut(seg(p, 0.32, 0.6));
+      const over = easeOut(seg(p, 0.6, 0.74));
+      const ret = seg(p, 0.76, 1);
+      return {
+        behind: p < 0.43,
+        arm: 0.06 + wind * 1.05 - sw * 2.0 - over * 0.2 + ret * 1.05,
+        wpn: -0.1 - wind * 1.1 + sw * 3.1 + over * 0.3 - ret * 1.62,
+        armLen: 14 + sw * 4 - ret * 4,
+        x: -wind * 3 + sw * 7 - ret * 4,
+        y: wind * 2 + sw * 1 - ret * 3,
+        g: -wind * 5 + sw * 8 - ret * 3,
+      };
+    }
+    // 劈：棒子先抡到肩后（手往后拉、棒身斜指后上方）→ 一整条圆弧劈到前下方 → 压住重心
+    const raiArm = easeOut(seg(p, 0, 0.14));
+    const rai = easeOut(seg(p, 0.06, 0.26));
+    const down = easeIn(seg(p, 0.34, 0.58));
+    const over = easeOut(seg(p, 0.58, 0.7));  // 砸到底的余势（棒头再压一点）
     const ret = seg(p, 0.8, 1);
     return {
-      arm: -0.3 - rai * 0.92 + down * 1.5 - ret * 0.18,
-      wpn: -0.18 - rai * 0.95 + down * 3.28 - ret * 0.28,
-      x: down * 4,
-      y: -rai * 2 + down * 3,
-      g: -down * 6,               // 劈到末端时握把往后收，棒身更多压向前方
+      arm: -0.34 + raiArm * 0.84 - down * 1.59 + over * 0.02 + ret * 0.75,
+      wpn: -0.2 - rai * 0.8 + down * 3.12 - ret * 2.8,
+      armLen: 14 - raiArm * 1 + down * 2 - ret * 1,
+      x: -rai * 2 + down * 6 + over * 2 - ret * 6,
+      y: -rai * 2.5 + down * 4 - ret * 1.5,
+      g: -down * 7 - over * 2 + ret * 9,    // 劈到末端时握把往后收，棒身更多压向前方
     };
   }
   Art.swingProfile = swingProfile;
@@ -2374,11 +2488,13 @@
           };
           ctx.save();
           ctx.translate(it.x, it.y);
-          // 直刺拉长压扁、上撩整体转向上方
+          // 直刺拉长压扁、上撩整体转向上方、横甩压成一道宽横扇
           const st = it.style || 'arc';
           if (st === 'lift') ctx.rotate(-1.02);
           else if (st === 'thrust') ctx.rotate(-0.1);
-          ctx.scale(it.dir * (st === 'thrust' ? 2.15 : 1), st === 'thrust' ? 0.52 : 1);
+          else if (st === 'sweep') ctx.rotate(0.1);
+          ctx.scale(it.dir * (st === 'thrust' ? 2.15 : (st === 'sweep' ? 1.58 : 1)),
+            st === 'thrust' ? 0.52 : (st === 'sweep' ? 0.84 : 1));
           // 外辉光（叠加发光）
           ctx.globalCompositeOperation = 'lighter';
           ctx.globalAlpha = A(0.18) * fade;
@@ -2406,6 +2522,44 @@
           ctx.beginPath();
           ctx.arc(tipX * 0.55, tipY * 0.55, Math.max(1, 2.4 * it.scale * (1 - p)), 0, Math.PI * 2);
           ctx.fill();
+          // —— 每招的"签名"：直刺一根白线、横甩两圈错开的扇、上挑一串上升碎光 ——
+          if (st === 'thrust') {
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.globalAlpha = Math.min(1, A(0.75) * fade);
+            ctx.strokeStyle = '#fffdf0';
+            ctx.lineWidth = Math.max(1.2, 3.4 * it.scale * (1 - p));
+            ctx.beginPath();
+            ctx.moveTo(-r * 0.5, 0);
+            ctx.lineTo(r * 1.52, 0);
+            ctx.stroke();
+            ctx.globalAlpha = Math.min(1, A(0.32) * fade);
+            ctx.fillStyle = it.color;
+            ctx.beginPath();
+            ctx.moveTo(r * 1.5, -3.6 * it.scale);
+            ctx.lineTo(r * 2.02, 0);
+            ctx.lineTo(r * 1.5, 3.6 * it.scale);
+            ctx.closePath();
+            ctx.fill();
+          } else if (st === 'sweep') {
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.globalAlpha = Math.min(1, A(0.22) * fade);
+            ctx.fillStyle = it.color;
+            swoosh((16 - 7 * p) * it.scale, -3.4 * it.scale);
+            ctx.globalAlpha = Math.min(1, A(0.15) * fade);
+            swoosh((11 - 4 * p) * it.scale, 4.6 * it.scale);
+          } else if (st === 'lift') {
+            ctx.globalCompositeOperation = 'lighter';
+            for (let i = 0; i < 4; i++) {
+              const q = i / 3;
+              const aa = a0 + (a1 - a0) * (0.25 + q * 0.7);
+              const rr2 = r * (0.75 + q * 0.5);
+              ctx.globalAlpha = Math.min(1, A(0.5) * fade * (1 - q * 0.5));
+              ctx.fillStyle = '#fff6d8';
+              ctx.beginPath();
+              ctx.arc(Math.cos(aa) * rr2, Math.sin(aa) * rr2 - p * 9, Math.max(1, 2.6 * it.scale * (1 - p)), 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
           ctx.restore();
         } else if (it.type === 'giantStaff') {
           // 十丈金箍棒：放大 → 抡下来 → 压在身前
@@ -3481,7 +3635,7 @@
       // 挨打：受击后短暂失衡（表现层据此做后仰、护痛、踉跄）
       this.hurtStart = -9999; this.hurtUntil = -9999;
       this.combo = 0; this.lastAttackAt = -9999;
-      this.attackKind = 0;           // 0 劈 / 1 戳 / 2 挑
+      this.attackKind = 0;           // 0 劈 / 1 戳 / 2 挑 / 3 甩
       this.lungeUntil = 0;           // 普攻进步窗口
       this.castSkillId = null;       // 正在施放哪个技能（造型层据此摆姿势）
       this.walkPhase = 0;
@@ -3576,6 +3730,15 @@
 
     // 当前动作姿态（供 2D 造型层使用）
     pose(now) {
+      // 调试定格（?atk=N&atkp=P）：把某一招钉死在指定进度，不需要真的在攻击
+      if (this._dbgAtk) {
+        return {
+          t: this.animT, state: 'attack', facing: this.facing,
+          attackP: this._dbgAtk.p, attackKind: this._dbgAtk.k,
+          castP: undefined, hurtP: undefined, castId: null,
+          noWeapon: false, combo: this._dbgAtk.k, sprint: false,
+        };
+      }
       const atk = now < this.attackUntil ? (now - this.attackStart) / Math.max(1, this.attackUntil - this.attackStart) : undefined;
       const cast = now < this.castUntil ? (now - this.castStart) / Math.max(1, this.castUntil - this.castStart) : undefined;
       const hurtP = now < (this.hurtUntil || -9999) ? (now - this.hurtStart) / Math.max(1, this.hurtUntil - this.hurtStart) : undefined;
@@ -3596,27 +3759,27 @@
       };
     }
 
-    // 普攻三段：劈 → 戳 → 挑。不同的出手节奏、判定范围与位移，让三段读起来是三种招式
+    // 普攻四段：劈 → 戳 → 挑 → 甩。每段有自己的动作曲线、判定范围、位移与手感
     tryBasic(now) {
       if (now < this.attackReady) return null;
+      const table = XY.BASIC_COMBO || [];
+      const n = table.length || 3;
       const quick = now - this.lastAttackAt < 820;
-      this.combo = quick ? (this.combo + 1) % 3 : 0;
+      this.combo = quick ? (this.combo + 1) % n : 0;
       this.lastAttackAt = now;
       const kind = this.combo;
-      // dur=动作时长 / ready=下一次可出手 / range=身前判定长度 / mult=倍率 / lunge=前冲位移
-      const cfg = [
-        { dur: 250, ready: 306, range: 64, mult: 0.92, lunge: 40 },   // 劈：自上而下，砸身
-        { dur: 210, ready: 268, range: 88, mult: 0.98, lunge: 150 },  // 戳：直刺，探得远
-        { dur: 330, ready: 436, range: 74, mult: 1.36, lunge: 20 },   // 挑：贴身撩起，最重
-      ][kind];
+      const cfg = table[kind] || table[0] || { dur: 260, ready: 300, range: 68, mult: 0.92, lunge: 40 };
       this.attackKind = kind;
       this.attackStart = now; this.attackUntil = now + cfg.dur;
       this.attackReady = now + cfg.ready;
-      // 戳的进步：脚下一蹬，身子跟上去
-      if (cfg.lunge && this.onGround) { this.vx = this.facing * cfg.lunge; this.lungeUntil = now + 140; }
+      // 进步：每段的脚下一蹬不一样（戳最远、挑几乎原地）
+      if (cfg.lunge && this.onGround) { this.vx = this.facing * cfg.lunge; this.lungeUntil = now + 150; }
       return {
-        kind: 'melee', atkKind: kind, range: cfg.range, mult: cfg.mult,
-        hitKey: 'atk' + now, combo: this.combo, heavy: kind === 2,
+        kind: 'melee', atkKind: kind, style: cfg.style, sfx: cfg.sfx,
+        dur: cfg.dur, strike: cfg.strike,
+        range: cfg.range, mult: cfg.mult, hitLag: cfg.hitLag, shake: cfg.shake,
+        backRange: cfg.back ? cfg.range * cfg.back : 0,
+        name: cfg.name, hitKey: 'atk' + now, combo: this.combo, heavy: kind >= 2,
       };
     }
     trySkill(i, now) {
@@ -5079,6 +5242,7 @@
       // 通关结算：菜单游标 / 战果 / 从哪个界面进来（Esc 回到该界面）
       this.clearIndex = 0; this.clearStats = null; this.menuFrom = 'playing';
       this.runKills = 0; this.runStart = null; this._clearHandled = false;
+      this.hitStop = 0;
       this.persist = this.load();
       // 默认高亮上次选过的角色，别每次都从悟空开始
       const lastCi = XY.CHARACTER_ORDER.indexOf(this.persist.charId);
@@ -5363,6 +5527,22 @@
         }
         XY.Audio.music(this.musicScene());
         XY.Audio.duck(this.state === 'pause' ? 0.35 : 1);
+      }
+      // 命中顿帧：打到人的一瞬世界停几十毫秒（火花照走），打击的重量感全靠它
+      if (this.hitStop > 0) {
+        this.hitStop = Math.max(0, this.hitStop - dt);
+        if (this.fx) this.fx.update(dt);
+        if (this.shake > 0) this.shake = Math.max(0, this.shake - dt * 90);
+        return;
+      }
+      // 调试定格时刀光会自然消散，隔一会儿补一道，截图才看得到"这一招的刀光"
+      if (this._dbgSlash && this.player && now - this._dbgSlashAt > 190) {
+        const pl = this.player, k = this._dbgSlash.k;
+        const mx = pl.x + pl.w / 2, my = pl.y + pl.h / 2;
+        this.fx.slashStyle(mx + pl.facing * (k === 1 ? 22 : (k === 3 ? 10 : 12)),
+          my + (k === 2 ? 7 : (k === 1 ? 2 : 0)), pl.facing,
+          k >= 2 ? '#ffb648' : '#ffd15c', k >= 2 ? 1.42 : 1.12, 0.34, this._dbgSlash.style);
+        this._dbgSlashAt = now;
       }
       switch (this.state) {
         case 'title':
@@ -5736,16 +5916,41 @@
           return;
         }
         const k = a.atkKind || 0;
-        const style = k === 1 ? 'thrust' : (k === 2 ? 'lift' : 'arc');
-        if (XY.Audio) XY.Audio.sfx(a.heavy ? 'swingHeavy' : 'swing');
-        this.fx.slashStyle(cx + dir * (k === 1 ? 16 : 12), cy + (k === 2 ? 4 : 2), dir,
-          a.heavy ? '#ffb648' : '#ffd15c', a.heavy ? 1.4 : 1.12,
-          k === 1 ? 0.16 : (a.heavy ? 0.28 : 0.22), style);
-        const hits = this.meleeHit(a.range, mult, a.heavy);
-        if (hits > 0) {
-          this.fx.spark(cx + dir * a.range * 0.72, cy, a.heavy ? 12 : 7, '#ffe9a8', { speed: a.heavy ? 300 : 210, spread: 1.3, angle: dir > 0 ? 0 : Math.PI });
-          this.shake = Math.min(7, this.shake + (a.heavy ? 5 : 2.4));
-        }
+        const style = a.style || ['arc', 'thrust', 'lift', 'sweep'][k] || 'arc';
+        if (XY.Audio) XY.Audio.sfx(a.sfx || (a.heavy ? 'swingHeavy' : 'swing'));
+        // 刀光、判定、震屏、顿帧全部压到"兵器真打到人"的那一帧（strike），
+        // 否则刀光先出、伤害再落，看着就假。
+        const lvAtk = this.level;
+        const strikeAt = now + (a.dur || 260) * (a.strike === undefined ? 0.45 : a.strike);
+        this.pending.push({
+          at: strikeAt,
+          run: () => {
+            if (this.level !== lvAtk) return;
+            const me = this.player;
+            if (!me) return;
+            const mx = me.x + me.w / 2, my = me.y + me.h / 2;
+            const dirNow = me.facing;
+            const fxX = mx + dirNow * (k === 1 ? 22 : (k === 3 ? 10 : 12));
+            const fxY = my + (k === 2 ? 7 : (k === 1 ? 2 : 0));
+            // 刀光跟着兵器走：戳是细长平条、挑是上挑弧、甩是横扇、劈是斜劈弧
+            this.fx.slashStyle(fxX, fxY, dirNow,
+              a.heavy ? '#ffb648' : '#ffd15c', a.heavy ? 1.42 : 1.12,
+              k === 1 ? 0.15 : (a.heavy ? 0.3 : 0.22), style);
+            if (k === 3) {
+              // 甩：身后再补一道反手刀光，读得出"这一下是抽了一圈"
+              this.fx.slashStyle(mx - dirNow * 16, fxY - 2, -dirNow, '#ffb648', 1.1, 0.24, 'sweep');
+            }
+            let hits = this.meleeHit(a.range, mult, a.heavy, dirNow);
+            if (a.backRange > 0) hits += this.meleeHit(a.backRange, mult * 0.72, false, -dirNow);
+            if (hits > 0) {
+              const hitX = mx + dirNow * a.range * 0.72;
+              this.fx.spark(hitX, my, a.heavy ? 14 : 7, '#ffe9a8', { speed: a.heavy ? 320 : 210, spread: 1.3, angle: dirNow > 0 ? 0 : Math.PI });
+              if (k === 3) this.fx.spark(mx - dirNow * 26, my, 8, '#ffe09a', { speed: 240, spread: 1.2, angle: dirNow > 0 ? Math.PI : 0 });
+              this.shake = Math.min(9, this.shake + (a.shake || (a.heavy ? 5 : 2.4)));
+              this.hitStop = Math.max(this.hitStop, (a.hitLag || 40) / 1000);   // 顿帧：甩最重
+            }
+          },
+        });
       } else if (a.kind === 'aoe') {
         if (a.anim === 'throw') {
           // —— 定海神针：把棒子掷出去，空中急旋 → 插地 → 冲击波 ——
@@ -5810,9 +6015,10 @@
       } else if (a.kind === 'treasure') this.execTreasure(a.treasure);
     }
 
-    meleeHit(range, mult, heavy) {
+    meleeHit(range, mult, heavy, dir) {
       const pl = this.player;
-      const rx = pl.facing > 0 ? pl.x + pl.w : pl.x - range;
+      const d = dir === undefined ? pl.facing : (dir >= 0 ? 1 : -1);
+      const rx = d > 0 ? pl.x + pl.w : pl.x - range;
       const rect = { x: rx, y: pl.y + 4, w: range, h: pl.h - 8 };
       let hits = 0;
       for (const e of this.level.enemies) if (e.alive && XY.aabb(rect, e)) { this.damageEnemy(e, mult * pl.atkMul, false, false); hits++; }
@@ -6153,6 +6359,17 @@
       this.player.exp = 40;
       this.player.recalcStats({ fullHeal: true });
       this.player.x = 300;
+      // 招式定格：?atk=0..3&atkp=0.5 把普攻定格在指定进度，方便看动作
+      // 走 pose() 的调试分支，而不是伪造 attackStart/attackUntil——后者算出来的
+      // p 会变成负数（被 seg 夹到 0），看起来四招全都停在起手，白折腾。
+      if (params.get('atk') != null) {
+        const ak = clamp(parseInt(params.get('atk'), 10) || 0, 0, 3);
+        const ap = Math.min(0.98, Math.max(0, parseFloat(params.get('atkp') || '0.5') || 0.5));
+        const cfg = (XY.BASIC_COMBO || [])[ak] || { dur: 260, style: 'arc' };
+        this.player._dbgAtk = { k: ak, p: ap };
+        this._dbgSlash = { k: ak, p: ap, style: cfg.style };
+        this._dbgSlashAt = -9999;
+      }
       const map = {
         title: 'title', charselect: 'charselect', cutscene: 'cutscene', intro: 'levelIntro',
         play: 'playing', bag: 'bag', craft: 'craft', pause: 'pause', gameover: 'gameover', win: 'win',

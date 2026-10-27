@@ -34,6 +34,7 @@
       // 通关结算：菜单游标 / 战果 / 从哪个界面进来（Esc 回到该界面）
       this.clearIndex = 0; this.clearStats = null; this.menuFrom = 'playing';
       this.runKills = 0; this.runStart = null; this._clearHandled = false;
+      this.hitStop = 0;
       this.persist = this.load();
       // 默认高亮上次选过的角色，别每次都从悟空开始
       const lastCi = XY.CHARACTER_ORDER.indexOf(this.persist.charId);
@@ -318,6 +319,22 @@
         }
         XY.Audio.music(this.musicScene());
         XY.Audio.duck(this.state === 'pause' ? 0.35 : 1);
+      }
+      // 命中顿帧：打到人的一瞬世界停几十毫秒（火花照走），打击的重量感全靠它
+      if (this.hitStop > 0) {
+        this.hitStop = Math.max(0, this.hitStop - dt);
+        if (this.fx) this.fx.update(dt);
+        if (this.shake > 0) this.shake = Math.max(0, this.shake - dt * 90);
+        return;
+      }
+      // 调试定格时刀光会自然消散，隔一会儿补一道，截图才看得到"这一招的刀光"
+      if (this._dbgSlash && this.player && now - this._dbgSlashAt > 190) {
+        const pl = this.player, k = this._dbgSlash.k;
+        const mx = pl.x + pl.w / 2, my = pl.y + pl.h / 2;
+        this.fx.slashStyle(mx + pl.facing * (k === 1 ? 22 : (k === 3 ? 10 : 12)),
+          my + (k === 2 ? 7 : (k === 1 ? 2 : 0)), pl.facing,
+          k >= 2 ? '#ffb648' : '#ffd15c', k >= 2 ? 1.42 : 1.12, 0.34, this._dbgSlash.style);
+        this._dbgSlashAt = now;
       }
       switch (this.state) {
         case 'title':
@@ -691,16 +708,41 @@
           return;
         }
         const k = a.atkKind || 0;
-        const style = k === 1 ? 'thrust' : (k === 2 ? 'lift' : 'arc');
-        if (XY.Audio) XY.Audio.sfx(a.heavy ? 'swingHeavy' : 'swing');
-        this.fx.slashStyle(cx + dir * (k === 1 ? 16 : 12), cy + (k === 2 ? 4 : 2), dir,
-          a.heavy ? '#ffb648' : '#ffd15c', a.heavy ? 1.4 : 1.12,
-          k === 1 ? 0.16 : (a.heavy ? 0.28 : 0.22), style);
-        const hits = this.meleeHit(a.range, mult, a.heavy);
-        if (hits > 0) {
-          this.fx.spark(cx + dir * a.range * 0.72, cy, a.heavy ? 12 : 7, '#ffe9a8', { speed: a.heavy ? 300 : 210, spread: 1.3, angle: dir > 0 ? 0 : Math.PI });
-          this.shake = Math.min(7, this.shake + (a.heavy ? 5 : 2.4));
-        }
+        const style = a.style || ['arc', 'thrust', 'lift', 'sweep'][k] || 'arc';
+        if (XY.Audio) XY.Audio.sfx(a.sfx || (a.heavy ? 'swingHeavy' : 'swing'));
+        // 刀光、判定、震屏、顿帧全部压到"兵器真打到人"的那一帧（strike），
+        // 否则刀光先出、伤害再落，看着就假。
+        const lvAtk = this.level;
+        const strikeAt = now + (a.dur || 260) * (a.strike === undefined ? 0.45 : a.strike);
+        this.pending.push({
+          at: strikeAt,
+          run: () => {
+            if (this.level !== lvAtk) return;
+            const me = this.player;
+            if (!me) return;
+            const mx = me.x + me.w / 2, my = me.y + me.h / 2;
+            const dirNow = me.facing;
+            const fxX = mx + dirNow * (k === 1 ? 22 : (k === 3 ? 10 : 12));
+            const fxY = my + (k === 2 ? 7 : (k === 1 ? 2 : 0));
+            // 刀光跟着兵器走：戳是细长平条、挑是上挑弧、甩是横扇、劈是斜劈弧
+            this.fx.slashStyle(fxX, fxY, dirNow,
+              a.heavy ? '#ffb648' : '#ffd15c', a.heavy ? 1.42 : 1.12,
+              k === 1 ? 0.15 : (a.heavy ? 0.3 : 0.22), style);
+            if (k === 3) {
+              // 甩：身后再补一道反手刀光，读得出"这一下是抽了一圈"
+              this.fx.slashStyle(mx - dirNow * 16, fxY - 2, -dirNow, '#ffb648', 1.1, 0.24, 'sweep');
+            }
+            let hits = this.meleeHit(a.range, mult, a.heavy, dirNow);
+            if (a.backRange > 0) hits += this.meleeHit(a.backRange, mult * 0.72, false, -dirNow);
+            if (hits > 0) {
+              const hitX = mx + dirNow * a.range * 0.72;
+              this.fx.spark(hitX, my, a.heavy ? 14 : 7, '#ffe9a8', { speed: a.heavy ? 320 : 210, spread: 1.3, angle: dirNow > 0 ? 0 : Math.PI });
+              if (k === 3) this.fx.spark(mx - dirNow * 26, my, 8, '#ffe09a', { speed: 240, spread: 1.2, angle: dirNow > 0 ? Math.PI : 0 });
+              this.shake = Math.min(9, this.shake + (a.shake || (a.heavy ? 5 : 2.4)));
+              this.hitStop = Math.max(this.hitStop, (a.hitLag || 40) / 1000);   // 顿帧：甩最重
+            }
+          },
+        });
       } else if (a.kind === 'aoe') {
         if (a.anim === 'throw') {
           // —— 定海神针：把棒子掷出去，空中急旋 → 插地 → 冲击波 ——
@@ -765,9 +807,10 @@
       } else if (a.kind === 'treasure') this.execTreasure(a.treasure);
     }
 
-    meleeHit(range, mult, heavy) {
+    meleeHit(range, mult, heavy, dir) {
       const pl = this.player;
-      const rx = pl.facing > 0 ? pl.x + pl.w : pl.x - range;
+      const d = dir === undefined ? pl.facing : (dir >= 0 ? 1 : -1);
+      const rx = d > 0 ? pl.x + pl.w : pl.x - range;
       const rect = { x: rx, y: pl.y + 4, w: range, h: pl.h - 8 };
       let hits = 0;
       for (const e of this.level.enemies) if (e.alive && XY.aabb(rect, e)) { this.damageEnemy(e, mult * pl.atkMul, false, false); hits++; }
@@ -1108,6 +1151,17 @@
       this.player.exp = 40;
       this.player.recalcStats({ fullHeal: true });
       this.player.x = 300;
+      // 招式定格：?atk=0..3&atkp=0.5 把普攻定格在指定进度，方便看动作
+      // 走 pose() 的调试分支，而不是伪造 attackStart/attackUntil——后者算出来的
+      // p 会变成负数（被 seg 夹到 0），看起来四招全都停在起手，白折腾。
+      if (params.get('atk') != null) {
+        const ak = clamp(parseInt(params.get('atk'), 10) || 0, 0, 3);
+        const ap = Math.min(0.98, Math.max(0, parseFloat(params.get('atkp') || '0.5') || 0.5));
+        const cfg = (XY.BASIC_COMBO || [])[ak] || { dur: 260, style: 'arc' };
+        this.player._dbgAtk = { k: ak, p: ap };
+        this._dbgSlash = { k: ak, p: ap, style: cfg.style };
+        this._dbgSlashAt = -9999;
+      }
       const map = {
         title: 'title', charselect: 'charselect', cutscene: 'cutscene', intro: 'levelIntro',
         play: 'playing', bag: 'bag', craft: 'craft', pause: 'pause', gameover: 'gameover', win: 'win',

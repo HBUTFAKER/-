@@ -47,6 +47,33 @@
   // ===== 成长曲线：每升一级自动提升（商店买到的属性另算）=====
   XY.GROWTH = { maxHp: 22, attack: 4, defense: 2, critRate: 0.004, moveSpeed: 1.2 };
 
+  // ===== 普攻连段：四段四种招式 =====
+  // 动作曲线在 art.js（swingProfile / attackMotion），刀光在 fx.js（style）
+  // dur=动作时长(ms) ready=下次可出手 range=身前判定 mult=倍率 lunge=前冲
+  // hitLag=命中顿帧(ms) shake=震屏 style=刀光样式 back=反手横扫的背面判定系数
+  XY.BASIC_COMBO = [
+    {
+      key: 'chop', name: '劈', style: 'arc', sfx: 'swing',
+      dur: 260, ready: 300, range: 68, mult: 0.92, lunge: 44, strike: 0.52,
+      hitLag: 40, shake: 2.6,
+    },
+    {
+      key: 'thrust', name: '戳', style: 'thrust', sfx: 'thrust',
+      dur: 200, ready: 252, range: 104, mult: 0.88, lunge: 190, strike: 0.46,
+      hitLag: 46, shake: 2.0,
+    },
+    {
+      key: 'lift', name: '挑', style: 'lift', sfx: 'swingHeavy',
+      dur: 310, ready: 384, range: 82, mult: 1.16, lunge: 16, strike: 0.56,
+      hitLag: 58, shake: 3.6,
+    },
+    {
+      key: 'sweep', name: '甩', style: 'sweep', sfx: 'sweep',
+      dur: 360, ready: 470, range: 106, mult: 1.40, lunge: 76, strike: 0.5,
+      hitLag: 74, shake: 5.4, back: 0.62,   // 反手回扫也能扫到身后 62%
+    },
+  ];
+
   // ===== 货币（三种，各管一摊）=====
   XY.CURRENCIES = {
     gold: { id: 'gold', name: '金币', color: '#f4c430', use: '属性商店' },

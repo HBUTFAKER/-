@@ -371,6 +371,18 @@
       noise(c, d, t, 0.19, 0.18, 'bandpass', 600, 1.4, 2200);
       blip(c, d, t, { type: 'triangle', f0: 260, f1: 110, dur: 0.16, gain: 0.1 });
     },
+    // 戳：又短又脆的破空声，尾巴带一点金属"钉"的一声
+    thrust(c, t, d) {
+      noise(c, d, t, 0.17, 0.15, 'bandpass', 1500, 2.2, 4200);
+      blip(c, d, t + 0.015, { type: 'triangle', f0: 760, f1: 230, dur: 0.09, gain: 0.08 });
+      bell(c, d, t + 0.05, 2400, 0.16, 0.045);
+    },
+    // 甩：一整圈的长风声，比劈多一层低鸣，听感更"重"
+    sweep(c, t, d) {
+      noise(c, d, t, 0.36, 0.17, 'bandpass', 280, 1.1, 2600);
+      noise(c, d, t + 0.07, 0.24, 0.1, 'bandpass', 1100, 1.5, 1700);
+      blip(c, d, t, { type: 'sine', f0: 180, f1: 90, dur: 0.3, gain: 0.09 });
+    },
     hit(c, t, d) {
       blip(c, d, t, { type: 'sine', f0: 175, f1: 58, glide: 0.07, dur: 0.12, gain: 0.36 });
       noise(c, d, t, 0.07, 0.26, 'bandpass', 1500, 0.9, 700);

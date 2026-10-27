@@ -189,7 +189,7 @@
       // 挨打：受击后短暂失衡（表现层据此做后仰、护痛、踉跄）
       this.hurtStart = -9999; this.hurtUntil = -9999;
       this.combo = 0; this.lastAttackAt = -9999;
-      this.attackKind = 0;           // 0 劈 / 1 戳 / 2 挑
+      this.attackKind = 0;           // 0 劈 / 1 戳 / 2 挑 / 3 甩
       this.lungeUntil = 0;           // 普攻进步窗口
       this.castSkillId = null;       // 正在施放哪个技能（造型层据此摆姿势）
       this.walkPhase = 0;
@@ -284,6 +284,15 @@
 
     // 当前动作姿态（供 2D 造型层使用）
     pose(now) {
+      // 调试定格（?atk=N&atkp=P）：把某一招钉死在指定进度，不需要真的在攻击
+      if (this._dbgAtk) {
+        return {
+          t: this.animT, state: 'attack', facing: this.facing,
+          attackP: this._dbgAtk.p, attackKind: this._dbgAtk.k,
+          castP: undefined, hurtP: undefined, castId: null,
+          noWeapon: false, combo: this._dbgAtk.k, sprint: false,
+        };
+      }
       const atk = now < this.attackUntil ? (now - this.attackStart) / Math.max(1, this.attackUntil - this.attackStart) : undefined;
       const cast = now < this.castUntil ? (now - this.castStart) / Math.max(1, this.castUntil - this.castStart) : undefined;
       const hurtP = now < (this.hurtUntil || -9999) ? (now - this.hurtStart) / Math.max(1, this.hurtUntil - this.hurtStart) : undefined;
@@ -304,27 +313,27 @@
       };
     }
 
-    // 普攻三段：劈 → 戳 → 挑。不同的出手节奏、判定范围与位移，让三段读起来是三种招式
+    // 普攻四段：劈 → 戳 → 挑 → 甩。每段有自己的动作曲线、判定范围、位移与手感
     tryBasic(now) {
       if (now < this.attackReady) return null;
+      const table = XY.BASIC_COMBO || [];
+      const n = table.length || 3;
       const quick = now - this.lastAttackAt < 820;
-      this.combo = quick ? (this.combo + 1) % 3 : 0;
+      this.combo = quick ? (this.combo + 1) % n : 0;
       this.lastAttackAt = now;
       const kind = this.combo;
-      // dur=动作时长 / ready=下一次可出手 / range=身前判定长度 / mult=倍率 / lunge=前冲位移
-      const cfg = [
-        { dur: 250, ready: 306, range: 64, mult: 0.92, lunge: 40 },   // 劈：自上而下，砸身
-        { dur: 210, ready: 268, range: 88, mult: 0.98, lunge: 150 },  // 戳：直刺，探得远
-        { dur: 330, ready: 436, range: 74, mult: 1.36, lunge: 20 },   // 挑：贴身撩起，最重
-      ][kind];
+      const cfg = table[kind] || table[0] || { dur: 260, ready: 300, range: 68, mult: 0.92, lunge: 40 };
       this.attackKind = kind;
       this.attackStart = now; this.attackUntil = now + cfg.dur;
       this.attackReady = now + cfg.ready;
-      // 戳的进步：脚下一蹬，身子跟上去
-      if (cfg.lunge && this.onGround) { this.vx = this.facing * cfg.lunge; this.lungeUntil = now + 140; }
+      // 进步：每段的脚下一蹬不一样（戳最远、挑几乎原地）
+      if (cfg.lunge && this.onGround) { this.vx = this.facing * cfg.lunge; this.lungeUntil = now + 150; }
       return {
-        kind: 'melee', atkKind: kind, range: cfg.range, mult: cfg.mult,
-        hitKey: 'atk' + now, combo: this.combo, heavy: kind === 2,
+        kind: 'melee', atkKind: kind, style: cfg.style, sfx: cfg.sfx,
+        dur: cfg.dur, strike: cfg.strike,
+        range: cfg.range, mult: cfg.mult, hitLag: cfg.hitLag, shake: cfg.shake,
+        backRange: cfg.back ? cfg.range * cfg.back : 0,
+        name: cfg.name, hitKey: 'atk' + now, combo: this.combo, heavy: kind >= 2,
       };
     }
     trySkill(i, now) {
