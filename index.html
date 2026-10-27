@@ -70,7 +70,7 @@
     <div id="app">
       <canvas id="game" width="960" height="540" tabindex="0"></canvas>
       <div class="hint">
-        <b>A D</b> 移动（双击奔跑） · <b>W</b> 跳（空中可二段跳） · <b>S</b> 快落 · <b>J</b> 普攻 · <b>K U I</b> 技能 · <b>1 2 3</b> 法宝 · <b>B</b> 背包 · <b>L</b> 锻造 · <b>G</b> 商店 · <b>H</b> 技能 · <b>P</b> 暂停
+        <b>A D</b> 移动（双击奔跑） · <b>W</b> 跳（空中可二段跳） · <b>S</b> 快落 · <b>J</b> 普攻 · <b>K U I</b> 技能 · <b>1 2 3</b> 法宝 · <b>B</b> 背包 · <b>L</b> 锻造 · <b>G</b> 商店 · <b>H</b> 技能 · <b>P</b> 暂停 · <b>M</b> 静音
       </div>
       <!-- 键盘没接管时（预览面板/触屏）自动出现，用鼠标也能玩 -->
       <div id="pad" hidden>
@@ -95,6 +95,7 @@
         <button data-code="KeyE">下一页</button>
         <button data-code="Enter">确认</button>
         <button data-code="KeyP">暂停</button>
+        <button data-code="KeyM">静音</button>
         <span class="tip">键盘未接管时用这些按钮</span>
       </div>
     </div>
@@ -102,6 +103,7 @@
     <!-- 经典脚本顺序加载，无需打包/联网，双击即可游玩 -->
     <script src="src/data.js"></script>
     <script src="src/logic.js"></script>
+    <script src="src/audio.js"></script>
     <script src="src/art.js"></script>
     <script src="src/fx.js"></script>
     <script src="src/scenery.js"></script>

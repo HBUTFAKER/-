@@ -460,7 +460,7 @@
 
     // 底部提示
     ctx.fillStyle = 'rgba(140,152,175,0.85)'; ctx.font = '11px "PingFang SC", sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('B 背包 · L 锻造 · G 商店 · H 技能 · P 暂停 · 双击 A/D 奔跑', W / 2, H - 6);
+    ctx.fillText('B 背包 · L 锻造 · G 商店 · H 技能 · P 暂停 · M 静音', W / 2, H - 6);
     ctx.textAlign = 'left';
 
     if (XY.Input && XY.Input.keyCount === 0) {
@@ -521,7 +521,7 @@
     // 操作说明
     ctx.fillStyle = '#93a3bb'; ctx.font = '12.5px "PingFang SC", sans-serif';
     ctx.fillText('A D 移动（双击奔跑） · W 跳（可二段跳） · S 快落 · J 普攻', 94, 462);
-    ctx.fillText('K U I 技能 · 1 2 3 法宝 · B 背包 · L 锻造 · G 商店 · H 技能', 94, 484);
+    ctx.fillText('K U I 技能 · 1 2 3 法宝 · B 背包 · L 锻造 · G 商店 · H 技能 · M 静音', 94, 484);
     ctx.textAlign = 'left';
   };
 
@@ -647,7 +647,8 @@
 
   // ===== 关卡前情 =====
   UI.drawLevelIntro = function (ctx, game) {
-    const data = (game.level && game.level.data) || XY.LEVELS[game.levelIndex] || XY.LEVELS[0];
+    // 以「当前关卡序号」为准：从过关结算点下一关时，旧关卡的 level 还在，不能拿它当标题
+    const data = XY.LEVELS[game.levelIndex] || (game.level && game.level.data) || XY.LEVELS[0];
     UI.drawBackground(ctx, game.levelIndex, game.uiTime);
     ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(0, 0, W, H);
     center(ctx, data.name, 220, 'bold 38px serif', '#ffd479');
@@ -663,12 +664,114 @@
     center(ctx, '暂停', 230, 'bold 44px serif', '#ffd479');
     center(ctx, 'P 继续', 296, '18px "PingFang SC", sans-serif', '#fff');
     center(ctx, 'R 放弃本关回到标题', 332, '14px "PingFang SC", sans-serif', '#8a93a6');
+    center(ctx, 'M 关掉 / 打开音乐与音效', 358, '14px "PingFang SC", sans-serif', '#8a93a6');
   };
 
   UI.drawGameOver = function (ctx) {
     ctx.fillStyle = 'rgba(40,0,0,0.72)'; ctx.fillRect(0, 0, W, H);
     center(ctx, '英雄落败', 230, 'bold 48px serif', '#e74c3c');
     center(ctx, '按 Enter 回到标题', 300, '18px "PingFang SC", sans-serif', '#fff');
+  };
+
+  // ===== 过关结算：给玩家一条岔路（下一关 / 商店 / 锻造 / 参悟 / 主菜单）=====
+  UI.drawLevelClear = function (ctx, game) {
+    UI.drawBackground(ctx, game.levelIndex, game.uiTime, game.cam ? game.cam.x : 0);
+    ctx.fillStyle = 'rgba(4,7,12,0.8)'; ctx.fillRect(0, 0, W, H);
+    // 从上方斜洒下来的金色光柱
+    for (let i = 0; i < 5; i++) {
+      const x = 90 + i * 200 + Math.sin(game.uiTime / 1000 + i * 1.7) * 14;
+      const g = ctx.createLinearGradient(x, 0, x + 80, H);
+      g.addColorStop(0, 'rgba(255,212,121,0.14)');
+      g.addColorStop(1, 'rgba(255,212,121,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.moveTo(x, 0); ctx.lineTo(x + 54, 0); ctx.lineTo(x + 126, H); ctx.lineTo(x + 44, H);
+      ctx.closePath(); ctx.fill();
+    }
+
+    const st = game.clearStats || { name: '', kills: 0, total: 0, jade: 0, gold: 0, level: 1, seconds: 0, last: false };
+    // 标题
+    ctx.textAlign = 'left';
+    ctx.shadowColor = 'rgba(255,180,60,0.45)'; ctx.shadowBlur = 22;
+    ctx.fillStyle = '#ffd479'; ctx.font = 'bold 46px serif';
+    ctx.fillText('通 关', 70, 96);
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#e8eef8'; ctx.font = 'bold 20px "PingFang SC", sans-serif';
+    ctx.fillText(st.name, 232, 92);
+    const lg = ctx.createLinearGradient(70, 0, 470, 0);
+    lg.addColorStop(0, 'rgba(255,212,121,0.9)'); lg.addColorStop(1, 'rgba(255,212,121,0)');
+    ctx.fillStyle = lg; ctx.fillRect(70, 112, 400, 2);
+
+    // —— 左：战果 ——
+    const px = 70, py = 150, pw = 330, ph = 286;
+    rrect(ctx, px, py, pw, ph, 14);
+    ctx.fillStyle = 'rgba(14,19,28,0.92)'; ctx.fill();
+    ctx.strokeStyle = '#2a3550'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = '#8a93a6'; ctx.font = '11px "PingFang SC", sans-serif';
+    ctx.fillText('本 关 战 果', px + 18, py + 26);
+
+    const mm = Math.floor(st.seconds / 60), ss = st.seconds % 60;
+    const rows = [
+      ['妖物击杀', st.kills + ' / ' + st.total, '#e6ecf5'],
+      ['获得仙玉', '+' + st.jade, '#7CFC9B'],
+      ['获得金币', '+' + st.gold, '#f4c430'],
+      ['当前等级', 'Lv.' + st.level, '#ffd479'],
+      ['用时', mm + ':' + (ss < 10 ? '0' : '') + ss, '#9fb0c8'],
+    ];
+    let yy = py + 66;
+    for (const r of rows) {
+      ctx.fillStyle = '#8a93a6'; ctx.font = '13px "PingFang SC", sans-serif';
+      ctx.fillText(r[0], px + 18, yy);
+      ctx.fillStyle = r[2]; ctx.font = 'bold 16px "PingFang SC", sans-serif'; ctx.textAlign = 'right';
+      ctx.fillText(r[1], px + pw - 18, yy); ctx.textAlign = 'left';
+      yy += 34;
+    }
+    ctx.fillStyle = '#5b6678'; ctx.font = '11px "PingFang SC", sans-serif';
+    wrapText(ctx, '战果已自动存档。从这里可以补装备、加点，再上路。', px + 18, py + 258, pw - 36, 15, 2);
+
+    // —— 右：选项 ——
+    const opts = game.clearOptions ? game.clearOptions() : [];
+    const ox = 430, ow = 460, oh = 58, gap = 12, oy = 150;
+    for (let i = 0; i < opts.length; i++) {
+      const o = opts[i];
+      const y = oy + i * (oh + gap);
+      const sel = i === game.clearIndex;
+      rrect(ctx, ox, y, ow, oh, 10);
+      ctx.fillStyle = sel ? 'rgba(255,212,121,0.13)' : 'rgba(16,21,32,0.9)'; ctx.fill();
+      ctx.strokeStyle = sel ? '#ffd479' : '#232c3e';
+      ctx.lineWidth = sel ? 2.5 : 1; ctx.stroke();
+      if (sel) {
+        ctx.save();
+        ctx.shadowColor = 'rgba(255,212,121,0.45)'; ctx.shadowBlur = 14;
+        rrect(ctx, ox, y, ow, oh, 10); ctx.stroke();
+        ctx.restore();
+      }
+      // 选中指示：小三角
+      ctx.fillStyle = sel ? '#ffd479' : '#3a4560';
+      ctx.beginPath();
+      ctx.moveTo(ox + 18, y + oh / 2 - 6);
+      ctx.lineTo(ox + 28, y + oh / 2);
+      ctx.lineTo(ox + 18, y + oh / 2 + 6);
+      ctx.closePath(); ctx.fill();
+
+      ctx.fillStyle = sel ? '#fff' : '#dbe4f0'; ctx.font = 'bold 18px "PingFang SC", sans-serif';
+      ctx.fillText(o.name, ox + 42, y + 26);
+      ctx.fillStyle = '#7d8798'; ctx.font = '11.5px "PingFang SC", sans-serif';
+      ctx.fillText(o.note || '', ox + 42, y + 45);
+
+      // 快捷键角标
+      const kw = 46;
+      rrect(ctx, ox + ow - kw - 14, y + oh / 2 - 12, kw, 24, 6);
+      ctx.fillStyle = 'rgba(8,11,17,0.85)'; ctx.fill();
+      ctx.strokeStyle = sel ? '#8a6a22' : '#2a3550'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.fillStyle = sel ? '#ffd479' : '#6c788c'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(o.key, ox + ow - kw / 2 - 14, y + oh / 2 + 4);
+      ctx.textAlign = 'left';
+    }
+
+    ctx.fillStyle = 'rgba(150,162,182,0.9)'; ctx.font = '12px "PingFang SC", sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('W/S 选择 · Enter 确认 · G 商店 · L 锻造 · H 技能 · Esc 回主菜单', W / 2, H - 14);
+    ctx.textAlign = 'left';
   };
 
   UI.drawWin = function (ctx) {

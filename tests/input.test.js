@@ -17,6 +17,7 @@ global.localStorage = {
 
 const XY = require('../src/data.js');
 require('../src/logic.js');
+require('../src/audio.js');
 require('../src/art.js');
 require('../src/fx.js');
 require('../src/scenery.js');

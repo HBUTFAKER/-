@@ -70,7 +70,7 @@
     <div id="app">
       <canvas id="game" width="960" height="540" tabindex="0"></canvas>
       <div class="hint">
-        <b>A D</b> 移动（双击奔跑） · <b>W</b> 跳（空中可二段跳） · <b>S</b> 快落 · <b>J</b> 普攻 · <b>K U I</b> 技能 · <b>1 2 3</b> 法宝 · <b>B</b> 背包 · <b>L</b> 锻造 · <b>G</b> 商店 · <b>H</b> 技能 · <b>P</b> 暂停
+        <b>A D</b> 移动（双击奔跑） · <b>W</b> 跳（空中可二段跳） · <b>S</b> 快落 · <b>J</b> 普攻 · <b>K U I</b> 技能 · <b>1 2 3</b> 法宝 · <b>B</b> 背包 · <b>L</b> 锻造 · <b>G</b> 商店 · <b>H</b> 技能 · <b>P</b> 暂停 · <b>M</b> 静音
       </div>
       <!-- 键盘没接管时（预览面板/触屏）自动出现，用鼠标也能玩 -->
       <div id="pad" hidden>
@@ -95,6 +95,7 @@
         <button data-code="KeyE">下一页</button>
         <button data-code="Enter">确认</button>
         <button data-code="KeyP">暂停</button>
+        <button data-code="KeyM">静音</button>
         <span class="tip">键盘未接管时用这些按钮</span>
       </div>
     </div>
@@ -516,6 +517,484 @@
 
 </script>
     <script>
+/* ===== audio.js ===== */
+// 音频层：音乐与音效全部用 WebAudio 现场合成，不加载任何音频文件（零依赖、双击即响）。
+// 挂在 XY.Audio。没有 AudioContext 的环境（node --test / 老浏览器）自动退化为空操作。
+(function (root) {
+  const XY = (root.XY = root.XY || {});
+  const PREF_KEY = 'xiyou_audio_v1';
+
+  // 半音 → 频率
+  function hz(base, semi) { return base * Math.pow(2, semi / 12); }
+
+  const A = (XY.Audio = {
+    ctx: null, ready: false, muted: false,
+    master: null, musicBus: null, sfxBus: null,
+    scene: null, _step: 0, _next: 0, _timer: null, _inited: false,
+    _noise: null, _lastSfx: {}, _duck: 1,
+    _musicVol: 0.5, _sfxVol: 0.75,
+    noteCount: 0, sfxCount: 0,
+  });
+
+  // ===== 偏好 =====
+  A.loadPrefs = function () {
+    try {
+      if (typeof localStorage === 'undefined') return;
+      const raw = localStorage.getItem(PREF_KEY);
+      if (!raw) return;
+      const d = JSON.parse(raw);
+      if (d && typeof d === 'object') {
+        this.muted = !!d.muted;
+        if (Number.isFinite(d.music)) this._musicVol = Math.max(0, Math.min(1, d.music));
+        if (Number.isFinite(d.sfx)) this._sfxVol = Math.max(0, Math.min(1, d.sfx));
+      }
+    } catch (e) { /* 忽略 */ }
+  };
+  A.savePrefs = function () {
+    try {
+      if (typeof localStorage === 'undefined') return;
+      localStorage.setItem(PREF_KEY, JSON.stringify({ muted: this.muted, music: this._musicVol, sfx: this._sfxVol }));
+    } catch (e) { /* 忽略 */ }
+  };
+
+  // ===== 初始化 / 解锁（浏览器要求先有用户手势）=====
+  A.init = function () {
+    if (this._inited) return;
+    this._inited = true;
+    this.loadPrefs();
+    if (typeof window === 'undefined' || typeof window.addEventListener !== 'function') return;
+    const unlock = () => { this.unlock(); };
+    const targets = [window];
+    if (typeof document !== 'undefined' && document && document.addEventListener) targets.push(document);
+    for (const t of targets) {
+      try {
+        t.addEventListener('keydown', unlock, true);
+        t.addEventListener('pointerdown', unlock, true);
+        t.addEventListener('touchstart', unlock, true);
+      } catch (e) { /* 桩环境忽略 */ }
+    }
+  };
+
+  A.ensure = function () {
+    if (this.ctx) return this.ctx;
+    const AC = root.AudioContext || root.webkitAudioContext;
+    if (!AC) return null;
+    try {
+      const c = new AC();
+      this.ctx = c;
+      this.master = c.createGain();
+      this.master.gain.value = this.muted ? 0 : 0.9;
+      this.master.connect(c.destination);
+      this.musicBus = c.createGain();
+      this.musicBus.gain.value = this._musicVol;
+      this.musicBus.connect(this.master);
+      this.sfxBus = c.createGain();
+      this.sfxBus.gain.value = this._sfxVol;
+      this.sfxBus.connect(this.master);
+      this._noise = this.makeNoise(c);
+      this.ready = true;
+    } catch (e) {
+      this.ctx = null; this.ready = false;
+    }
+    return this.ctx;
+  };
+
+  A.unlock = function () {
+    this.ensure();
+    const c = this.ctx;
+    if (!c) return;
+    try {
+      if (c.state === 'suspended' && c.resume) c.resume();
+    } catch (e) { /* 忽略 */ }
+    this.startScheduler();
+    if (this.scene) this.music(this.scene, true);
+  };
+
+  A.startScheduler = function () {
+    if (this._timer || typeof setInterval === 'undefined') return;
+    this._timer = setInterval(() => { this.tick(); }, 25);
+    if (this._timer && this._timer.unref) this._timer.unref();   // node 测试里不拖住进程
+  };
+
+  A.makeNoise = function (c) {
+    try {
+      const len = Math.floor((c.sampleRate || 44100) * 0.7);
+      const buf = c.createBuffer(1, len, c.sampleRate || 44100);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      return buf;
+    } catch (e) { return null; }
+  };
+
+  // ===== 合成基元 =====
+  function ramp(param, when, attack, dur, peak) {
+    try {
+      param.setValueAtTime(0.0001, when);
+      param.linearRampToValueAtTime(peak, when + attack);
+      param.exponentialRampToValueAtTime(0.0001, when + attack + dur);
+    } catch (e) { /* 忽略 */ }
+  }
+
+  function blip(c, dest, when, opt) {
+    if (!dest) return;
+    const o = c.createOscillator();
+    const g = c.createGain();
+    o.type = opt.type || 'sine';
+    const f0 = Math.max(20, opt.f0);
+    o.frequency.setValueAtTime(f0, when);
+    if (opt.f1 && opt.f1 !== opt.f0) {
+      try { o.frequency.exponentialRampToValueAtTime(Math.max(20, opt.f1), when + (opt.glide || opt.dur)); } catch (e) { /* 忽略 */ }
+    }
+    ramp(g.gain, when, opt.a || 0.008, opt.dur, opt.gain == null ? 0.15 : opt.gain);
+    o.connect(g);
+    let node = g;
+    if (opt.filter) {
+      const f = c.createBiquadFilter();
+      f.type = opt.filter.type || 'lowpass';
+      f.frequency.setValueAtTime(opt.filter.freq || 1200, when);
+      if (opt.filter.q) { try { f.Q.value = opt.filter.q; } catch (e) { /* 忽略 */ } }
+      g.connect(f); node = f;
+    }
+    node.connect(dest);
+    try { o.start(when); o.stop(when + (opt.a || 0.008) + opt.dur + 0.03); } catch (e) { /* 忽略 */ }
+  }
+
+  function noise(c, dest, when, dur, gain, type, freq, q, freqEnd) {
+    if (!dest || !A._noise) return;
+    const src = c.createBufferSource();
+    src.buffer = A._noise;
+    const f = c.createBiquadFilter();
+    f.type = type || 'bandpass';
+    f.frequency.setValueAtTime(freq || 1200, when);
+    if (freqEnd) { try { f.frequency.exponentialRampToValueAtTime(freqEnd, when + dur); } catch (e) { /* 忽略 */ } }
+    try { f.Q.value = q || 1; } catch (e) { /* 忽略 */ }
+    const g = c.createGain();
+    g.gain.setValueAtTime(gain, when);
+    g.gain.exponentialRampToValueAtTime(0.0004, when + dur);
+    src.connect(f); f.connect(g); g.connect(dest);
+    try { src.start(when); src.stop(when + dur + 0.02); } catch (e) { /* 忽略 */ }
+  }
+
+  // 拨弦：三角波主体 + 一点正弦泛音，快起快落，像古筝/琵琶
+  function pluck(c, dest, when, f, dur, gain) {
+    blip(c, dest, when, { type: 'triangle', f0: f, dur: dur, gain: gain, a: 0.006, filter: { type: 'lowpass', freq: Math.min(6000, f * 8) } });
+    blip(c, dest, when, { type: 'sine', f0: f * 2, dur: dur * 0.55, gain: gain * 0.35, a: 0.004 });
+  }
+  // 钟/磬：正弦 + 两个非整数泛音，尾音长
+  function bell(c, dest, when, f, dur, gain) {
+    blip(c, dest, when, { type: 'sine', f0: f, dur: dur, gain: gain, a: 0.008 });
+    blip(c, dest, when, { type: 'sine', f0: f * 2.76, dur: dur * 0.6, gain: gain * 0.22, a: 0.006 });
+    blip(c, dest, when, { type: 'sine', f0: f * 5.4, dur: dur * 0.3, gain: gain * 0.09, a: 0.004 });
+  }
+  // 低音：正弦打底 + 低通方波给一点齿音
+  function bass(c, dest, when, f, dur, gain) {
+    blip(c, dest, when, { type: 'sine', f0: f, dur: dur, gain: gain, a: 0.01 });
+    blip(c, dest, when, { type: 'square', f0: f, dur: dur * 0.8, gain: gain * 0.18, a: 0.01, filter: { type: 'lowpass', freq: 320 } });
+  }
+  // 长音铺底：两只略微失谐的三角波 + 慢起音
+  function pad(c, dest, when, f, dur, gain) {
+    for (const det of [-0.06, 0.06]) {
+      const o = c.createOscillator(), g = c.createGain(), lp = c.createBiquadFilter();
+      o.type = 'triangle';
+      o.frequency.setValueAtTime(f * (1 + det / 12), when);
+      lp.type = 'lowpass'; try { lp.frequency.value = 900; } catch (e) { /* 忽略 */ }
+      g.gain.setValueAtTime(0.0001, when);
+      g.gain.linearRampToValueAtTime(gain, when + Math.min(0.6, dur * 0.35));
+      g.gain.linearRampToValueAtTime(0.0001, when + dur);
+      o.connect(lp); lp.connect(g); g.connect(dest);
+      try { o.start(when); o.stop(when + dur + 0.05); } catch (e) { /* 忽略 */ }
+    }
+  }
+  function kick(c, dest, when, gain) {
+    blip(c, dest, when, { type: 'sine', f0: 150, f1: 44, glide: 0.1, dur: 0.2, gain: gain == null ? 0.5 : gain, a: 0.004 });
+  }
+  function snare(c, dest, when, gain) {
+    noise(c, dest, when, 0.16, (gain == null ? 0.22 : gain), 'bandpass', 1900, 0.9, 900);
+    blip(c, dest, when, { type: 'triangle', f0: 220, f1: 130, dur: 0.09, gain: 0.1 });
+  }
+  function hat(c, dest, when, gain) {
+    noise(c, dest, when, 0.045, gain == null ? 0.1 : gain, 'highpass', 7600, 0.7);
+  }
+  function anvil(c, dest, when, gain) {
+    noise(c, dest, when, 0.09, 0.16 * (gain || 1), 'bandpass', 3400, 2.4);
+    bell(c, dest, when, 1680, 0.32, 0.1 * (gain || 1));
+    kick(c, dest, when, 0.18 * (gain || 1));
+  }
+
+  // ===== 曲目：每关/每界面一首，五声音阶，循环 32 个十六分音符 =====
+  const TRACKS = {
+    // 天宫序曲：慢、空、庄严 —— 主菜单 / 选角 / 过场
+    title: {
+      bpm: 70, steps: 32, root: 73.42, leadType: 'bell',
+      drums: 'k.......h.......k.......h.....h.',
+      bass: { 0: 0, 8: 0, 16: 7, 24: 5 },
+      lead: { 4: 17, 8: 15, 12: 12, 20: 19, 24: 17, 28: 12 },
+      pad: { 0: [0, 7], 16: [3, 10] },
+      gains: { lead: 0.1, bass: 0.2, pad: 0.05 },
+    },
+    // 战鼓：快、密、紧张 —— 战斗
+    battle: {
+      bpm: 140, steps: 32, root: 73.42, leadType: 'pluck',
+      drums: 'k.h.s.h.k.hks.hhk.h.s.h.k.khs.h.',
+      bass: { 0: 0, 3: 0, 6: 3, 8: 0, 11: 0, 14: 5, 16: 0, 19: 0, 22: 3, 24: 7, 28: 5 },
+      lead: { 0: 12, 2: 15, 4: 12, 6: 19, 8: 24, 10: 19, 12: 15, 14: 12,
+        16: 12, 18: 15, 20: 12, 22: 19, 24: 27, 26: 24, 28: 19, 30: 15 },
+      pad: { 0: [0, 3], 16: [5, 8] },
+      gains: { lead: 0.07, bass: 0.24, pad: 0.04 },
+    },
+    // 集市：轻快、跳跃 —— 商店
+    shop: {
+      bpm: 106, steps: 32, root: 146.83, leadType: 'pluck',
+      drums: '..h...h...h...h...h...h...h..h.h',
+      bass: { 0: 0, 4: 4, 8: 7, 12: 4, 16: 0, 20: 4, 24: 9, 28: 7 },
+      lead: { 2: 12, 6: 16, 10: 19, 14: 16, 18: 12, 22: 16, 26: 19, 30: 21 },
+      pad: { 0: [0, 7], 16: [5, 12] },
+      gains: { lead: 0.085, bass: 0.16, pad: 0.03 },
+    },
+    // 铁砧：沉稳的节拍 + 打铁声 —— 锻造坊
+    craft: {
+      bpm: 94, steps: 32, root: 73.42, leadType: 'pluck',
+      drums: 'k...k...k...k...k...k...k...k...',
+      anvil: { 0: 1, 6: 0.55, 12: 0.9, 20: 0.75, 26: 0.5 },
+      bass: { 0: 0, 8: 0, 16: 3, 24: 5 },
+      lead: { 4: 12, 12: 15, 20: 12, 28: 10 },
+      pad: { 0: [0], 16: [3] },
+      gains: { lead: 0.07, bass: 0.2, pad: 0.035 },
+    },
+    // 参悟：极慢、空灵 —— 技能升级
+    skill: {
+      bpm: 56, steps: 32, root: 146.83, leadType: 'bell',
+      drums: '',
+      bass: { 0: 0, 16: 5 },
+      lead: { 0: 12, 6: 19, 10: 24, 16: 17, 22: 15, 26: 12 },
+      pad: { 0: [0, 7, 12], 16: [5, 12, 17] },
+      gains: { lead: 0.085, bass: 0.12, pad: 0.05 },
+    },
+    // 凯歌：明亮、上扬 —— 通关结算
+    clear: {
+      bpm: 112, steps: 32, root: 146.83, leadType: 'bell',
+      drums: 'k.h.k.h.k.h.khhhk.h.k.h.k.h.k.h',
+      bass: { 0: 0, 8: 0, 16: 5, 24: 7 },
+      lead: { 0: 12, 2: 16, 4: 19, 6: 24, 8: 19, 10: 24, 12: 28,
+        16: 19, 18: 23, 20: 26, 22: 31, 24: 28, 28: 24 },
+      pad: { 0: [0, 7, 12], 16: [5, 12, 17] },
+      gains: { lead: 0.1, bass: 0.2, pad: 0.04 },
+    },
+    // 落败：低沉、下行
+    defeat: {
+      bpm: 62, steps: 16, root: 73.42, leadType: 'bell',
+      drums: '',
+      bass: { 0: 0, 4: 0, 8: -2, 12: -5 },
+      lead: { 2: 12, 6: 10, 10: 7, 14: 3 },
+      pad: { 0: [0, 3], 8: [-2, 2] },
+      gains: { lead: 0.09, bass: 0.18, pad: 0.045 },
+    },
+  };
+  A.tracks = TRACKS;
+
+  A.scheduleStep = function (track, s, when) {
+    const c = this.ctx, dest = this.musicBus;
+    if (!c || !dest) return;
+    const g = track.gains || {};
+    // 鼓
+    const dch = track.drums && track.drums[s];
+    if (dch === 'k') kick(c, dest, when, 0.42);
+    else if (dch === 's') snare(c, dest, when, 0.2);
+    else if (dch === 'h') hat(c, dest, when, 0.085);
+    // 铁砧
+    if (track.anvil && track.anvil[s] != null) anvil(c, dest, when, track.anvil[s]);
+    // 低音
+    if (track.bass && track.bass[s] != null) bass(c, dest, when, hz(track.root, track.bass[s]), 0.24, g.bass || 0.18);
+    // 旋律
+    if (track.lead && track.lead[s] != null) {
+      const f = hz(track.root, track.lead[s] + 12);
+      if (track.leadType === 'bell') bell(c, dest, when, f, 0.55, g.lead || 0.09);
+      else pluck(c, dest, when, f, 0.2, g.lead || 0.09);
+    }
+    // 铺底：每个和弦起点铺满整段
+    if (track.pad && track.pad[s]) {
+      const bar = track.steps / 2;
+      for (const semi of track.pad[s]) pad(c, dest, when, hz(track.root, semi + 12), (60 / track.bpm) * 4 * (bar / 8), g.pad || 0.04);
+    }
+    this.noteCount++;
+  };
+
+  A.tick = function () {
+    const c = this.ctx;
+    if (!c || !this.ready) return;
+    const track = TRACKS[this.scene || 'title'];
+    if (!track) return;
+    const spb = 60 / track.bpm / 4;
+    if (!this._next) this._next = c.currentTime + 0.08;
+    let guard = 0;
+    while (this._next < c.currentTime + 0.22 && guard++ < 32) {
+      this.scheduleStep(track, this._step % track.steps, this._next);
+      this._next += spb;
+      this._step++;
+    }
+  };
+
+  // 切歌：同名不重复触发；换曲时做一次轻微"呼吸"淡入
+  A.music = function (name, force) {
+    if (!name) return;
+    if (this.scene === name && !force) return;
+    this.scene = name;
+    this._step = 0;
+    this._next = 0;
+    if (!this.ready || !this.musicBus || !this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const gain = this.musicBus.gain;
+      gain.cancelScheduledValues(now);
+      gain.setValueAtTime(gain.value, now);
+      gain.linearRampToValueAtTime(0.0001, now + 0.16);
+      gain.linearRampToValueAtTime(this._musicVol * this._duck, now + 0.85);
+    } catch (e) { /* 忽略 */ }
+  };
+
+  // 暂停时压低音乐，不掐断
+  A.duck = function (v) {
+    const next = Math.max(0, Math.min(1, v == null ? 1 : v));
+    if (Math.abs(next - this._duck) < 0.01) return;
+    this._duck = next;
+    if (!this.ready || !this.musicBus || !this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      this.musicBus.gain.cancelScheduledValues(now);
+      this.musicBus.gain.linearRampToValueAtTime(this._musicVol * next, now + 0.4);
+    } catch (e) { /* 忽略 */ }
+  };
+
+  A.toggleMute = function () {
+    this.muted = !this.muted;
+    if (this.ready && this.master && this.ctx) {
+      try { this.master.gain.linearRampToValueAtTime(this.muted ? 0 : 0.9, this.ctx.currentTime + 0.25); } catch (e) { /* 忽略 */ }
+    }
+    this.savePrefs();
+    return !this.muted;
+  };
+
+  // ===== 音效 =====
+  const SFX = {
+    ui(c, t, d) { blip(c, d, t, { type: 'triangle', f0: 660, f1: 880, dur: 0.06, gain: 0.1 }); },
+    confirm(c, t, d) {
+      blip(c, d, t, { type: 'triangle', f0: 520, f1: 780, dur: 0.08, gain: 0.13 });
+      blip(c, d, t + 0.06, { type: 'triangle', f0: 1040, dur: 0.1, gain: 0.1 });
+    },
+    open(c, t, d) { noise(c, d, t, 0.18, 0.1, 'bandpass', 500, 1.1, 2200); },
+    deny(c, t, d) { blip(c, d, t, { type: 'square', f0: 190, f1: 120, dur: 0.16, gain: 0.1, filter: { type: 'lowpass', freq: 800 } }); },
+    swing(c, t, d) {
+      noise(c, d, t, 0.11, 0.13, 'bandpass', 900, 1.2, 2800);
+      blip(c, d, t, { type: 'sine', f0: 400, f1: 170, dur: 0.09, gain: 0.05 });
+    },
+    swingHeavy(c, t, d) {
+      noise(c, d, t, 0.19, 0.18, 'bandpass', 600, 1.4, 2200);
+      blip(c, d, t, { type: 'triangle', f0: 260, f1: 110, dur: 0.16, gain: 0.1 });
+    },
+    hit(c, t, d) {
+      blip(c, d, t, { type: 'sine', f0: 175, f1: 58, glide: 0.07, dur: 0.12, gain: 0.36 });
+      noise(c, d, t, 0.07, 0.26, 'bandpass', 1500, 0.9, 700);
+    },
+    crit(c, t, d) {
+      blip(c, d, t, { type: 'sine', f0: 210, f1: 64, glide: 0.08, dur: 0.16, gain: 0.4 });
+      noise(c, d, t, 0.09, 0.3, 'bandpass', 2400, 1.1, 900);
+      bell(c, d, t + 0.01, 2100, 0.22, 0.1);
+    },
+    hurt(c, t, d) {
+      blip(c, d, t, { type: 'sawtooth', f0: 330, f1: 90, dur: 0.28, gain: 0.2, filter: { type: 'lowpass', freq: 1300 } });
+      noise(c, d, t, 0.16, 0.18, 'lowpass', 1000, 0.9, 300);
+    },
+    jump(c, t, d) { blip(c, d, t, { type: 'triangle', f0: 300, f1: 620, dur: 0.13, gain: 0.09 }); },
+    doubleJump(c, t, d) {
+      blip(c, d, t, { type: 'triangle', f0: 520, f1: 1080, dur: 0.16, gain: 0.1 });
+      bell(c, d, t + 0.03, 1560, 0.2, 0.06);
+    },
+    dash(c, t, d) { noise(c, d, t, 0.24, 0.16, 'bandpass', 380, 1.4, 2600); },
+    throw(c, t, d) { noise(c, d, t, 0.32, 0.13, 'bandpass', 520, 2.2, 1800); },
+    smash(c, t, d) {
+      kick(c, d, t, 0.5);
+      noise(c, d, t, 0.34, 0.3, 'lowpass', 700, 0.8, 160);
+      bell(c, d, t + 0.02, 620, 0.4, 0.06);
+    },
+    aoe(c, t, d) {
+      noise(c, d, t, 0.28, 0.16, 'bandpass', 300, 1.6, 1800);
+      bell(c, d, t + 0.02, 880, 0.3, 0.07);
+    },
+    shoot(c, t, d) { blip(c, d, t, { type: 'square', f0: 920, f1: 420, dur: 0.12, gain: 0.09, filter: { type: 'lowpass', freq: 2400 } }); },
+    land(c, t, d) { noise(c, d, t, 0.09, 0.16, 'lowpass', 520, 0.9); },
+    coin(c, t, d) {
+      bell(c, d, t, 1046, 0.18, 0.09);
+      bell(c, d, t + 0.07, 1568, 0.2, 0.07);
+    },
+    jade(c, t, d) {
+      bell(c, d, t, 1318, 0.3, 0.09);
+      bell(c, d, t + 0.08, 1976, 0.32, 0.06);
+    },
+    item(c, t, d) {
+      bell(c, d, t, 880, 0.22, 0.08);
+      bell(c, d, t + 0.06, 1320, 0.22, 0.06);
+    },
+    levelup(c, t, d) {
+      const notes = [523, 659, 784, 1046];
+      for (let i = 0; i < notes.length; i++) bell(c, d, t + i * 0.075, notes[i], 0.45, 0.11);
+    },
+    buy(c, t, d) {
+      blip(c, d, t, { type: 'square', f0: 880, dur: 0.05, gain: 0.08, filter: { type: 'lowpass', freq: 2600 } });
+      blip(c, d, t + 0.06, { type: 'square', f0: 1174, dur: 0.08, gain: 0.08, filter: { type: 'lowpass', freq: 3000 } });
+    },
+    forge(c, t, d) {
+      anvil(c, d, t, 1.1);
+      noise(c, d, t + 0.02, 0.22, 0.12, 'highpass', 4200, 0.7);
+    },
+    heal(c, t, d) {
+      const notes = [392, 523, 659];
+      for (let i = 0; i < notes.length; i++) blip(c, d, t + i * 0.06, { type: 'sine', f0: notes[i], dur: 0.4, gain: 0.07 });
+    },
+    treasure(c, t, d) {
+      noise(c, d, t, 0.2, 0.1, 'bandpass', 700, 1.2, 3000);
+      const notes = [784, 1046, 1318, 1568];
+      for (let i = 0; i < notes.length; i++) bell(c, d, t + 0.04 + i * 0.055, notes[i], 0.35, 0.06);
+    },
+    clear(c, t, d) {
+      const notes = [523, 659, 784, 1046, 1318];
+      for (let i = 0; i < notes.length; i++) bell(c, d, t + i * 0.1, notes[i], 0.6, 0.1);
+      kick(c, d, t, 0.35);
+    },
+    gameover(c, t, d) {
+      const notes = [392, 330, 262, 196];
+      for (let i = 0; i < notes.length; i++) bell(c, d, t + i * 0.22, notes[i], 0.7, 0.09);
+    },
+    boss(c, t, d) {
+      blip(c, d, t, { type: 'sawtooth', f0: 110, f1: 46, dur: 0.7, gain: 0.2, filter: { type: 'lowpass', freq: 700 } });
+      noise(c, d, t, 0.5, 0.18, 'lowpass', 600, 0.8, 120);
+    },
+  };
+  A.SFX = SFX;
+
+  A.sfx = function (name) {
+    if (this.muted) return;
+    const c = this.ready ? this.ctx : this.ensure();
+    if (!c || !this.sfxBus) return;
+    if (c.state === 'suspended') return;             // 还没解锁：不排队，避免解锁瞬间一串爆音
+    const now = c.currentTime;
+    const last = this._lastSfx[name] || -9;
+    if (now - last < 0.035) return;                   // 同名音效节流，连击时不糊
+    this._lastSfx[name] = now;
+    const fn = SFX[name];
+    if (!fn) return;
+    try { fn(c, now, this.sfxBus); this.sfxCount++; } catch (e) { /* 单个音效失败不影响游戏 */ }
+  };
+
+  function boot() { A.init(); }
+  if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+    else boot();
+  }
+  if (typeof module !== 'undefined' && module.exports) module.exports = XY;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+    <script>
 /* ===== art.js ===== */
 // 程序化 2D 美术层：角色造型 / 头像 / 技能图标 / 法宝图标 / 材料图标 / 怪物。
 // 全部用 Canvas 矢量绘制，零外部资源，保证单文件可玩、可动画。
@@ -606,13 +1085,21 @@
     ctx.strokeStyle = A.eyes; ctx.lineWidth = r * 0.09; ctx.lineCap = 'round';
     for (const sx of [-1, 1]) {
       ctx.beginPath();
-      ctx.moveTo(cx + sx * r * 0.52, cy - r * 0.22);
-      ctx.lineTo(cx + sx * r * 0.2, cy - r * (mood === 'angry' ? 0.3 : 0.18));
+      ctx.moveTo(cx + sx * r * 0.52, cy - r * (mood === 'hurt' ? 0.36 : 0.22));
+      ctx.lineTo(cx + sx * r * 0.2, cy - r * (mood === 'angry' ? 0.3 : (mood === 'hurt' ? 0.14 : 0.18)));
       ctx.stroke();
     }
     // 眼
     const eyeY = cy + r * 0.06, eyeDx = r * 0.33;
-    if (blink) {
+    if (mood === 'hurt') {
+      // 疼得眯起眼：两条下弯的弧线
+      for (const sx of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(cx + sx * eyeDx - r * 0.13, eyeY - r * 0.05);
+        ctx.quadraticCurveTo(cx + sx * eyeDx, eyeY + r * 0.12, cx + sx * eyeDx + r * 0.13, eyeY - r * 0.05);
+        ctx.strokeStyle = A.eyes; ctx.lineWidth = r * 0.09; ctx.stroke();
+      }
+    } else if (blink) {
       for (const sx of [-1, 1]) line(ctx, cx + sx * eyeDx - r * 0.12, eyeY, cx + sx * eyeDx + r * 0.12, eyeY, r * 0.07, A.eyes);
     } else {
       for (const sx of [-1, 1]) {
@@ -627,6 +1114,12 @@
       shape(ctx, '#e79c8f', r * 0.06);
       ctx.fillStyle = '#8c4b46';
       for (const sx of [-1, 1]) { circle(ctx, cx + sx * r * 0.09, cy + r * 0.4, r * 0.045); ctx.fill(); }
+    } else if (mood === 'hurt') {
+      // 疼得张嘴：一个小竖椭圆
+      ctx.beginPath();
+      if (ctx.ellipse) ctx.ellipse(cx, cy + r * 0.48, r * 0.15, r * 0.2, 0, 0, Math.PI * 2);
+      else ctx.arc(cx, cy + r * 0.48, r * 0.17, 0, Math.PI * 2);
+      ctx.fillStyle = '#8f4a3e'; ctx.fill();
     } else {
       ctx.beginPath();
       ctx.moveTo(cx - r * 0.18, cy + r * 0.44);
@@ -769,15 +1262,20 @@
     const air = state === 'jump';
     const atk = pose.attackP; // 0..1
     const cast = pose.castP;
+    // 受击：0..1 的进度。抬一个底数让"挨打那一帧"就立刻后仰，再慢慢回正
+    const hurt = pose.hurtP;
+    const hurtK = hurt === undefined ? 0 : Math.sin(Math.min(1, 0.22 + hurt * 0.78) * Math.PI);
     // 风的强度：跑动/冲刺/出招时盔缨与雉翎向后掠
     const windAmt = Math.min(1, (state === 'dash' ? 1 : 0) + (run ? (sprint ? 0.9 : 0.55) : 0)
       + (atk !== undefined ? 0.5 : 0) + (cast !== undefined ? 0.3 : 0));
 
     const ph = sprint ? t / 58 : t / 85; // 奔跑时步频更密
     const bob = air ? 0 : (run ? Math.abs(Math.sin(ph)) * (sprint ? 2.6 : 1.8) : Math.sin(t / 430) * 1.1);
-    const legA = run ? Math.sin(ph) * (sprint ? 0.86 : 0.62) : (air ? 0.35 : 0.06);
-    const legB = run ? -Math.sin(ph) * (sprint ? 0.86 : 0.62) : (air ? -0.3 : -0.06);
+    let legA = run ? Math.sin(ph) * (sprint ? 0.86 : 0.62) : (air ? 0.35 : 0.06);
+    let legB = run ? -Math.sin(ph) * (sprint ? 0.86 : 0.62) : (air ? -0.3 : -0.06);
     const armBase = run ? Math.sin(ph) * (sprint ? 0.58 : 0.4) : 0.08;
+    // 挨打时两腿撑开、脚下一沉，站桩不再板正
+    if (hurtK) { legA += 0.2 * hurtK; legB -= 0.26 * hurtK; }
 
     ctx.save();
     ctx.translate(cx, footY);
@@ -796,7 +1294,11 @@
 
     // 出招时的重心变化（同样以脚底为轴）：劈/戳前压，挑先沉后起
     let bodyTilt = 0;
-    if (atk !== undefined) {
+    if (hurt !== undefined) {
+      // 受击：被顶得向后仰，再慢慢把重心收回来
+      bodyTilt = -0.34 * Math.sin(Math.min(1, hurt * 1.25) * Math.PI);
+      ctx.translate(-7 * hurtK, 3 * hurtK);
+    } else if (atk !== undefined) {
       const k = pose.attackKind || 0;
       if (k === 0) bodyTilt = -0.05 + easeOut(seg(atk, 0.32, 0.82)) * 0.17;
       else if (k === 1) bodyTilt = -0.02 + easeOut(seg(atk, 0.28, 0.52)) * 0.13;
@@ -911,13 +1413,19 @@
     }
 
     // —— 头 ——
-    Art.drawFace(ctx, 1, -56, 10, charId, { t: t, mood: state === 'attack' ? 'angry' : 'calm', wind: windAmt });
+    const mood = state === 'attack' ? 'angry' : (state === 'hurt' ? 'hurt' : 'calm');
+    // 受击时头比身体更"慢半步"：先往后一挫，再跟着躯干回正
+    Art.drawFace(ctx, 1 - 2.8 * hurtK, -56 + 1.4 * hurtK, 10, charId, { t: t, mood: mood, wind: windAmt, hurt: hurtK });
 
     // —— 前臂 + 武器 ——
     // 手臂与兵器分开驱动：arm 控手臂，wpn 是兵器的绝对角 → 兵器始终握在手里、不穿身。
     const SHX = 6, SHY = -41, ARM = 14;   // 肩点、手臂长度（角色坐标）
     let armAng, wpnAng, offX = 0, offY = 0, wpnShift = 0;
-    if (atk !== undefined) {
+    if (hurt !== undefined) {
+      // 挨打：手臂被甩到身后，兵器顺手往下滑，护不住架势
+      armAng = 0.62 + 0.5 * hurtK; wpnAng = 0.2 + 1.05 * hurtK;
+      offX = -2 * hurtK; offY = 2 * hurtK;
+    } else if (atk !== undefined) {
       const sp = swingProfile(pose.attackKind || 0, atk);
       armAng = sp.arm; wpnAng = sp.wpn; offX = sp.x; offY = sp.y; wpnShift = sp.g || 0;
     } else if (pose.castId === 'wk_smash') {
@@ -1140,6 +1648,10 @@
     const sx = (e.facing || -1) < 0 ? -1 : 1;
     ctx.scale(sx * k, k);
     ctx.translate(lunge, 0);
+    // 被打：身体向后一顿 + 后仰，让每次命中都有反馈
+    const hurtLeft = (e.hurtUntil || 0) - t;
+    const hurtK = hurtLeft > 0 ? Math.sin(Math.min(1, hurtLeft / 200) * Math.PI) : 0;
+    if (hurtK) { ctx.translate(-4.5 * hurtK, 0); ctx.rotate(-0.11 * hurtK); }
     const body = flash ? '#ffffff' : null;
 
     if (e.kind === 'wolf') {
@@ -2963,6 +3475,8 @@
       this.animT = 0;
       this.attackStart = -9999; this.attackUntil = -9999;
       this.castStart = -9999; this.castUntil = -9999;
+      // 挨打：受击后短暂失衡（表现层据此做后仰、护痛、踉跄）
+      this.hurtStart = -9999; this.hurtUntil = -9999;
       this.combo = 0; this.lastAttackAt = -9999;
       this.attackKind = 0;           // 0 劈 / 1 戳 / 2 挑
       this.lungeUntil = 0;           // 普攻进步窗口
@@ -3033,11 +3547,15 @@
       if (anyDown(input, KEYS.down) && this.vy > 0) this.vy += 1600 * dt;
 
       // 重力
+      const wasGround = this.onGround;
+      const fallVy = this.vy;
       this.vy += GRAVITY * dt;
       if (this.vy > 1400) this.vy = 1400;
       XY.moveAndCollide(this, level.platforms, dt);
       // 落地补满跳跃次数
       if (this.onGround) this.jumpsLeft = this.maxJumps;
+      // 从高处砸下来：落地扬尘 + 闷响
+      if (this.onGround && !wasGround && fallVy > 520) this.emitFx('land', { vy: fallVy });
 
       // 奔跑扬尘
       if (sprinting && this.onGround && Math.abs(this.vx) > 60) {
@@ -3057,14 +3575,16 @@
     pose(now) {
       const atk = now < this.attackUntil ? (now - this.attackStart) / Math.max(1, this.attackUntil - this.attackStart) : undefined;
       const cast = now < this.castUntil ? (now - this.castStart) / Math.max(1, this.castUntil - this.castStart) : undefined;
+      const hurtP = now < (this.hurtUntil || -9999) ? (now - this.hurtStart) / Math.max(1, this.hurtUntil - this.hurtStart) : undefined;
       let state = 'idle';
-      if (now < this.dashUntil) state = 'dash';
+      if (hurtP !== undefined) state = 'hurt';       // 受击优先：挨打时要立刻"变脸"
+      else if (now < this.dashUntil) state = 'dash';
       else if (atk !== undefined) state = 'attack';
       else if (!this.onGround) state = 'jump';
       else if (Math.abs(this.vx) > 28) state = 'run';
       return {
         t: this.animT, state, facing: this.facing,
-        attackP: atk, castP: cast,
+        attackP: atk, castP: cast, hurtP: hurtP,
         attackKind: this.attackKind,
         castId: now < this.castUntil ? this.castSkillId : null,
         noWeapon: now < this.noWeaponUntil,
@@ -3144,6 +3664,7 @@
           game.toast('升到 ' + this.level + ' 级！气血全满');
           if (game.fx) game.fx.levelUp(this.x + this.w / 2, this.y + this.h);
           if (game.expPops) game.expPops.push({ text: 'LEVEL UP! Lv.' + this.level, life: 1.6, color: '#ffd479' });
+          if (XY.Audio) XY.Audio.sfx('levelup');
           if (game.save) game.save();
         }
       } else if (this.progress) {
@@ -3191,6 +3712,7 @@
       this.alive = true;
       this.hitFlash = 0;
       this.atkUntil = 0;
+      this.hurtUntil = 0;     // 被打后的短暂僵直（造型层做后仰/抖动）
       this.isBoss = kind === 'boss';
     }
     update(dt, player, level, now) {
@@ -3728,7 +4250,7 @@
 
     // 底部提示
     ctx.fillStyle = 'rgba(140,152,175,0.85)'; ctx.font = '11px "PingFang SC", sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('B 背包 · L 锻造 · G 商店 · H 技能 · P 暂停 · 双击 A/D 奔跑', W / 2, H - 6);
+    ctx.fillText('B 背包 · L 锻造 · G 商店 · H 技能 · P 暂停 · M 静音', W / 2, H - 6);
     ctx.textAlign = 'left';
 
     if (XY.Input && XY.Input.keyCount === 0) {
@@ -3789,7 +4311,7 @@
     // 操作说明
     ctx.fillStyle = '#93a3bb'; ctx.font = '12.5px "PingFang SC", sans-serif';
     ctx.fillText('A D 移动（双击奔跑） · W 跳（可二段跳） · S 快落 · J 普攻', 94, 462);
-    ctx.fillText('K U I 技能 · 1 2 3 法宝 · B 背包 · L 锻造 · G 商店 · H 技能', 94, 484);
+    ctx.fillText('K U I 技能 · 1 2 3 法宝 · B 背包 · L 锻造 · G 商店 · H 技能 · M 静音', 94, 484);
     ctx.textAlign = 'left';
   };
 
@@ -3915,7 +4437,8 @@
 
   // ===== 关卡前情 =====
   UI.drawLevelIntro = function (ctx, game) {
-    const data = (game.level && game.level.data) || XY.LEVELS[game.levelIndex] || XY.LEVELS[0];
+    // 以「当前关卡序号」为准：从过关结算点下一关时，旧关卡的 level 还在，不能拿它当标题
+    const data = XY.LEVELS[game.levelIndex] || (game.level && game.level.data) || XY.LEVELS[0];
     UI.drawBackground(ctx, game.levelIndex, game.uiTime);
     ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(0, 0, W, H);
     center(ctx, data.name, 220, 'bold 38px serif', '#ffd479');
@@ -3931,12 +4454,114 @@
     center(ctx, '暂停', 230, 'bold 44px serif', '#ffd479');
     center(ctx, 'P 继续', 296, '18px "PingFang SC", sans-serif', '#fff');
     center(ctx, 'R 放弃本关回到标题', 332, '14px "PingFang SC", sans-serif', '#8a93a6');
+    center(ctx, 'M 关掉 / 打开音乐与音效', 358, '14px "PingFang SC", sans-serif', '#8a93a6');
   };
 
   UI.drawGameOver = function (ctx) {
     ctx.fillStyle = 'rgba(40,0,0,0.72)'; ctx.fillRect(0, 0, W, H);
     center(ctx, '英雄落败', 230, 'bold 48px serif', '#e74c3c');
     center(ctx, '按 Enter 回到标题', 300, '18px "PingFang SC", sans-serif', '#fff');
+  };
+
+  // ===== 过关结算：给玩家一条岔路（下一关 / 商店 / 锻造 / 参悟 / 主菜单）=====
+  UI.drawLevelClear = function (ctx, game) {
+    UI.drawBackground(ctx, game.levelIndex, game.uiTime, game.cam ? game.cam.x : 0);
+    ctx.fillStyle = 'rgba(4,7,12,0.8)'; ctx.fillRect(0, 0, W, H);
+    // 从上方斜洒下来的金色光柱
+    for (let i = 0; i < 5; i++) {
+      const x = 90 + i * 200 + Math.sin(game.uiTime / 1000 + i * 1.7) * 14;
+      const g = ctx.createLinearGradient(x, 0, x + 80, H);
+      g.addColorStop(0, 'rgba(255,212,121,0.14)');
+      g.addColorStop(1, 'rgba(255,212,121,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.moveTo(x, 0); ctx.lineTo(x + 54, 0); ctx.lineTo(x + 126, H); ctx.lineTo(x + 44, H);
+      ctx.closePath(); ctx.fill();
+    }
+
+    const st = game.clearStats || { name: '', kills: 0, total: 0, jade: 0, gold: 0, level: 1, seconds: 0, last: false };
+    // 标题
+    ctx.textAlign = 'left';
+    ctx.shadowColor = 'rgba(255,180,60,0.45)'; ctx.shadowBlur = 22;
+    ctx.fillStyle = '#ffd479'; ctx.font = 'bold 46px serif';
+    ctx.fillText('通 关', 70, 96);
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#e8eef8'; ctx.font = 'bold 20px "PingFang SC", sans-serif';
+    ctx.fillText(st.name, 232, 92);
+    const lg = ctx.createLinearGradient(70, 0, 470, 0);
+    lg.addColorStop(0, 'rgba(255,212,121,0.9)'); lg.addColorStop(1, 'rgba(255,212,121,0)');
+    ctx.fillStyle = lg; ctx.fillRect(70, 112, 400, 2);
+
+    // —— 左：战果 ——
+    const px = 70, py = 150, pw = 330, ph = 286;
+    rrect(ctx, px, py, pw, ph, 14);
+    ctx.fillStyle = 'rgba(14,19,28,0.92)'; ctx.fill();
+    ctx.strokeStyle = '#2a3550'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = '#8a93a6'; ctx.font = '11px "PingFang SC", sans-serif';
+    ctx.fillText('本 关 战 果', px + 18, py + 26);
+
+    const mm = Math.floor(st.seconds / 60), ss = st.seconds % 60;
+    const rows = [
+      ['妖物击杀', st.kills + ' / ' + st.total, '#e6ecf5'],
+      ['获得仙玉', '+' + st.jade, '#7CFC9B'],
+      ['获得金币', '+' + st.gold, '#f4c430'],
+      ['当前等级', 'Lv.' + st.level, '#ffd479'],
+      ['用时', mm + ':' + (ss < 10 ? '0' : '') + ss, '#9fb0c8'],
+    ];
+    let yy = py + 66;
+    for (const r of rows) {
+      ctx.fillStyle = '#8a93a6'; ctx.font = '13px "PingFang SC", sans-serif';
+      ctx.fillText(r[0], px + 18, yy);
+      ctx.fillStyle = r[2]; ctx.font = 'bold 16px "PingFang SC", sans-serif'; ctx.textAlign = 'right';
+      ctx.fillText(r[1], px + pw - 18, yy); ctx.textAlign = 'left';
+      yy += 34;
+    }
+    ctx.fillStyle = '#5b6678'; ctx.font = '11px "PingFang SC", sans-serif';
+    wrapText(ctx, '战果已自动存档。从这里可以补装备、加点，再上路。', px + 18, py + 258, pw - 36, 15, 2);
+
+    // —— 右：选项 ——
+    const opts = game.clearOptions ? game.clearOptions() : [];
+    const ox = 430, ow = 460, oh = 58, gap = 12, oy = 150;
+    for (let i = 0; i < opts.length; i++) {
+      const o = opts[i];
+      const y = oy + i * (oh + gap);
+      const sel = i === game.clearIndex;
+      rrect(ctx, ox, y, ow, oh, 10);
+      ctx.fillStyle = sel ? 'rgba(255,212,121,0.13)' : 'rgba(16,21,32,0.9)'; ctx.fill();
+      ctx.strokeStyle = sel ? '#ffd479' : '#232c3e';
+      ctx.lineWidth = sel ? 2.5 : 1; ctx.stroke();
+      if (sel) {
+        ctx.save();
+        ctx.shadowColor = 'rgba(255,212,121,0.45)'; ctx.shadowBlur = 14;
+        rrect(ctx, ox, y, ow, oh, 10); ctx.stroke();
+        ctx.restore();
+      }
+      // 选中指示：小三角
+      ctx.fillStyle = sel ? '#ffd479' : '#3a4560';
+      ctx.beginPath();
+      ctx.moveTo(ox + 18, y + oh / 2 - 6);
+      ctx.lineTo(ox + 28, y + oh / 2);
+      ctx.lineTo(ox + 18, y + oh / 2 + 6);
+      ctx.closePath(); ctx.fill();
+
+      ctx.fillStyle = sel ? '#fff' : '#dbe4f0'; ctx.font = 'bold 18px "PingFang SC", sans-serif';
+      ctx.fillText(o.name, ox + 42, y + 26);
+      ctx.fillStyle = '#7d8798'; ctx.font = '11.5px "PingFang SC", sans-serif';
+      ctx.fillText(o.note || '', ox + 42, y + 45);
+
+      // 快捷键角标
+      const kw = 46;
+      rrect(ctx, ox + ow - kw - 14, y + oh / 2 - 12, kw, 24, 6);
+      ctx.fillStyle = 'rgba(8,11,17,0.85)'; ctx.fill();
+      ctx.strokeStyle = sel ? '#8a6a22' : '#2a3550'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.fillStyle = sel ? '#ffd479' : '#6c788c'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(o.key, ox + ow - kw / 2 - 14, y + oh / 2 + 4);
+      ctx.textAlign = 'left';
+    }
+
+    ctx.fillStyle = 'rgba(150,162,182,0.9)'; ctx.font = '12px "PingFang SC", sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('W/S 选择 · Enter 确认 · G 商店 · L 锻造 · H 技能 · Esc 回主菜单', W / 2, H - 14);
+    ctx.textAlign = 'left';
   };
 
   UI.drawWin = function (ctx) {
@@ -4385,9 +5010,13 @@
       this.shake = 0; this.hurtFlash = 0;
       this.bagTab = 0; this.bagIndex = 0;
       this._replaceAt = 0;
+      // 通关结算：菜单游标 / 战果 / 从哪个界面进来（Esc 回到该界面）
+      this.clearIndex = 0; this.clearStats = null; this.menuFrom = 'playing';
+      this.runKills = 0; this.runStart = null; this._clearHandled = false;
       this.persist = this.load();
 
       XY.Input.init();
+      if (XY.Audio) XY.Audio.init();
       if (canvas && canvas.addEventListener) {
         canvas.addEventListener('mousedown', () => {
           XY.Input._pressed['Mouse0'] = true;
@@ -4457,13 +5086,15 @@
         };
       } catch (e) { return fresh; }
     }
-    save() {
+    // levelReachedAt：显式指定"已打到的关卡"（过关结算时用），缺省按当前关卡
+    save(levelReachedAt) {
       this.persist.inventory = this.inventory;
       this.persist.equipped = this.equipped;
       this.persist.treasures = this.treasures;
       this.persist.treasureSlots = this.treasureSlots;
       this.persist.charId = this.charId;
-      this.persist.levelReached = this.levelIndex;
+      const reached = Number.isInteger(levelReachedAt) ? levelReachedAt : this.levelIndex;
+      this.persist.levelReached = Math.max(0, this.persist.levelReached || 0, reached);
       if (this.player) {
         this.persist.level = this.player.level;
         this.persist.exp = this.player.exp;
@@ -4491,6 +5122,7 @@
         p.facing = old.facing; p.onGround = old.onGround;
         p.energy = old.energy; p.invuln = old.invuln;
         p.skillCd = old.skillCd; p.treasureCd = old.treasureCd;
+        p.hurtStart = old.hurtStart; p.hurtUntil = old.hurtUntil;
       }
       this.player = p;
     }
@@ -4506,13 +5138,14 @@
     // 商店购买：钱够就扣、记一次购买、立刻重算属性
     buyAttr(row) {
       const owned = (this.persist.attr[row.key] || 0);
-      if (owned >= row.max) { this.toast('『' + row.name + '』已买到上限'); return false; }
+      if (owned >= row.max) { this.toast('『' + row.name + '』已买到上限'); if (XY.Audio) XY.Audio.sfx('deny'); return false; }
       const price = XY.shopPrice(row, owned);
-      if (this.gold < price) { this.toast('金币不足 · 需 ' + price); return false; }
+      if (this.gold < price) { this.toast('金币不足 · 需 ' + price); if (XY.Audio) XY.Audio.sfx('deny'); return false; }
       this.gold -= price;
       this.persist.attr[row.key] = owned + 1;
       if (this.player) this.player.recalcStats({ fullHeal: false });
       this.toast('『' + row.name + '』+' + this.attrStepText(row) + '（第 ' + (owned + 1) + ' 次）');
+      if (XY.Audio) XY.Audio.sfx('buy');
       this.save();
       return true;
     }
@@ -4526,12 +5159,13 @@
       if (!sk) return false;
       const lv = (this.persist.skillLv[skillId] || 1);
       const cost = XY.skillUpCost(lv);
-      if (cost == null) { this.toast('『' + sk.name + '』已至化境'); return false; }
-      if (this.jade < cost) { this.toast('仙玉不足 · 需 ' + cost); return false; }
+      if (cost == null) { this.toast('『' + sk.name + '』已至化境'); if (XY.Audio) XY.Audio.sfx('deny'); return false; }
+      if (this.jade < cost) { this.toast('仙玉不足 · 需 ' + cost); if (XY.Audio) XY.Audio.sfx('deny'); return false; }
       this.jade -= cost;
       this.persist.skillLv[skillId] = lv + 1;
       if (this.player) this.player.skillLv = this.persist.skillLv;
       this.toast('『' + sk.name + '』参悟至 ' + (lv + 1) + ' 重');
+      if (XY.Audio) XY.Audio.sfx('levelup');
       this.save();
       return true;
     }
@@ -4566,8 +5200,14 @@
       pl.x = 80; pl.y = 360; pl.vx = 0; pl.vy = 0; pl.facing = 1;
       pl.hp = pl.maxHp;
       pl.attackUntil = -9999; pl.castUntil = -9999;
+      pl.hurtUntil = -9999; pl.hurtStart = -9999;
       pl.noWeaponUntil = 0; pl.cloudAuraUntil = 0; pl.dashUntil = 0; pl.dashSpeed = 0;
       this.state = 'playing';
+      this.menuFrom = 'playing';
+      this._clearHandled = false;
+      // 本关战果起点：金币/仙玉/击杀数/开始时间
+      this.runStart = { gold: this.gold, jade: this.jade, at: this.now };
+      this.runKills = 0;
       // 首关开一次操作提示（二段跳 / 奔跑是本轮新增）
       if (idx === 0 && !this._hintShown) {
         this._hintShown = true;
@@ -4612,8 +5252,31 @@
       } catch (e) { /* 绘图也失败就只留控制台 */ }
     }
 
+    // 每个界面一首曲子：主菜单 / 战斗 / 商店 / 锻造 / 参悟 / 通关 / 落败
+    musicScene() {
+      switch (this.state) {
+        case 'title': case 'charselect': case 'cutscene': case 'levelIntro': return 'title';
+        case 'playing': case 'pause': return 'battle';
+        case 'bag': case 'shop': return 'shop';
+        case 'craft': return 'craft';
+        case 'skillup': return 'skill';
+        case 'levelClear': case 'win': return 'clear';
+        case 'gameover': return 'defeat';
+      }
+      return 'title';
+    }
+
     update(dt) {
       const I = XY.Input, now = this.now;
+      // 音频：跟着界面切歌；M 键静音（偏好会记进 localStorage）
+      if (XY.Audio) {
+        if (I.pressed('KeyM')) {
+          const on = XY.Audio.toggleMute();
+          this.toast(on ? '音乐与音效已开启（M 切换）' : '已静音 · 再按 M 恢复');
+        }
+        XY.Audio.music(this.musicScene());
+        XY.Audio.duck(this.state === 'pause' ? 0.35 : 1);
+      }
       switch (this.state) {
         case 'title':
           if (this.confirmPressed(I)) this.state = 'charselect';
@@ -4644,6 +5307,7 @@
           if (this.confirmPressed(I)) this.startLevel(this.levelIndex);
           break;
         case 'playing': this.updatePlaying(dt); break;
+        case 'levelClear': this.updateLevelClear(); break;
         case 'bag': this.updateBag(); break;
         case 'craft': this.updateCraft(); break;
         case 'shop': this.updateShop(); break;
@@ -4695,14 +5359,20 @@
       const cx = pl.x + pl.w / 2, fy = pl.y + pl.h;
       for (const ev of q) {
         if (ev.type === 'jump') {
+          if (XY.Audio) XY.Audio.sfx('jump');
           this.fx.dust(cx, fy, 5, 'rgba(226,230,245,0.55)', 3, 26);
         } else if (ev.type === 'doubleJump') {
+          if (XY.Audio) XY.Audio.sfx('doubleJump');
           this.fx.ring(cx, fy - 8, 8, 44, '#d8ecff', 0.32, 4);
           this.fx.spark(cx, fy - 6, 9, '#dcefff', { speed: 170, angle: Math.PI / 2, spread: 1.3 });
           this.fx.dust(cx, fy, 6, 'rgba(230,240,255,0.5)', 3, 30);
         } else if (ev.type === 'runDust') {
           this.fx.dust(cx - (ev.data && ev.data.dir ? ev.data.dir * 8 : 0), fy, 2, 'rgba(214,204,180,0.45)', 3, 20);
+        } else if (ev.type === 'land') {
+          if (XY.Audio) XY.Audio.sfx('land');
+          this.fx.dust(cx, fy, 6, 'rgba(210,200,178,0.5)', 4, 26);
         } else if (ev.type === 'sprintStart') {
+          if (XY.Audio) XY.Audio.sfx('dash');
           const d = ev.data && ev.data.dir ? ev.data.dir : pl.facing;
           this.fx.spark(cx + d * 6, fy - 26, 7, '#ffe9a8', { speed: 150, angle: d > 0 ? Math.PI : 0, spread: 0.9 });
           this.fx.dust(cx, fy, 4, 'rgba(230,220,190,0.5)', 4, 24);
@@ -4711,13 +5381,24 @@
       q.length = 0;
     }
 
+    // 打开背包/锻造/商店/参悟：记住"从哪来"，Esc 原路返回
+    openMenu(name, from) {
+      this.menuFrom = from || 'playing';
+      if (name === 'bag') { this.bagTab = 0; this.bagIndex = 0; }
+      else if (name === 'craft') this.craftIndex = 0;
+      else if (name === 'shop') this.shopIndex = 0;
+      else if (name === 'skillup') this.skillIndex = 0;
+      this.state = name;
+      if (XY.Audio) XY.Audio.sfx('open');
+    }
+
     updatePlaying(dt) {
       const I = XY.Input, now = this.now, pl = this.player, lv = this.level;
       if (I.pressed('KeyP') || I.pressed('Escape')) { this.state = 'pause'; return; }
-      if (I.pressed('KeyB')) { this.bagTab = 0; this.bagIndex = 0; this.state = 'bag'; return; }
-      if (I.pressed('KeyL') || I.pressed('KeyC')) { this.craftIndex = 0; this.state = 'craft'; return; }
-      if (I.pressed('KeyG')) { this.shopIndex = 0; this.state = 'shop'; return; }
-      if (I.pressed('KeyH')) { this.skillIndex = 0; this.state = 'skillup'; return; }
+      if (I.pressed('KeyB')) { this.openMenu('bag', 'playing'); return; }
+      if (I.pressed('KeyL') || I.pressed('KeyC')) { this.openMenu('craft', 'playing'); return; }
+      if (I.pressed('KeyG')) { this.openMenu('shop', 'playing'); return; }
+      if (I.pressed('KeyH')) { this.openMenu('skillup', 'playing'); return; }
 
       pl.update(dt, I, lv, now);
       this.drainPlayerFx(pl);
@@ -4836,15 +5517,83 @@
 
       this.cam.x = clamp(pl.x + pl.w / 2 - W / 2, 0, lv.width - W);
 
-      if (pl.hp <= 0) { this.state = 'gameover'; this.save(); return; }
+      if (pl.hp <= 0) { this.state = 'gameover'; if (XY.Audio) XY.Audio.sfx('gameover'); this.save(); return; }
       const bossAlive = lv.enemies.some((e) => e.isBoss && e.alive);
       const cleared = lv.hasBoss ? !bossAlive : (pl.x + pl.w >= lv.goal.x);
-      if (cleared) {
-        const jadeReward = 8 + this.levelIndex * 6;
-        this.addJade(jadeReward);
-        this.toast('过关 · 获得仙玉 ' + jadeReward);
-        if (this.levelIndex + 1 < XY.LEVELS.length) { this.levelIndex++; this.save(); this.state = 'levelIntro'; }
-        else { this.levelIndex = 0; this.persist.levelReached = 0; this.save(); this.state = 'win'; }
+      if (cleared) this.finishLevel();
+    }
+
+    // —— 过关结算：给出「下一关 / 商店 / 锻造 / 参悟 / 主菜单」的岔路 ——
+    finishLevel() {
+      if (this._clearHandled) return;
+      this._clearHandled = true;
+      const jadeReward = 8 + this.levelIndex * 6;
+      this.addJade(jadeReward);
+      this.toast('过关 · 获得仙玉 ' + jadeReward);
+      const start = this.runStart || { gold: this.gold, jade: this.jade, at: this.now };
+      this.clearStats = {
+        levelIndex: this.levelIndex,
+        name: XY.LEVELS[this.levelIndex].name,
+        kills: this.runKills || 0,
+        total: this.level ? this.level.enemies.length : 0,
+        jade: Math.max(0, this.jade - start.jade),
+        gold: Math.max(0, this.gold - start.gold),
+        level: this.player ? this.player.level : 1,
+        seconds: Math.max(0, Math.round((this.now - start.at) / 1000)),
+        last: this.levelIndex + 1 >= XY.LEVELS.length,
+      };
+      this.clearIndex = 0;
+      this.menuFrom = 'levelClear';
+      this.state = 'levelClear';
+      if (XY.Audio) XY.Audio.sfx('clear');
+      // 这一关已经打通：进度记到下一关，回主菜单再来也能接着走
+      this.save(Math.min(this.levelIndex + 1, XY.LEVELS.length - 1));
+    }
+
+    clearOptions() {
+      const last = this.levelIndex + 1 >= XY.LEVELS.length;
+      return [
+        { id: 'next', name: last ? '完成取经' : '下一关', note: last ? '西行圆满 · 看过结局再回主菜单' : ('前往 ' + XY.LEVELS[this.levelIndex + 1].name), key: 'Enter' },
+        { id: 'shop', name: '属性商店', note: '用金币额外加点，越买越贵', key: 'G' },
+        { id: 'craft', name: '锻造坊', note: '用材料锻造兵器与护甲', key: 'L' },
+        { id: 'skillup', name: '技能参悟', note: '用仙玉提升技能重数', key: 'H' },
+        { id: 'title', name: '返回主菜单', note: '战果已自动存档', key: 'Esc' },
+      ];
+    }
+
+    updateLevelClear() {
+      const I = XY.Input;
+      const opts = this.clearOptions();
+      const n = opts.length;
+      if (I.pressed('KeyW') || I.pressed('ArrowUp')) { this.clearIndex = (this.clearIndex + n - 1) % n; if (XY.Audio) XY.Audio.sfx('ui'); }
+      if (I.pressed('KeyS') || I.pressed('ArrowDown')) { this.clearIndex = (this.clearIndex + 1) % n; if (XY.Audio) XY.Audio.sfx('ui'); }
+      if (I.pressed('KeyG')) { this.chooseClear('shop'); return; }
+      if (I.pressed('KeyL') || I.pressed('KeyC')) { this.chooseClear('craft'); return; }
+      if (I.pressed('KeyH')) { this.chooseClear('skillup'); return; }
+      if (I.pressed('Escape')) { this.chooseClear('title'); return; }
+      if (this.confirmPressed(I)) this.chooseClear(opts[clamp(this.clearIndex, 0, n - 1)].id);
+    }
+
+    chooseClear(id) {
+      if (XY.Audio) XY.Audio.sfx('confirm');
+      if (id === 'next') {
+        if (this.levelIndex + 1 >= XY.LEVELS.length) {
+          this.levelIndex = 0;
+          this.persist.levelReached = 0;
+          this.save();
+          this.state = 'win';
+          if (XY.Audio) XY.Audio.sfx('clear');
+        } else {
+          this.levelIndex++;
+          this.persist.levelReached = this.levelIndex;
+          this.save();
+          this.state = 'levelIntro';
+        }
+      } else if (id === 'shop' || id === 'craft' || id === 'skillup') {
+        this.openMenu(id, 'levelClear');
+      } else if (id === 'title') {
+        this.save();
+        this.state = 'title';
       }
     }
 
@@ -4861,6 +5610,7 @@
         if (a.anim === 'giantChop') {
           // —— 如意棒击：金箍棒暴涨，抡下来砸地 ——
           // 伤害比动作晚一点点结算，让"棒子砸到地"和"数字跳出来"同步
+          if (XY.Audio) XY.Audio.sfx('swingHeavy');
           this.fx.giantStaff(cx + dir * 30, pl.y + 6, dir, 0.62);
           const tipX = cx + dir * 326, tipY = pl.y + pl.h - 2;
           const lv = this.level;
@@ -4868,6 +5618,7 @@
             at: now + 205,
             run: () => {
               if (this.level !== lv) return;
+              if (XY.Audio) XY.Audio.sfx('smash');
               this.meleeHit(a.range, mult, true);
               this.fx.ring(tipX, tipY, 8, 148, '#ffd479', 0.5, 12);
               this.fx.ring(tipX, tipY, 4, 88, '#fff6cc', 0.36, 5);
@@ -4881,6 +5632,7 @@
         }
         const k = a.atkKind || 0;
         const style = k === 1 ? 'thrust' : (k === 2 ? 'lift' : 'arc');
+        if (XY.Audio) XY.Audio.sfx(a.heavy ? 'swingHeavy' : 'swing');
         this.fx.slashStyle(cx + dir * (k === 1 ? 16 : 12), cy + (k === 2 ? 4 : 2), dir,
           a.heavy ? '#ffb648' : '#ffd15c', a.heavy ? 1.4 : 1.12,
           k === 1 ? 0.16 : (a.heavy ? 0.28 : 0.22), style);
@@ -4894,6 +5646,7 @@
           // —— 定海神针：把棒子掷出去，空中急旋 → 插地 → 冲击波 ——
           const dir = pl.facing;
           pl.noWeaponUntil = now + 1500;
+          if (XY.Audio) XY.Audio.sfx('throw');
           const sx = cx + dir * 26, sy = pl.y + 16;
           const ground = XY.groundYAt(this.level.platforms, sx + dir * 118, pl.y + pl.h);
           this.specials.push({
@@ -4907,6 +5660,7 @@
         }
         this.fx.ring(cx, cy, 10, a.radius || 140, pl.char.color, 0.42, 6);
         this.fx.spark(cx, cy, 14, pl.char.accent, { speed: 260, jitter: 20 });
+        if (XY.Audio) XY.Audio.sfx('aoe');
         this.aoeHit(a.radius || 140, mult);
         this.shake = Math.min(9, this.shake + 4);
       } else if (a.kind === 'dash') {
@@ -4918,6 +5672,7 @@
         pl.dashMult = mult;
         pl.dashHits = new Set();
         pl.invuln = now + ms + 60;
+        if (XY.Audio) XY.Audio.sfx('dash');
         if (a.cloud) {
           // 筋斗云：起手炸开一圈祥云，落点前一路拖云
           pl.cloudAuraUntil = now + ms + 430;
@@ -4932,15 +5687,18 @@
         this.fx.spark(cx - pl.facing * 16, cy, 8, '#bfe9ff', { speed: 180, angle: pl.facing > 0 ? Math.PI : 0, spread: 1.1 });
       } else if (a.kind === 'ranged') {
         const d = XY.computeDamage({ attack: pl.stats.attack * pl.atkMul, critRate: pl.stats.critRate }, { defense: 0 }, a.multiplier, Math.random).amount;
+        if (XY.Audio) XY.Audio.sfx('shoot');
         this.projectiles.push(new XY.Projectile(cx + pl.facing * 18, cy, pl.facing * 540, 0, d, 'player', 9, pl.char.color, (a.range || 320) / 540));
         this.fx.spark(cx + pl.facing * 22, cy, 7, pl.char.color, { speed: 170, angle: pl.facing > 0 ? 0 : Math.PI, spread: 0.9 });
         this.shake = Math.min(5, this.shake + 1.6);
       } else if (a.kind === 'heal') {
         pl.hp = Math.min(pl.maxHp, pl.hp + pl.maxHp * (a.healPct || 0.3));
+        if (XY.Audio) XY.Audio.sfx('heal');
         this.fx.dust(cx, pl.y + pl.h, 16, '#7CFC9B', 46, 90);
         this.fx.ring(cx, cy, 8, 60, '#7CFC9B', 0.4, 3);
         this.floater(cx, pl.y - 6, '回复', '#7CFC9B');
       } else if (a.kind === 'buff') {
+        if (XY.Audio) XY.Audio.sfx('treasure');
         if (a.id === 'ts_sutra') { pl.buffAtkUntil = now + 6000; this.toast('大乘真经 · 攻击大增'); this.fx.dust(cx, pl.y + pl.h, 14, '#ffd479', 40, 80); }
         else if (a.id === 'ts_kasaya') { pl.buffDefUntil = now + 6000; this.toast('袈裟护体 · 防御大增'); this.fx.dust(cx, pl.y + pl.h, 14, '#8bc8ff', 40, 80); }
         this.fx.ring(cx, cy, 6, 54, '#ffe9a8', 0.36, 3);
@@ -4978,6 +5736,8 @@
       dmg = Math.max(1, Math.round(dmg));
       e.hp = Math.max(0, (Number.isFinite(e.hp) ? e.hp : e.maxHp) - dmg);
       e.hitFlash = 0.12;
+      e.hurtUntil = this.now + 220;                 // 挨打动作：后仰一下再站稳
+      if (XY.Audio) XY.Audio.sfx(isCrit ? 'crit' : 'hit');
       this.floater(e.x + e.w / 2, e.y, '-' + dmg + (isCrit ? '!' : ''), isCrit ? '#ff5e5e' : '#fff');
       this.fx.spark(e.x + e.w / 2, e.y + e.h / 2, isCrit ? 10 : 5, isCrit ? '#ff8a5e' : '#ffe9a8', { speed: 190 });
       if (e.hp <= 0) this.killEnemy(e);
@@ -4988,7 +5748,10 @@
       const drops = XY.rollDrops(e.stats.dropTable, Math.random);
       this.inventory = XY.mergeInventory(this.inventory, drops);
       const names = Object.keys(drops).map((id) => XY.ITEMS[id].name + '×' + drops[id]).join(' ');
-      if (names) this.toast('获得 ' + names);
+      if (names) {
+        this.toast('获得 ' + names);
+        if (XY.Audio) XY.Audio.sfx('item');     // 拾取材料
+      }
 
       // —— 货币：小怪给金币，首领另给仙玉 ——
       const lvNum = Math.max(1, e.level || 1);
@@ -4996,6 +5759,12 @@
       this.addGold(goldGain);
       const jadeGain = e.isBoss ? 45 : 0;
       if (jadeGain) this.addJade(jadeGain);
+      this.runKills = (this.runKills || 0) + 1;
+      if (XY.Audio) {
+        XY.Audio.sfx('coin');
+        if (jadeGain) XY.Audio.sfx('jade');
+        if (e.isBoss) XY.Audio.sfx('boss');
+      }
       this.floater(e.x + e.w / 2, e.y - 34, '+' + goldGain + ' 金', '#f4c430');
       if (jadeGain) this.floater(e.x + e.w / 2, e.y - 52, '+' + jadeGain + ' 仙玉', '#7CFC9B');
 
@@ -5013,6 +5782,9 @@
       const pl = this.player;
       if (pl.shieldUntil > this.now) amount = Math.round(amount * 0.3);
       pl.hp -= amount; pl.invuln = this.now + 600;
+      // 挨打动作：从这一帧起 320ms 的后仰 + 抱痛，造型层读 hurtP
+      pl.hurtStart = this.now; pl.hurtUntil = this.now + 320;
+      if (XY.Audio) XY.Audio.sfx('hurt');
       this.floater(pl.x + pl.w / 2, pl.y, '-' + amount, '#ff8a5e');
       const dir = (pl.x < (this.level.enemies[0] ? this.level.enemies[0].x : pl.x)) ? -1 : 1;
       pl.vx = dir * 260; pl.vy = -260;
@@ -5025,6 +5797,7 @@
       const now = this.now, pl = this.player, cx = pl.x + pl.w / 2, cy = pl.y + pl.h / 2;
       const inR = (r) => this.level.enemies.filter((e) => e.alive && Math.hypot((e.x + e.w / 2) - cx, (e.y + e.h / 2) - cy) <= r + e.w / 2);
       this.toast('施放 ' + t.name);
+      if (XY.Audio) XY.Audio.sfx('treasure');
       this.fx.ring(cx, cy, 8, 90, '#d6b3ff', 0.4, 5);
       this.fx.dust(cx, pl.y + pl.h, 10, '#d6b3ff', 36, 70);
       switch (t.effect) {
@@ -5086,26 +5859,27 @@
     // —— 锻造 ——
     updateCraft() {
       const I = XY.Input;
-      if (I.pressed('Escape') || I.pressed('KeyL') || I.pressed('KeyC')) { this.state = 'playing'; return; }
-      if (I.pressed('KeyB')) { this.bagTab = 0; this.bagIndex = 0; this.state = 'bag'; return; }
-      if (I.pressed('KeyG')) { this.shopIndex = 0; this.state = 'shop'; return; }
-      if (I.pressed('KeyH')) { this.skillIndex = 0; this.state = 'skillup'; return; }
+      if (I.pressed('Escape') || I.pressed('KeyL') || I.pressed('KeyC')) { this.state = this.menuFrom || 'playing'; return; }
+      if (I.pressed('KeyB')) { this.openMenu('bag', this.menuFrom); return; }
+      if (I.pressed('KeyG')) { this.openMenu('shop', this.menuFrom); return; }
+      if (I.pressed('KeyH')) { this.openMenu('skillup', this.menuFrom); return; }
       const n = XY.RECIPES.length;
       // 3×3 网格：W/S 上下换档，A/D 左右换部位
-      if (I.pressed('ArrowUp') || I.pressed('KeyW')) this.craftIndex = (this.craftIndex + n - 3) % n;
-      if (I.pressed('ArrowDown') || I.pressed('KeyS')) this.craftIndex = (this.craftIndex + 3) % n;
-      if (I.pressed('ArrowLeft') || I.pressed('KeyA')) this.craftIndex = (this.craftIndex + n - 1) % n;
-      if (I.pressed('ArrowRight') || I.pressed('KeyD')) this.craftIndex = (this.craftIndex + 1) % n;
+      if (I.pressed('ArrowUp') || I.pressed('KeyW')) { this.craftIndex = (this.craftIndex + n - 3) % n; if (XY.Audio) XY.Audio.sfx('ui'); }
+      if (I.pressed('ArrowDown') || I.pressed('KeyS')) { this.craftIndex = (this.craftIndex + 3) % n; if (XY.Audio) XY.Audio.sfx('ui'); }
+      if (I.pressed('ArrowLeft') || I.pressed('KeyA')) { this.craftIndex = (this.craftIndex + n - 1) % n; if (XY.Audio) XY.Audio.sfx('ui'); }
+      if (I.pressed('ArrowRight') || I.pressed('KeyD')) { this.craftIndex = (this.craftIndex + 1) % n; if (XY.Audio) XY.Audio.sfx('ui'); }
       if (I.pressed('Enter') || I.pressed('Space')) {
         const r = XY.RECIPES[this.craftIndex];
-        if (!XY.canCraft(this.inventory, r)) { this.toast('材料不足'); return; }
-        if (this.gold < (r.gold || 0)) { this.toast('金币不足 · 需 ' + r.gold); return; }
+        if (!XY.canCraft(this.inventory, r)) { this.toast('材料不足'); if (XY.Audio) XY.Audio.sfx('deny'); return; }
+        if (this.gold < (r.gold || 0)) { this.toast('金币不足 · 需 ' + r.gold); if (XY.Audio) XY.Audio.sfx('deny'); return; }
         this.gold -= (r.gold || 0);
         this.inventory = XY.craft(this.inventory, r);
         const out = XY.ITEMS[r.output.itemId];
         if (out.slot) this.equipped[out.slot] = out.id;
         this.rebuildPlayer();
         this.toast('锻造成功：' + out.name + '（已自动装备）');
+        if (XY.Audio) XY.Audio.sfx('forge');
         this.fx.levelUp(this.player.x + this.player.w / 2, this.player.y + this.player.h);
         this.save();
       }
@@ -5114,27 +5888,27 @@
     // —— 属性商店（金币）——
     updateShop() {
       const I = XY.Input;
-      if (I.pressed('Escape') || I.pressed('KeyG')) { this.state = 'playing'; return; }
-      if (I.pressed('KeyB')) { this.bagTab = 0; this.bagIndex = 0; this.state = 'bag'; return; }
-      if (I.pressed('KeyH')) { this.skillIndex = 0; this.state = 'skillup'; return; }
-      if (I.pressed('KeyL') || I.pressed('KeyC')) { this.craftIndex = 0; this.state = 'craft'; return; }
+      if (I.pressed('Escape') || I.pressed('KeyG')) { this.state = this.menuFrom || 'playing'; return; }
+      if (I.pressed('KeyB')) { this.openMenu('bag', this.menuFrom); return; }
+      if (I.pressed('KeyH')) { this.openMenu('skillup', this.menuFrom); return; }
+      if (I.pressed('KeyL') || I.pressed('KeyC')) { this.openMenu('craft', this.menuFrom); return; }
       const n = XY.SHOP.length;
-      if (I.pressed('ArrowUp') || I.pressed('KeyW')) this.shopIndex = (this.shopIndex + n - 1) % n;
-      if (I.pressed('ArrowDown') || I.pressed('KeyS')) this.shopIndex = (this.shopIndex + 1) % n;
+      if (I.pressed('ArrowUp') || I.pressed('KeyW')) { this.shopIndex = (this.shopIndex + n - 1) % n; if (XY.Audio) XY.Audio.sfx('ui'); }
+      if (I.pressed('ArrowDown') || I.pressed('KeyS')) { this.shopIndex = (this.shopIndex + 1) % n; if (XY.Audio) XY.Audio.sfx('ui'); }
       if (I.pressed('Enter') || I.pressed('Space')) this.buyAttr(XY.SHOP[this.shopIndex]);
     }
 
     // —— 技能参悟（仙玉）——
     updateSkillUp() {
       const I = XY.Input;
-      if (I.pressed('Escape') || I.pressed('KeyH')) { this.state = 'playing'; return; }
-      if (I.pressed('KeyB')) { this.bagTab = 0; this.bagIndex = 0; this.state = 'bag'; return; }
-      if (I.pressed('KeyG')) { this.shopIndex = 0; this.state = 'shop'; return; }
-      if (I.pressed('KeyL') || I.pressed('KeyC')) { this.craftIndex = 0; this.state = 'craft'; return; }
+      if (I.pressed('Escape') || I.pressed('KeyH')) { this.state = this.menuFrom || 'playing'; return; }
+      if (I.pressed('KeyB')) { this.openMenu('bag', this.menuFrom); return; }
+      if (I.pressed('KeyG')) { this.openMenu('shop', this.menuFrom); return; }
+      if (I.pressed('KeyL') || I.pressed('KeyC')) { this.openMenu('craft', this.menuFrom); return; }
       const ids = this.player ? this.player.char.skills : [];
       const n = Math.max(1, ids.length);
-      if (I.pressed('ArrowUp') || I.pressed('KeyW')) this.skillIndex = (this.skillIndex + n - 1) % n;
-      if (I.pressed('ArrowDown') || I.pressed('KeyS')) this.skillIndex = (this.skillIndex + 1) % n;
+      if (I.pressed('ArrowUp') || I.pressed('KeyW')) { this.skillIndex = (this.skillIndex + n - 1) % n; if (XY.Audio) XY.Audio.sfx('ui'); }
+      if (I.pressed('ArrowDown') || I.pressed('KeyS')) { this.skillIndex = (this.skillIndex + 1) % n; if (XY.Audio) XY.Audio.sfx('ui'); }
       if (I.pressed('Enter') || I.pressed('Space')) {
         const sid = ids[clamp(this.skillIndex, 0, ids.length - 1)];
         if (sid) this.upgradeSkill(sid);
@@ -5193,12 +5967,14 @@
       if (at >= 0) {
         this.treasureSlots[at] = null;
         this.toast('已卸下 ' + XY.getTreasure(id).name);
+        if (XY.Audio) XY.Audio.sfx('ui');
       } else {
         let free = this.treasureSlots.indexOf(null);
         if (free < 0) { free = this._replaceAt % SLOT_N; this._replaceAt++; }
         const old = this.treasureSlots[free];
         this.treasureSlots[free] = id;
         this.toast('『' + XY.getTreasure(id).name + '』装入法宝栏 ' + (free + 1) + (old ? '（替换 ' + XY.getTreasure(old).name + '）' : ''));
+        if (XY.Audio) XY.Audio.sfx('confirm');
       }
       this.player.treasures = this.treasureSlots;
       this.save();
@@ -5210,9 +5986,11 @@
       if (this.equipped[it.slot] === id) {
         delete this.equipped[it.slot];
         this.toast('卸下 ' + it.name);
+        if (XY.Audio) XY.Audio.sfx('ui');
       } else {
         this.equipped[it.slot] = id;
         this.toast('装备 ' + it.name);
+        if (XY.Audio) XY.Audio.sfx('confirm');
       }
       this.rebuildPlayer();
       this.save();
@@ -5220,12 +5998,12 @@
 
     updateBag() {
       const I = XY.Input;
-      if (I.pressed('KeyB') || I.pressed('Escape')) { this.state = 'playing'; return; }
-      if (I.pressed('Digit1')) { this.bagTab = 0; this.bagIndex = 0; }
-      if (I.pressed('Digit2')) { this.bagTab = 1; this.bagIndex = 0; }
-      if (I.pressed('Digit3')) { this.bagTab = 2; this.bagIndex = 0; }
-      if (I.pressed('KeyQ')) { this.bagTab = (this.bagTab + 2) % 3; this.bagIndex = 0; }
-      if (I.pressed('KeyE')) { this.bagTab = (this.bagTab + 1) % 3; this.bagIndex = 0; }
+      if (I.pressed('KeyB') || I.pressed('Escape')) { this.state = this.menuFrom || 'playing'; return; }
+      if (I.pressed('Digit1')) { this.bagTab = 0; this.bagIndex = 0; if (XY.Audio) XY.Audio.sfx('ui'); }
+      if (I.pressed('Digit2')) { this.bagTab = 1; this.bagIndex = 0; if (XY.Audio) XY.Audio.sfx('ui'); }
+      if (I.pressed('Digit3')) { this.bagTab = 2; this.bagIndex = 0; if (XY.Audio) XY.Audio.sfx('ui'); }
+      if (I.pressed('KeyQ')) { this.bagTab = (this.bagTab + 2) % 3; this.bagIndex = 0; if (XY.Audio) XY.Audio.sfx('ui'); }
+      if (I.pressed('KeyE')) { this.bagTab = (this.bagTab + 1) % 3; this.bagIndex = 0; if (XY.Audio) XY.Audio.sfx('ui'); }
 
       const items = this.bagItems();
       const maxI = Math.max(0, items.length - 1);
@@ -5236,10 +6014,10 @@
 
       if (I.pressed('Enter') || I.pressed('Space') || I.pressed('Mouse0')) {
         const it = items[this.bagIndex];
-        if (!it) return;
+        if (!it) { if (XY.Audio) XY.Audio.sfx('deny'); return; }
         if (this.bagTab === 1) this.equipTreasure(it.id);
         else if (this.bagTab === 2) this.toggleEquip(it.id);
-        else this.toast(it.name + ' ×' + it.count);
+        else { this.toast(it.name + ' ×' + it.count); if (XY.Audio) XY.Audio.sfx('ui'); }
       }
     }
 
@@ -5273,9 +6051,18 @@
       const map = {
         title: 'title', charselect: 'charselect', cutscene: 'cutscene', intro: 'levelIntro',
         play: 'playing', bag: 'bag', craft: 'craft', pause: 'pause', gameover: 'gameover', win: 'win',
-        shop: 'shop', skillup: 'skillup',
+        shop: 'shop', skillup: 'skillup', levelclear: 'levelClear',
       };
       this.state = map[scene] || 'playing';
+      if (this.state === 'levelClear' && !this.clearStats) {
+        this.clearStats = {
+          levelIndex: this.levelIndex, name: XY.LEVELS[this.levelIndex].name,
+          kills: 3, total: this.level ? this.level.enemies.length : 3,
+          jade: 8 + this.levelIndex * 6, gold: 420, level: this.player.level,
+          seconds: 96, last: false,
+        };
+        this.menuFrom = 'levelClear';
+      }
       if (this.state === 'charselect') this.player = this.player || null;
       this.debugHint = true;
       if (params.get('dump')) this._dump = true;
@@ -5337,6 +6124,7 @@
         case 'craft': XY.UI.drawCraft(ctx, this); break;
         case 'shop': XY.UI.drawShop(ctx, this); break;
         case 'skillup': XY.UI.drawSkillUp(ctx, this); break;
+        case 'levelClear': XY.UI.drawLevelClear(ctx, this); break;
         case 'gameover': XY.UI.drawGameOver(ctx, this); break;
         case 'win': XY.UI.drawWin(ctx, this); break;
       }

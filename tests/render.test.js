@@ -92,6 +92,7 @@ const canvas = { width: 960, height: 540, getContext: () => ctx, addEventListene
 
 const XY = require('../src/data.js');
 require('../src/logic.js');
+require('../src/audio.js');
 require('../src/art.js');
 require('../src/fx.js');
 require('../src/scenery.js');

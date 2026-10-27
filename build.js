@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = __dirname;
-const ordered = ['data', 'logic', 'art', 'fx', 'scenery', 'engine', 'ui', 'game'];
+const ordered = ['data', 'logic', 'audio', 'art', 'fx', 'scenery', 'engine', 'ui', 'game'];
 
 let html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 

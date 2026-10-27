@@ -183,6 +183,8 @@
       this.animT = 0;
       this.attackStart = -9999; this.attackUntil = -9999;
       this.castStart = -9999; this.castUntil = -9999;
+      // 挨打：受击后短暂失衡（表现层据此做后仰、护痛、踉跄）
+      this.hurtStart = -9999; this.hurtUntil = -9999;
       this.combo = 0; this.lastAttackAt = -9999;
       this.attackKind = 0;           // 0 劈 / 1 戳 / 2 挑
       this.lungeUntil = 0;           // 普攻进步窗口
@@ -253,11 +255,15 @@
       if (anyDown(input, KEYS.down) && this.vy > 0) this.vy += 1600 * dt;
 
       // 重力
+      const wasGround = this.onGround;
+      const fallVy = this.vy;
       this.vy += GRAVITY * dt;
       if (this.vy > 1400) this.vy = 1400;
       XY.moveAndCollide(this, level.platforms, dt);
       // 落地补满跳跃次数
       if (this.onGround) this.jumpsLeft = this.maxJumps;
+      // 从高处砸下来：落地扬尘 + 闷响
+      if (this.onGround && !wasGround && fallVy > 520) this.emitFx('land', { vy: fallVy });
 
       // 奔跑扬尘
       if (sprinting && this.onGround && Math.abs(this.vx) > 60) {
@@ -277,14 +283,16 @@
     pose(now) {
       const atk = now < this.attackUntil ? (now - this.attackStart) / Math.max(1, this.attackUntil - this.attackStart) : undefined;
       const cast = now < this.castUntil ? (now - this.castStart) / Math.max(1, this.castUntil - this.castStart) : undefined;
+      const hurtP = now < (this.hurtUntil || -9999) ? (now - this.hurtStart) / Math.max(1, this.hurtUntil - this.hurtStart) : undefined;
       let state = 'idle';
-      if (now < this.dashUntil) state = 'dash';
+      if (hurtP !== undefined) state = 'hurt';       // 受击优先：挨打时要立刻"变脸"
+      else if (now < this.dashUntil) state = 'dash';
       else if (atk !== undefined) state = 'attack';
       else if (!this.onGround) state = 'jump';
       else if (Math.abs(this.vx) > 28) state = 'run';
       return {
         t: this.animT, state, facing: this.facing,
-        attackP: atk, castP: cast,
+        attackP: atk, castP: cast, hurtP: hurtP,
         attackKind: this.attackKind,
         castId: now < this.castUntil ? this.castSkillId : null,
         noWeapon: now < this.noWeaponUntil,
@@ -364,6 +372,7 @@
           game.toast('升到 ' + this.level + ' 级！气血全满');
           if (game.fx) game.fx.levelUp(this.x + this.w / 2, this.y + this.h);
           if (game.expPops) game.expPops.push({ text: 'LEVEL UP! Lv.' + this.level, life: 1.6, color: '#ffd479' });
+          if (XY.Audio) XY.Audio.sfx('levelup');
           if (game.save) game.save();
         }
       } else if (this.progress) {
@@ -411,6 +420,7 @@
       this.alive = true;
       this.hitFlash = 0;
       this.atkUntil = 0;
+      this.hurtUntil = 0;     // 被打后的短暂僵直（造型层做后仰/抖动）
       this.isBoss = kind === 'boss';
     }
     update(dt, player, level, now) {

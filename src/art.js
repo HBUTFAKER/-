@@ -87,13 +87,21 @@
     ctx.strokeStyle = A.eyes; ctx.lineWidth = r * 0.09; ctx.lineCap = 'round';
     for (const sx of [-1, 1]) {
       ctx.beginPath();
-      ctx.moveTo(cx + sx * r * 0.52, cy - r * 0.22);
-      ctx.lineTo(cx + sx * r * 0.2, cy - r * (mood === 'angry' ? 0.3 : 0.18));
+      ctx.moveTo(cx + sx * r * 0.52, cy - r * (mood === 'hurt' ? 0.36 : 0.22));
+      ctx.lineTo(cx + sx * r * 0.2, cy - r * (mood === 'angry' ? 0.3 : (mood === 'hurt' ? 0.14 : 0.18)));
       ctx.stroke();
     }
     // 眼
     const eyeY = cy + r * 0.06, eyeDx = r * 0.33;
-    if (blink) {
+    if (mood === 'hurt') {
+      // 疼得眯起眼：两条下弯的弧线
+      for (const sx of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(cx + sx * eyeDx - r * 0.13, eyeY - r * 0.05);
+        ctx.quadraticCurveTo(cx + sx * eyeDx, eyeY + r * 0.12, cx + sx * eyeDx + r * 0.13, eyeY - r * 0.05);
+        ctx.strokeStyle = A.eyes; ctx.lineWidth = r * 0.09; ctx.stroke();
+      }
+    } else if (blink) {
       for (const sx of [-1, 1]) line(ctx, cx + sx * eyeDx - r * 0.12, eyeY, cx + sx * eyeDx + r * 0.12, eyeY, r * 0.07, A.eyes);
     } else {
       for (const sx of [-1, 1]) {
@@ -108,6 +116,12 @@
       shape(ctx, '#e79c8f', r * 0.06);
       ctx.fillStyle = '#8c4b46';
       for (const sx of [-1, 1]) { circle(ctx, cx + sx * r * 0.09, cy + r * 0.4, r * 0.045); ctx.fill(); }
+    } else if (mood === 'hurt') {
+      // 疼得张嘴：一个小竖椭圆
+      ctx.beginPath();
+      if (ctx.ellipse) ctx.ellipse(cx, cy + r * 0.48, r * 0.15, r * 0.2, 0, 0, Math.PI * 2);
+      else ctx.arc(cx, cy + r * 0.48, r * 0.17, 0, Math.PI * 2);
+      ctx.fillStyle = '#8f4a3e'; ctx.fill();
     } else {
       ctx.beginPath();
       ctx.moveTo(cx - r * 0.18, cy + r * 0.44);
@@ -250,15 +264,20 @@
     const air = state === 'jump';
     const atk = pose.attackP; // 0..1
     const cast = pose.castP;
+    // 受击：0..1 的进度。抬一个底数让"挨打那一帧"就立刻后仰，再慢慢回正
+    const hurt = pose.hurtP;
+    const hurtK = hurt === undefined ? 0 : Math.sin(Math.min(1, 0.22 + hurt * 0.78) * Math.PI);
     // 风的强度：跑动/冲刺/出招时盔缨与雉翎向后掠
     const windAmt = Math.min(1, (state === 'dash' ? 1 : 0) + (run ? (sprint ? 0.9 : 0.55) : 0)
       + (atk !== undefined ? 0.5 : 0) + (cast !== undefined ? 0.3 : 0));
 
     const ph = sprint ? t / 58 : t / 85; // 奔跑时步频更密
     const bob = air ? 0 : (run ? Math.abs(Math.sin(ph)) * (sprint ? 2.6 : 1.8) : Math.sin(t / 430) * 1.1);
-    const legA = run ? Math.sin(ph) * (sprint ? 0.86 : 0.62) : (air ? 0.35 : 0.06);
-    const legB = run ? -Math.sin(ph) * (sprint ? 0.86 : 0.62) : (air ? -0.3 : -0.06);
+    let legA = run ? Math.sin(ph) * (sprint ? 0.86 : 0.62) : (air ? 0.35 : 0.06);
+    let legB = run ? -Math.sin(ph) * (sprint ? 0.86 : 0.62) : (air ? -0.3 : -0.06);
     const armBase = run ? Math.sin(ph) * (sprint ? 0.58 : 0.4) : 0.08;
+    // 挨打时两腿撑开、脚下一沉，站桩不再板正
+    if (hurtK) { legA += 0.2 * hurtK; legB -= 0.26 * hurtK; }
 
     ctx.save();
     ctx.translate(cx, footY);
@@ -277,7 +296,11 @@
 
     // 出招时的重心变化（同样以脚底为轴）：劈/戳前压，挑先沉后起
     let bodyTilt = 0;
-    if (atk !== undefined) {
+    if (hurt !== undefined) {
+      // 受击：被顶得向后仰，再慢慢把重心收回来
+      bodyTilt = -0.34 * Math.sin(Math.min(1, hurt * 1.25) * Math.PI);
+      ctx.translate(-7 * hurtK, 3 * hurtK);
+    } else if (atk !== undefined) {
       const k = pose.attackKind || 0;
       if (k === 0) bodyTilt = -0.05 + easeOut(seg(atk, 0.32, 0.82)) * 0.17;
       else if (k === 1) bodyTilt = -0.02 + easeOut(seg(atk, 0.28, 0.52)) * 0.13;
@@ -392,13 +415,19 @@
     }
 
     // —— 头 ——
-    Art.drawFace(ctx, 1, -56, 10, charId, { t: t, mood: state === 'attack' ? 'angry' : 'calm', wind: windAmt });
+    const mood = state === 'attack' ? 'angry' : (state === 'hurt' ? 'hurt' : 'calm');
+    // 受击时头比身体更"慢半步"：先往后一挫，再跟着躯干回正
+    Art.drawFace(ctx, 1 - 2.8 * hurtK, -56 + 1.4 * hurtK, 10, charId, { t: t, mood: mood, wind: windAmt, hurt: hurtK });
 
     // —— 前臂 + 武器 ——
     // 手臂与兵器分开驱动：arm 控手臂，wpn 是兵器的绝对角 → 兵器始终握在手里、不穿身。
     const SHX = 6, SHY = -41, ARM = 14;   // 肩点、手臂长度（角色坐标）
     let armAng, wpnAng, offX = 0, offY = 0, wpnShift = 0;
-    if (atk !== undefined) {
+    if (hurt !== undefined) {
+      // 挨打：手臂被甩到身后，兵器顺手往下滑，护不住架势
+      armAng = 0.62 + 0.5 * hurtK; wpnAng = 0.2 + 1.05 * hurtK;
+      offX = -2 * hurtK; offY = 2 * hurtK;
+    } else if (atk !== undefined) {
       const sp = swingProfile(pose.attackKind || 0, atk);
       armAng = sp.arm; wpnAng = sp.wpn; offX = sp.x; offY = sp.y; wpnShift = sp.g || 0;
     } else if (pose.castId === 'wk_smash') {
@@ -621,6 +650,10 @@
     const sx = (e.facing || -1) < 0 ? -1 : 1;
     ctx.scale(sx * k, k);
     ctx.translate(lunge, 0);
+    // 被打：身体向后一顿 + 后仰，让每次命中都有反馈
+    const hurtLeft = (e.hurtUntil || 0) - t;
+    const hurtK = hurtLeft > 0 ? Math.sin(Math.min(1, hurtLeft / 200) * Math.PI) : 0;
+    if (hurtK) { ctx.translate(-4.5 * hurtK, 0); ctx.rotate(-0.11 * hurtK); }
     const body = flash ? '#ffffff' : null;
 
     if (e.kind === 'wolf') {
