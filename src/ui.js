@@ -526,23 +526,53 @@
   };
 
   // ===== 选角 =====
+  // 卡片与"确认出战"按钮的几何：绘制和鼠标命中共用一份，改版面不会只改到一边
+  UI.CHAR_L = { cardW: 168, gap: 14, y: 74, h: 384, btnW: 216, btnH: 34, btnY: 472 };
+  UI.charSelectLayout = function () {
+    const L = UI.CHAR_L;
+    const n = XY.CHARACTER_ORDER.length;
+    const total = n * L.cardW + (n - 1) * L.gap;
+    return {
+      n, cardW: L.cardW, gap: L.gap, y: L.y, h: L.h, x0: (W - total) / 2,
+      btn: { x: (W - L.btnW) / 2, y: L.btnY, w: L.btnW, h: L.btnH },
+    };
+  };
+  UI.charSelectCardAt = function (px, py) {
+    const L = UI.charSelectLayout();
+    if (!(py >= L.y && py <= L.y + L.h)) return -1;
+    for (let i = 0; i < L.n; i++) {
+      const x = L.x0 + i * (L.cardW + L.gap);
+      if (px >= x && px <= x + L.cardW) return i;
+    }
+    return -1;
+  };
+  UI.charSelectBtnHit = function (px, py) {
+    const b = UI.charSelectLayout().btn;
+    return px >= b.x && px <= b.x + b.w && py >= b.y && py <= b.y + b.h;
+  };
+
   UI.drawCharSelect = function (ctx, game) {
     UI.drawBackground(ctx, 0, game.uiTime);
-    center(ctx, '选择你的角色', 52, 'bold 34px serif', '#ffd479');
+    center(ctx, '选择你的角色', 50, 'bold 32px serif', '#ffd479');
     const order = XY.CHARACTER_ORDER;
-    const cardW = 168, gap = 14, total = order.length * cardW + (order.length - 1) * gap;
-    const x0 = (W - total) / 2;
+    const L = UI.charSelectLayout();
+    const { cardW, gap, y } = L;
+    const x0 = L.x0;
+    const mx = (XY.Input && XY.Input.mouse) ? XY.Input.mouse.x : -999;
+    const my = (XY.Input && XY.Input.mouse) ? XY.Input.mouse.y : -999;
+    const hover = UI.charSelectCardAt(mx, my);
     for (let i = 0; i < order.length; i++) {
       const c = XY.CHARACTERS[order[i]];
-      const x = x0 + i * (cardW + gap), y = 80;
+      const x = x0 + i * (cardW + gap);
       const sel = i === game.charIndex;
-      rrect(ctx, x, y, cardW, 384, 12);
-      ctx.fillStyle = sel ? 'rgba(42,53,80,0.96)' : 'rgba(20,26,38,0.9)'; ctx.fill();
-      ctx.strokeStyle = sel ? '#ffd479' : '#33405c'; ctx.lineWidth = sel ? 3 : 1; ctx.stroke();
+      const hov = i === hover && !sel;
+      rrect(ctx, x, y, cardW, L.h, 12);
+      ctx.fillStyle = sel ? 'rgba(42,53,80,0.96)' : (hov ? 'rgba(30,38,54,0.95)' : 'rgba(20,26,38,0.9)'); ctx.fill();
+      ctx.strokeStyle = sel ? '#ffd479' : (hov ? '#7f8fb0' : '#33405c'); ctx.lineWidth = sel ? 3 : (hov ? 2 : 1); ctx.stroke();
       if (sel) {
         ctx.save();
         ctx.shadowColor = 'rgba(255,212,121,0.55)'; ctx.shadowBlur = 18;
-        rrect(ctx, x, y, cardW, 384, 12); ctx.stroke();
+        rrect(ctx, x, y, cardW, L.h, 12); ctx.stroke();
         ctx.restore();
       }
       // 立绘
@@ -583,7 +613,22 @@
       ctx.fillStyle = '#9fb0c8'; ctx.font = '10px "PingFang SC", sans-serif';
       wrapText(ctx, c.backstory, x + 14, y + 340, cardW - 28, 12);
     }
-    center(ctx, 'A / D 或 ← → 选择 · Enter 确认', 498, '16px "PingFang SC", sans-serif', '#fff');
+    // 确认出战按钮（可点）：把"点了卡片还以为选上了"的坑堵死
+    const b = L.btn;
+    const bHover = UI.charSelectBtnHit(mx, my);
+    ctx.save();
+    if (bHover) { ctx.shadowColor = 'rgba(255,212,121,0.7)'; ctx.shadowBlur = 16; }
+    rrect(ctx, b.x, b.y, b.w, b.h, 17);
+    ctx.fillStyle = bHover ? '#ffe6a6' : '#f0c14b'; ctx.fill();
+    ctx.restore();
+    rrect(ctx, b.x, b.y, b.w, b.h, 17);
+    ctx.strokeStyle = 'rgba(60,44,10,0.5)'; ctx.lineWidth = 1; ctx.stroke();
+    const cur = XY.CHARACTERS[order[game.charIndex]];
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#3a2a06'; ctx.font = 'bold 15px "PingFang SC", sans-serif';
+    ctx.fillText('以 ' + cur.name + ' 出战 · Enter', b.x + b.w / 2, b.y + 22);
+    ctx.textAlign = 'left';
+    center(ctx, 'A / D 或 ← → 选择 · 点卡片直接出战', 522, '14px "PingFang SC", sans-serif', '#9fb0c8');
   };
 
   // ===== 过场 CG =====
@@ -674,6 +719,19 @@
   };
 
   // ===== 过关结算：给玩家一条岔路（下一关 / 商店 / 锻造 / 参悟 / 主菜单）=====
+  // 过关结算右侧选项的几何（绘制与鼠标命中共用）
+  UI.CLEAR_L = { x: 430, y: 150, w: 460, h: 58, gap: 12 };
+  UI.levelClearOptionAt = function (px, py, n) {
+    const L = UI.CLEAR_L;
+    if (!(px >= L.x && px <= L.x + L.w)) return -1;
+    const count = Math.max(0, n | 0);
+    for (let i = 0; i < count; i++) {
+      const y = L.y + i * (L.h + L.gap);
+      if (py >= y && py <= y + L.h) return i;
+    }
+    return -1;
+  };
+
   UI.drawLevelClear = function (ctx, game) {
     UI.drawBackground(ctx, game.levelIndex, game.uiTime, game.cam ? game.cam.x : 0);
     ctx.fillStyle = 'rgba(4,7,12,0.8)'; ctx.fillRect(0, 0, W, H);
@@ -731,15 +789,20 @@
 
     // —— 右：选项 ——
     const opts = game.clearOptions ? game.clearOptions() : [];
-    const ox = 430, ow = 460, oh = 58, gap = 12, oy = 150;
+    const CL = UI.CLEAR_L;
+    const ox = CL.x, ow = CL.w, oh = CL.h, gap = CL.gap, oy = CL.y;
+    const cmx = (XY.Input && XY.Input.mouse) ? XY.Input.mouse.x : -999;
+    const cmy = (XY.Input && XY.Input.mouse) ? XY.Input.mouse.y : -999;
+    const hoverI = UI.levelClearOptionAt(cmx, cmy, opts.length);
     for (let i = 0; i < opts.length; i++) {
       const o = opts[i];
       const y = oy + i * (oh + gap);
       const sel = i === game.clearIndex;
+      const hov = i === hoverI && !sel;
       rrect(ctx, ox, y, ow, oh, 10);
-      ctx.fillStyle = sel ? 'rgba(255,212,121,0.13)' : 'rgba(16,21,32,0.9)'; ctx.fill();
-      ctx.strokeStyle = sel ? '#ffd479' : '#232c3e';
-      ctx.lineWidth = sel ? 2.5 : 1; ctx.stroke();
+      ctx.fillStyle = sel ? 'rgba(255,212,121,0.13)' : (hov ? 'rgba(30,38,54,0.95)' : 'rgba(16,21,32,0.9)'); ctx.fill();
+      ctx.strokeStyle = sel ? '#ffd479' : (hov ? '#7f8fb0' : '#232c3e');
+      ctx.lineWidth = sel ? 2.5 : (hov ? 1.6 : 1); ctx.stroke();
       if (sel) {
         ctx.save();
         ctx.shadowColor = 'rgba(255,212,121,0.45)'; ctx.shadowBlur = 14;
@@ -770,7 +833,7 @@
     }
 
     ctx.fillStyle = 'rgba(150,162,182,0.9)'; ctx.font = '12px "PingFang SC", sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('W/S 选择 · Enter 确认 · G 商店 · L 锻造 · H 技能 · Esc 回主菜单', W / 2, H - 14);
+    ctx.fillText('W/S 或点击 选择 · Enter 确认 · G 商店 · L 锻造 · H 技能 · Esc 回主菜单', W / 2, H - 14);
     ctx.textAlign = 'left';
   };
 

@@ -619,3 +619,76 @@ test.it('选角后播放该角色自己的 CG，并能逐幕推进到关卡前�
   }
   assert.deepStrictEqual(badLog, [], 'CG 渲染产生非法绘制：\n' + badLog.join('\n'));
 });
+
+test.it('选角：鼠标点哪张卡就出哪个角色，点空白不误触', () => {
+  badLog.length = 0;
+  const game = fresh();
+  tap('Enter'); step(game, 0.016);      // 标题 → 选角
+  assert.strictEqual(game.state, 'charselect');
+  const L = XY.UI.charSelectLayout();
+  const cardCenter = (i) => L.x0 + i * (L.cardW + L.gap) + L.cardW / 2;
+
+  // 点空白：不该开打（原来这里的点击会被当成"确认"，于是永远出悟空）
+  XY.Input.setMouse(4, 4);
+  tap('Mouse0'); step(game, 0.016);
+  assert.strictEqual(game.state, 'charselect', '点空白不应直接出战');
+  assert.strictEqual(game.charIndex, 0, '点空白不应改选角色');
+
+  // 点第三张卡（唐僧）
+  XY.Input.setMouse(cardCenter(2), L.y + 120);
+  tap('Mouse0'); step(game, 0.016);
+  assert.strictEqual(game.charId, 'tangseng', '点唐僧卡片却出了 ' + game.charId);
+  assert.strictEqual(game.player.char.id, 'tangseng', '玩家不是唐僧');
+  assert.strictEqual(game.state, 'cutscene');
+  assert.strictEqual(game.cutBeats, XY.STORY.charCg.tangseng, 'CG 没跟着角色走');
+});
+
+test.it('选角：命中判定覆盖 5 张卡与确认按钮', () => {
+  const L = XY.UI.charSelectLayout();
+  for (let i = 0; i < L.n; i++) {
+    const cx = L.x0 + i * (L.cardW + L.gap) + L.cardW / 2;
+    assert.strictEqual(XY.UI.charSelectCardAt(cx, L.y + 10), i, '第 ' + i + ' 张卡没命中');
+    assert.strictEqual(XY.UI.charSelectCardAt(cx, L.y + L.h - 1), i, '卡片底部没命中');
+  }
+  assert.strictEqual(XY.UI.charSelectCardAt(L.x0 - 20, L.y + 10), -1, '卡片左边空白不该命中');
+  assert.strictEqual(XY.UI.charSelectCardAt(L.x0 + 10, L.y - 10), -1, '卡片上方空白不该命中');
+  const b = L.btn;
+  assert.ok(XY.UI.charSelectBtnHit(b.x + b.w / 2, b.y + b.h / 2), '确认按钮没命中');
+  assert.ok(!XY.UI.charSelectBtnHit(b.x - 30, b.y + b.h / 2), '按钮左边空白不该命中');
+});
+
+test.it('选角：默认高亮上次出战过的角色', () => {
+  global.localStorage._d = {};
+  const g1 = new XY.Game(canvas);
+  g1.charIndex = XY.CHARACTER_ORDER.indexOf('tangseng');
+  g1.initRun();
+  assert.strictEqual(g1.charId, 'tangseng');
+  const g2 = new XY.Game(canvas);       // 重新开一局（模拟刷新页面）
+  assert.strictEqual(XY.CHARACTER_ORDER[g2.charIndex], 'tangseng', '重进游戏后没记住上次的角色');
+});
+
+test.it('过关结算：点哪条选项就执行哪条，点空白不响应', () => {
+  badLog.length = 0;
+  const g = fresh();
+  g.charIndex = 0;
+  g.initRun();
+  g.startLevel(0);
+  g.state = 'levelClear';
+  g.clearStats = { levelIndex: 0, name: XY.LEVELS[0].name, kills: 1, total: 1, jade: 8, gold: 100, level: 2, seconds: 30, last: false };
+  const opts = g.clearOptions();
+  const L = XY.UI.CLEAR_L;
+
+  // 点空白：状态不变
+  XY.Input.setMouse(4, 4);
+  tap('Mouse0'); step(g, 0.016);
+  assert.strictEqual(g.state, 'levelClear', '点空白不该推进');
+
+  // 直接点「属性商店」那一条
+  const shopI = opts.findIndex((o) => o.id === 'shop');
+  assert.ok(shopI >= 0, '结算里应有商店选项');
+  XY.Input.setMouse(L.x + 40, L.y + shopI * (L.h + L.gap) + L.h / 2);
+  tap('Mouse0'); step(g, 0.016);
+  assert.strictEqual(g.state, 'shop', '点商店那一条应进商店');
+  assert.strictEqual(g.menuFrom, 'levelClear', '从结算进商店应记着回去的路');
+  assert.deepStrictEqual(badLog, [], '结算界面渲染非法：\n' + badLog.join('\n'));
+});

@@ -35,11 +35,23 @@
       this.clearIndex = 0; this.clearStats = null; this.menuFrom = 'playing';
       this.runKills = 0; this.runStart = null; this._clearHandled = false;
       this.persist = this.load();
+      // 默认高亮上次选过的角色，别每次都从悟空开始
+      const lastCi = XY.CHARACTER_ORDER.indexOf(this.persist.charId);
+      if (lastCi >= 0) this.charIndex = lastCi;
 
       XY.Input.init();
       if (XY.Audio) XY.Audio.init();
       if (canvas && canvas.addEventListener) {
-        canvas.addEventListener('mousedown', () => {
+        // 记录指针在画布内部坐标（CSS 缩放会改变显示尺寸，必须换算）
+        const trackMouse = (e) => {
+          if (!XY.Input || !XY.Input.setMouse) return;
+          const r = canvas.getBoundingClientRect ? canvas.getBoundingClientRect() : null;
+          if (!r || !r.width || !r.height) return;
+          XY.Input.setMouse((e.clientX - r.left) * (W / r.width), (e.clientY - r.top) * (H / r.height));
+        };
+        canvas.addEventListener('mousemove', trackMouse);
+        canvas.addEventListener('mousedown', (e) => {
+          trackMouse(e);
           XY.Input._pressed['Mouse0'] = true;
           try {
             if (canvas.focus) canvas.focus();
@@ -191,6 +203,15 @@
       return true;
     }
 
+    // 从选角页正式出战：建人、取该角色的前史 CG、进过场
+    pickCharacter() {
+      this.initRun();
+      this.cutBeats = (XY.STORY.charCg && XY.STORY.charCg[this.charId]) || XY.STORY.prologue;
+      this.cutIndex = 0; this.cutTimer = 0;
+      this.state = (this.levelIndex === 0) ? 'cutscene' : 'levelIntro';
+      if (XY.Audio) XY.Audio.sfx('confirm');
+    }
+
     initRun() {
       this.inventory = Object.assign({}, this.persist.inventory);
       this.equipped = Object.assign({}, this.persist.equipped);
@@ -302,17 +323,28 @@
         case 'title':
           if (this.confirmPressed(I)) this.state = 'charselect';
           break;
-        case 'charselect':
-          if (I.pressed('KeyA') || I.pressed('ArrowLeft')) this.charIndex = (this.charIndex + XY.CHARACTER_ORDER.length - 1) % XY.CHARACTER_ORDER.length;
-          if (I.pressed('KeyD') || I.pressed('ArrowRight')) this.charIndex = (this.charIndex + 1) % XY.CHARACTER_ORDER.length;
-          if (this.confirmPressed(I)) {
-            this.initRun();
-            // 按当前角色取自己的前史 CG
-            this.cutBeats = (XY.STORY.charCg && XY.STORY.charCg[this.charId]) || XY.STORY.prologue;
-            this.state = (this.levelIndex === 0) ? 'cutscene' : 'levelIntro';
-            this.cutIndex = 0; this.cutTimer = 0;
+        case 'charselect': {
+          if (I.pressed('KeyA') || I.pressed('ArrowLeft')) {
+            this.charIndex = (this.charIndex + XY.CHARACTER_ORDER.length - 1) % XY.CHARACTER_ORDER.length;
+            if (XY.Audio) XY.Audio.sfx('ui');
           }
+          if (I.pressed('KeyD') || I.pressed('ArrowRight')) {
+            this.charIndex = (this.charIndex + 1) % XY.CHARACTER_ORDER.length;
+            if (XY.Audio) XY.Audio.sfx('ui');
+          }
+          let start = false;
+          if (I.pressed('Mouse0')) {
+            // 点卡片＝选中并以该角色直接出战；点按钮＝确认；点空白不响应
+            const mp = I.mouse || { x: -999, y: -999 };
+            const hit = XY.UI.charSelectCardAt ? XY.UI.charSelectCardAt(mp.x, mp.y) : -1;
+            if (hit >= 0) { this.charIndex = hit; start = true; }
+            else if (XY.UI.charSelectBtnHit && XY.UI.charSelectBtnHit(mp.x, mp.y)) start = true;
+          } else if (this.confirmPressed(I)) {
+            start = true;
+          }
+          if (start) this.pickCharacter();
           break;
+        }
         case 'cutscene': {
           const beats = this.cutBeats || XY.STORY.prologue;
           if (this.confirmPressed(I)) { this.state = 'levelIntro'; break; }
@@ -592,6 +624,13 @@
       if (I.pressed('KeyL') || I.pressed('KeyC')) { this.chooseClear('craft'); return; }
       if (I.pressed('KeyH')) { this.chooseClear('skillup'); return; }
       if (I.pressed('Escape')) { this.chooseClear('title'); return; }
+      if (I.pressed('Mouse0')) {
+        // 点哪条选哪条；点空白不响应（不再"点一下就把高亮项执行了"）
+        const mp = I.mouse || { x: -999, y: -999 };
+        const hit = XY.UI.levelClearOptionAt ? XY.UI.levelClearOptionAt(mp.x, mp.y, n) : -1;
+        if (hit >= 0) { this.clearIndex = hit; this.chooseClear(opts[hit].id); }
+        return;
+      }
       if (this.confirmPressed(I)) this.chooseClear(opts[clamp(this.clearIndex, 0, n - 1)].id);
     }
 

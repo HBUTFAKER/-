@@ -89,6 +89,7 @@
     _virtualPressed: {},
     keyCount: 0,          // 累计收到的真实按键数（0 表示键盘没接管）
     lastCode: '',
+    mouse: { x: -999, y: -999 },   // 画布坐标系里的指针位置（CSS 缩放已换算回去）
     init() {
       if (this._inited) return;
       this._inited = true;
@@ -125,6 +126,8 @@
       }
     },
     clearVirtual() { this.virtual = {}; },
+    // 指针位置：以画布内部坐标为准（CSS 放大/缩小后仍能对上界面元素）
+    setMouse(x, y) { this.mouse.x = x; this.mouse.y = y; },
     isDown(code) { return !!this.down[code] || !!this.virtual[code]; },
     pressed(code) { return !!this._pressed[code] || !!this._virtualPressed[code]; },
     endFrame() { this._pressed = {}; this._virtualPressed = {}; },
