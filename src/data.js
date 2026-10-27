@@ -46,9 +46,9 @@
 
   // ===== 技能（每位 ≥3）=====
   XY.SKILLS = {
-    wk_smash: { id: 'wk_smash', name: '如意棒击', characterId: 'wukong', kind: 'melee', anim: 'giantChop', multiplier: 1.85, cooldown: 900, cost: 12, range: 208, description: '金箍棒骤然暴涨十丈，自天而降一记重劈。' },
-    wk_dash: { id: 'wk_dash', name: '筋斗云突', characterId: 'wukong', kind: 'dash', anim: 'cloudDash', multiplier: 0.95, cooldown: 1200, cost: 18, range: 320, dashMul: 3.9, dashMs: 340, cloud: true, description: '踏筋斗云疾突，祥云缠身，一撞丈外。' },
-    wk_spin: { id: 'wk_spin', name: '定海神针', characterId: 'wukong', kind: 'aoe', anim: 'throw', multiplier: 1.75, cooldown: 3200, cost: 42, range: 0, radius: 172, description: '掷出金箍棒，棒身空中急旋，插入大地激起冲击波。' },
+    wk_smash: { id: 'wk_smash', name: '如意棒击', characterId: 'wukong', kind: 'melee', anim: 'giantChop', multiplier: 1.55, cooldown: 1300, cost: 16, range: 168, description: '金箍棒骤然暴涨十丈，自天而降一记重劈。' },
+    wk_dash: { id: 'wk_dash', name: '筋斗云突', characterId: 'wukong', kind: 'dash', anim: 'cloudDash', multiplier: 0.85, cooldown: 1500, cost: 22, range: 320, dashMul: 3.9, dashMs: 340, cloud: true, description: '踏筋斗云疾突，祥云缠身，一撞丈外。' },
+    wk_spin: { id: 'wk_spin', name: '定海神针', characterId: 'wukong', kind: 'aoe', anim: 'throw', multiplier: 1.45, cooldown: 3800, cost: 46, range: 0, radius: 132, description: '掷出金箍棒，棒身空中急旋，插入大地激起冲击波。' },
 
     bj_rake: { id: 'bj_rake', name: '九齿钉耙', characterId: 'bajie', kind: 'melee', multiplier: 1.4, cooldown: 650, cost: 10, range: 80, description: '钉耙前捣，势大力沉。' },
     bj_counter: { id: 'bj_counter', name: '倒打一耙', characterId: 'bajie', kind: 'dash', multiplier: 0.9, cooldown: 1500, cost: 20, range: 200, description: '回身突进，耙击退敌。' },
@@ -162,6 +162,40 @@
       2: '黑风洞中黑熊精窃袈裟，妖风阵阵。',
       3: '火焰山烈焰焚天，牛魔王据守，终局之战。',
     },
+  };
+
+  // ===== 每位角色独立的开场 CG =====
+  // 选谁就播谁那段前史，不再全员共用悟空的大闹天宫。都是四幕，节奏统一。
+  XY.STORY.charCg = {
+    wukong: XY.STORY.prologue,
+
+    bajie: [
+      { bgTop: '#2a1a3a', bgBottom: '#4d2a5c', glyph: '🍑', title: '第一幕 · 天蓬元帅', lines: ['天庭水军八万，皆归天蓬元帅统率。', '蟠桃会上贪杯，醉醺醺离了席。'], duration: 2600 },
+      { bgTop: '#3a1a2a', bgBottom: '#6b1f33', glyph: '🌙', title: '第二幕 · 醉闯广寒', lines: ['误入广寒宫，戏弄嫦娥。', '玉帝震怒，两千锤杖责，贬下凡尘。'], duration: 2600 },
+      { bgTop: '#2a2318', bgBottom: '#4a3a1e', glyph: '🐷', title: '第三幕 · 错投猪胎', lines: ['投胎误入畜生道，落得猪头人身。', '流落福陵山云栈洞，吃人度日。'], duration: 2600 },
+      { bgTop: '#1a2418', bgBottom: '#2e4020', glyph: '🏠', title: '第四幕 · 高老庄', lines: ['观音点化，赐名猪悟能。', '在此等候取经人，却先等来一场妖祸。'], duration: 3000 },
+    ],
+
+    tangseng: [
+      { bgTop: '#2a2010', bgBottom: '#4d3818', glyph: '🪷', title: '第一幕 · 金蝉遭贬', lines: ['如来座下二弟子金蝉子，轻慢佛法。', '贬入轮回，转世为凡。'], duration: 2600 },
+      { bgTop: '#10202a', bgBottom: '#173a4d', glyph: '🚣', title: '第二幕 · 江流儿', lines: ['父陈光瑞赴任遇害，母殷温娇忍辱偷生。', '婴儿顺江漂流，被金山寺法明和尚救起。'], duration: 2800 },
+      { bgTop: '#2a2418', bgBottom: '#4d4020', glyph: '📜', title: '第三幕 · 奉旨西行', lines: ['唐王赐号三藏，西天取经。', '手无缚鸡之力，却敢一人上路。'], duration: 2600 },
+      { bgTop: '#241a2a', bgBottom: '#3d2a4d', glyph: '🙏', title: '第四幕 · 出长安', lines: ['妖气蔽日，佛光亦可行。', '此去十万八千里，步步是劫。'], duration: 3000 },
+    ],
+
+    shaseng: [
+      { bgTop: '#1a1a2a', bgBottom: '#2a2a4d', glyph: '🛡', title: '第一幕 · 卷帘大将', lines: ['玉帝身边卷帘大将，掌銮驾仪仗。', '失手打碎琉璃盏，一朝跌落。'], duration: 2600 },
+      { bgTop: '#0e1a24', bgBottom: '#12303a', glyph: '💧', title: '第二幕 · 贬落流沙', lines: ['贬入流沙河，每七日飞剑穿胸百余下。', '苦楚无边，怨气成瘴。'], duration: 2600 },
+      { bgTop: '#141a1a', bgBottom: '#1f2e26', glyph: '💀', title: '第三幕 · 流沙吃人', lines: ['河中吃人无数，颈挂九个骷髅。', '皆是前世的取经人。'], duration: 2600 },
+      { bgTop: '#1a2418', bgBottom: '#2a3d22', glyph: '🪔', title: '第四幕 · 皈依佛门', lines: ['观音点化，法名悟净。', '在此赎尽前愆，等候师父。'], duration: 3000 },
+    ],
+
+    bailongma: [
+      { bgTop: '#0e1a2a', bgBottom: '#12304d', glyph: '🐉', title: '第一幕 · 西海龙子', lines: ['西海龙王三太子敖烈，纵火烧了殿上明珠。', '父王上表，告其忤逆。'], duration: 2600 },
+      { bgTop: '#2a1a1a', bgBottom: '#4d2020', glyph: '⚔', title: '第二幕 · 忤逆之罪', lines: ['玉帝判斩，悬于天柱。', '观音求情，免死贬下凡尘。'], duration: 2600 },
+      { bgTop: '#0e2028', bgBottom: '#123a40', glyph: '🌊', title: '第三幕 · 鹰愁涧', lines: ['盘踞鹰愁涧，吞了唐僧的白马。', '涧水森寒，龙气未散。'], duration: 2600 },
+      { bgTop: '#1a2028', bgBottom: '#2a3540', glyph: '🐎', title: '第四幕 · 化马驮经', lines: ['观音点化，化作白龙马。', '驮着师父，一路西行。'], duration: 3000 },
+    ],
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = XY;

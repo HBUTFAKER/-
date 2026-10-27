@@ -587,3 +587,34 @@ test.it('三段普攻与盔甲盔缨：任意进度都能安全绘制', () => {
   XY.Art.drawCharacter(ctx2, 200, 400, 1.15, 'wukong', { t: 900, state: 'idle', facing: 1, castP: 0.4, castId: 'wk_spin', noWeapon: true });
   assert.deepStrictEqual(badLog, [], '绘制产生非法调用: ' + badLog.join(' | '));
 });
+
+test.it('五名角色各有独立的四幕前史 CG', () => {
+  const ids = XY.CHARACTER_ORDER;
+  const firstTitles = new Set();
+  for (const id of ids) {
+    const beats = XY.STORY.charCg && XY.STORY.charCg[id];
+    assert.ok(Array.isArray(beats) && beats.length === 4, id + ' 应有四幕开场 CG');
+    for (const b of beats) {
+      assert.ok(b.title && b.glyph && b.bgTop && b.bgBottom, id + ' 的 CG 字段不全');
+      assert.ok(Array.isArray(b.lines) && b.lines.length >= 1, id + ' 的 CG 缺文案');
+      assert.ok(b.duration >= 2000, id + ' 的 CG 时长过短');
+    }
+    firstTitles.add(beats[0].title);
+  }
+  assert.strictEqual(firstTitles.size, ids.length, '五段开场标题不应重复');
+});
+
+test.it('选角后播放该角色自己的 CG，并能逐幕推进到关卡前情', () => {
+  badLog.length = 0;
+  for (let i = 0; i < XY.CHARACTER_ORDER.length; i++) {
+    const g = fresh();
+    tap('Enter'); step(g, 0.016);       // 标题 → 选角
+    g.charIndex = i;
+    tap('Enter'); step(g, 0.016);       // 确认角色 → CG
+    assert.strictEqual(g.state, 'cutscene', '第 ' + i + ' 个角色没进入 CG');
+    assert.strictEqual(g.cutBeats, XY.STORY.charCg[XY.CHARACTER_ORDER[i]], 'CG 没按角色切换');
+    for (let n = 0; n < 12 && g.state === 'cutscene'; n++) step(g, 1.2);
+    assert.strictEqual(g.state, 'levelIntro', '第 ' + i + ' 个角色的 CG 没走完');
+  }
+  assert.deepStrictEqual(badLog, [], 'CG 渲染产生非法绘制：\n' + badLog.join('\n'));
+});

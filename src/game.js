@@ -201,15 +201,18 @@
           if (I.pressed('KeyD') || I.pressed('ArrowRight')) this.charIndex = (this.charIndex + 1) % XY.CHARACTER_ORDER.length;
           if (this.confirmPressed(I)) {
             this.initRun();
+            // 按当前角色取自己的前史 CG
+            this.cutBeats = (XY.STORY.charCg && XY.STORY.charCg[this.charId]) || XY.STORY.prologue;
             this.state = (this.levelIndex === 0) ? 'cutscene' : 'levelIntro';
             this.cutIndex = 0; this.cutTimer = 0;
           }
           break;
         case 'cutscene': {
-          const beats = XY.STORY.prologue;
+          const beats = this.cutBeats || XY.STORY.prologue;
           if (this.confirmPressed(I)) { this.state = 'levelIntro'; break; }
           this.cutTimer += dt * 1000;
-          if (this.cutTimer > beats[this.cutIndex].duration) {
+          const cur = beats[this.cutIndex];
+          if (!cur || this.cutTimer > cur.duration) {
             this.cutIndex++; this.cutTimer = 0;
             if (this.cutIndex >= beats.length) this.state = 'levelIntro';
           }
@@ -466,7 +469,7 @@
           const ground = XY.groundYAt(this.level.platforms, sx + dir * 118, pl.y + pl.h);
           this.specials.push({
             x: sx, y: sy, vx: dir * 300, vy: -440, spin: 0, state: 'fly',
-            ground: ground, radius: a.radius || 172, mult2: mult,
+            ground: ground, radius: a.radius || 132, mult2: mult,
             dir: dir, landAt: 0, fade: 1, dead: false,
           });
           this.fx.spark(sx, sy, 10, '#ffd479', { speed: 220, angle: dir > 0 ? 0 : Math.PI, spread: 1.2 });
@@ -834,7 +837,12 @@
       switch (this.state) {
         case 'title': XY.UI.drawTitle(ctx, this.uiTime); break;
         case 'charselect': XY.UI.drawCharSelect(ctx, this); break;
-        case 'cutscene': XY.UI.drawCutscene(ctx, XY.STORY.prologue[this.cutIndex], 1, this.uiTime); break;
+        case 'cutscene': {
+          const beats = this.cutBeats || (XY.STORY.charCg && XY.STORY.charCg[this.charId]) || XY.STORY.prologue;
+          const beat = beats[this.cutIndex] || beats[0];
+          XY.UI.drawCutscene(ctx, beat, 1, this.uiTime, this.charId, this.cutIndex, beats.length);
+          break;
+        }
         case 'levelIntro': XY.UI.drawLevelIntro(ctx, this); break;
         case 'playing': this.renderPlaying(); break;
         case 'pause': this.renderPlaying(); XY.UI.drawPause(ctx); break;

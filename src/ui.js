@@ -583,7 +583,8 @@
   };
 
   // ===== 过场 CG =====
-  UI.drawCutscene = function (ctx, beat, alpha, t) {
+  UI.drawCutscene = function (ctx, beat, alpha, t, charId, index, total) {
+    if (!beat) beat = { bgTop: '#101018', bgBottom: '#1a1a28', glyph: '✦', title: '', lines: [] };
     const g = ctx.createLinearGradient(0, 0, 0, H);
     g.addColorStop(0, beat.bgTop); g.addColorStop(1, beat.bgBottom);
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
@@ -596,10 +597,48 @@
       ctx.lineTo(W / 2 + Math.cos(a) * 700, 240 + Math.sin(a) * 700); ctx.stroke();
     }
     ctx.globalAlpha = 1;
-    center(ctx, beat.glyph, 206, '86px serif', 'rgba(255,255,255,0.95)');
-    center(ctx, beat.title, 282, 'bold 30px serif', '#ffd479');
-    for (let i = 0; i < beat.lines.length; i++) center(ctx, beat.lines[i], 330 + i * 30, '17px "PingFang SC", sans-serif', '#eae4d8');
-    center(ctx, '按 Enter / 空格 跳过', 500, '13px "PingFang SC", sans-serif', '#8a93a6');
+
+    // 角色立绘：半透明剪影，缓缓呼吸起伏——每一幕都得有"人在场"的分量
+    if (charId && XY.Art && XY.Art.drawCharacter) {
+      const bob = Math.sin(t / 1400) * 2.6;
+      ctx.save();
+      // 脚下光晕：三层同心圆堆叠代替径向渐变，测试桩里也安全
+      ctx.save();
+      for (let i = 0; i < 3; i++) {
+        ctx.globalAlpha = 0.09 - i * 0.028;
+        ctx.fillStyle = '#ffde99';
+        ctx.beginPath();
+        ctx.arc(W / 2, 368, 190 - i * 56, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+      ctx.globalAlpha = 0.36;
+      XY.Art.drawCharacter(ctx, W / 2, 398 + bob, 3.15, charId, { state: 'idle', t, facing: 1 });
+      ctx.restore();
+    }
+
+    // 文字区压暗：半透明立绘之上也要看得清
+    const shade = ctx.createLinearGradient(0, 318, 0, H);
+    shade.addColorStop(0, 'rgba(0,0,0,0)');
+    shade.addColorStop(0.3, 'rgba(0,0,0,0.64)');
+    shade.addColorStop(1, 'rgba(0,0,0,0.84)');
+    ctx.fillStyle = shade; ctx.fillRect(0, 318, W, H - 318);
+
+    center(ctx, beat.glyph, 152, '26px serif', 'rgba(255,255,255,0.85)');
+    center(ctx, beat.title, 406, 'bold 29px serif', '#ffd479');
+    for (let i = 0; i < beat.lines.length; i++) center(ctx, beat.lines[i], 446 + i * 29, '17px "PingFang SC", sans-serif', '#eae4d8');
+
+    // 幕次进度
+    if (total > 1) {
+      const gap = 17, sx = W - 46 - (total - 1) * gap;
+      for (let i = 0; i < total; i++) {
+        ctx.beginPath();
+        ctx.arc(sx + i * gap, 34, i === index ? 4.2 : 2.6, 0, Math.PI * 2);
+        ctx.fillStyle = i === index ? '#ffd479' : 'rgba(255,255,255,0.38)';
+        ctx.fill();
+      }
+    }
+    center(ctx, '按 Enter / 空格 跳过', 512, '13px "PingFang SC", sans-serif', '#8a93a6');
   };
 
   // ===== 关卡前情 =====

@@ -624,31 +624,79 @@
     const body = flash ? '#ffffff' : null;
 
     if (e.kind === 'wolf') {
-      rr(ctx, -18, -26, 34, 20, 8); shape(ctx, body || '#6b4a2b', 1.4);
-      // 头
+      // 妖狼：靠剪影认人——弓背、长吻、大尖耳、粗尾、四条粗腿
+      const fur = body || '#7a5432', dark = body || '#462d17';
+      const g = Math.sin(t / 95) * 2.6;
+      // 尾巴：向后扬起
       ctx.beginPath();
-      ctx.moveTo(10, -28); ctx.lineTo(24, -34); ctx.lineTo(22, -20); ctx.closePath();
-      shape(ctx, body || '#7d5632', 1.3);
-      // 腿
-      ctx.strokeStyle = body || '#4a3220'; ctx.lineWidth = 2.6;
-      for (let i = -1; i <= 1; i += 2) {
-        const ph = Math.sin(t / 110 + i) * 2.5;
-        line(ctx, i * 10, -8, i * 10 + ph, 0, 2.6, body || '#4a3220');
-      }
-      circle(ctx, 18, -30, 1.6); ctx.fillStyle = '#ff5e5e'; ctx.fill();
+      ctx.moveTo(-18, -23);
+      ctx.quadraticCurveTo(-31, -27, -28, -36);
+      ctx.strokeStyle = dark; ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.stroke();
+      // 远侧两腿（暗一档，垫在后面）
+      line(ctx, -11, -14, -8 + g, -1, 3.2, dark);
+      line(ctx, 9, -14, 12 - g, -1, 3.2, dark);
+      // 近侧两腿：后腿带弯，前腿直撑
+      line(ctx, -14, -15, -15 - g, -7, 4.2, fur);
+      line(ctx, -15 - g, -7, -12 - g * 0.5, -1, 3.8, fur);
+      line(ctx, 8, -15, 10 + g, -1, 4.2, fur);
+      // 身体：背线拱起，前胸高后腰低
+      ctx.beginPath();
+      ctx.moveTo(-20, -14);
+      ctx.quadraticCurveTo(-23, -29, -8, -30);
+      ctx.quadraticCurveTo(6, -31, 12, -24);
+      ctx.quadraticCurveTo(15, -16, 6, -13);
+      ctx.quadraticCurveTo(-8, -11, -20, -14);
+      ctx.closePath();
+      shape(ctx, fur, 1.5);
+      // 头：大，长吻前探
+      ctx.beginPath();
+      ctx.moveTo(5, -27);
+      ctx.quadraticCurveTo(16, -34, 25, -28);
+      ctx.quadraticCurveTo(29, -23.5, 24.5, -19.5);
+      ctx.lineTo(8, -19);
+      ctx.closePath();
+      shape(ctx, fur, 1.5);
+      // 大尖耳（最醒目的狼特征）
+      ctx.beginPath(); ctx.moveTo(8.5, -28); ctx.lineTo(6, -38); ctx.lineTo(15.5, -30.5); ctx.closePath(); shape(ctx, dark, 1);
+      ctx.beginPath(); ctx.moveTo(17, -31); ctx.lineTo(20, -39); ctx.lineTo(23.5, -30); ctx.closePath(); shape(ctx, dark, 1);
+      // 獠牙
+      ctx.beginPath(); ctx.moveTo(22.5, -22); ctx.lineTo(23.5, -17.5); ctx.lineTo(20.5, -21); ctx.closePath(); shape(ctx, '#f2e8d5', 0.6);
+      // 红瞳
+      circle(ctx, 19, -26.5, 2.2); ctx.fillStyle = '#ff4d4d'; ctx.fill();
+      circle(ctx, 19.7, -27.1, 0.85); ctx.fillStyle = '#fff2c0'; ctx.fill();
     } else if (e.kind === 'spider') {
-      ctx.fillStyle = body || '#5a2b6b';
+      // 毒蛛：大圆身 + 小头，八条腿从身下向外撑开、脚齐地面
+      const skin = body || '#5a2b6b', dark = body || '#3a1746', leg = body || '#6a2f80';
+      const bcx = -3, bcy = -15, br = 10.5;
+      // 腹部
+      circle(ctx, bcx, bcy, br); shape(ctx, skin, 1.5);
+      // 背脊亮线
       ctx.beginPath();
-      if (ctx.ellipse) ctx.ellipse(0, -16, 16, 13, 0, 0, Math.PI * 2);
-      else ctx.arc(0, -16, 13, 0, Math.PI * 2);
-      shape(ctx, body || '#5a2b6b', 1.4);
-      ctx.strokeStyle = body || '#3d1c49'; ctx.lineWidth = 2;
-      for (let i = 0; i < 4; i++) {
-        const leg = -12 + i * 8, ph = Math.sin(t / 90 + i) * 2;
-        line(ctx, leg, -14, leg - 4, -2 + ph, 2, body || '#3d1c49');
-        line(ctx, leg, -14, leg + 6, -2 - ph, 2, body || '#3d1c49');
+      ctx.moveTo(bcx - 6.5, bcy - 7.5);
+      ctx.quadraticCurveTo(bcx, bcy - 11.5, bcx + 6.5, bcy - 6.5);
+      ctx.strokeStyle = body || '#8e44ad'; ctx.lineWidth = 1.6; ctx.lineCap = 'round'; ctx.stroke();
+      // 八条腿：越靠外的腿撑得越开，带轻微爬行相位
+      for (let i = 0; i < 8; i++) {
+        const left = i < 4, k = i % 4;
+        const sgn = left ? -1 : 1;
+        const fx = bcx + sgn * (9.5 + k * 4.3);
+        const ph = Math.sin(t / 90 + i * 0.7) * 1.1;
+        const rx0 = bcx + sgn * (1.4 + k * 2.1);
+        const ry0 = -12.5 + k * 1.1;
+        ctx.beginPath();
+        ctx.moveTo(rx0, ry0);
+        ctx.quadraticCurveTo((rx0 + fx) * 0.5, -15 + ph, fx, -0.8 + ph * 0.4);
+        ctx.strokeStyle = leg; ctx.lineWidth = 2.2;
+        ctx.lineCap = 'round'; ctx.stroke();
       }
-      for (const ex of [-6, -2, 2, 6]) { circle(ctx, ex, -20, 1.5); ctx.fillStyle = '#ff6b6b'; ctx.fill(); }
+      // 头胸部
+      circle(ctx, 10, -16.5, 6.2); shape(ctx, skin, 1.4);
+      // 螯肢
+      ctx.beginPath(); ctx.moveTo(13.5, -13); ctx.lineTo(18, -8.5); ctx.lineTo(12, -11); ctx.closePath(); shape(ctx, dark, 0.8);
+      // 眼：两颗大的在前
+      circle(ctx, 12.4, -19.6, 1.9); ctx.fillStyle = '#ff6b6b'; ctx.fill();
+      circle(ctx, 15, -16.8, 1.5); ctx.fillStyle = '#ff6b6b'; ctx.fill();
+      circle(ctx, 8.6, -20.4, 1.1); ctx.fillStyle = '#ff9b9b'; ctx.fill();
     } else if (e.kind === 'boss') {
       // 牛魔王
       ctx.fillStyle = body || '#8e2b2b';

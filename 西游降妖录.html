@@ -148,9 +148,9 @@
 
   // ===== 技能（每位 ≥3）=====
   XY.SKILLS = {
-    wk_smash: { id: 'wk_smash', name: '如意棒击', characterId: 'wukong', kind: 'melee', anim: 'giantChop', multiplier: 1.85, cooldown: 900, cost: 12, range: 208, description: '金箍棒骤然暴涨十丈，自天而降一记重劈。' },
-    wk_dash: { id: 'wk_dash', name: '筋斗云突', characterId: 'wukong', kind: 'dash', anim: 'cloudDash', multiplier: 0.95, cooldown: 1200, cost: 18, range: 320, dashMul: 3.9, dashMs: 340, cloud: true, description: '踏筋斗云疾突，祥云缠身，一撞丈外。' },
-    wk_spin: { id: 'wk_spin', name: '定海神针', characterId: 'wukong', kind: 'aoe', anim: 'throw', multiplier: 1.75, cooldown: 3200, cost: 42, range: 0, radius: 172, description: '掷出金箍棒，棒身空中急旋，插入大地激起冲击波。' },
+    wk_smash: { id: 'wk_smash', name: '如意棒击', characterId: 'wukong', kind: 'melee', anim: 'giantChop', multiplier: 1.55, cooldown: 1300, cost: 16, range: 168, description: '金箍棒骤然暴涨十丈，自天而降一记重劈。' },
+    wk_dash: { id: 'wk_dash', name: '筋斗云突', characterId: 'wukong', kind: 'dash', anim: 'cloudDash', multiplier: 0.85, cooldown: 1500, cost: 22, range: 320, dashMul: 3.9, dashMs: 340, cloud: true, description: '踏筋斗云疾突，祥云缠身，一撞丈外。' },
+    wk_spin: { id: 'wk_spin', name: '定海神针', characterId: 'wukong', kind: 'aoe', anim: 'throw', multiplier: 1.45, cooldown: 3800, cost: 46, range: 0, radius: 132, description: '掷出金箍棒，棒身空中急旋，插入大地激起冲击波。' },
 
     bj_rake: { id: 'bj_rake', name: '九齿钉耙', characterId: 'bajie', kind: 'melee', multiplier: 1.4, cooldown: 650, cost: 10, range: 80, description: '钉耙前捣，势大力沉。' },
     bj_counter: { id: 'bj_counter', name: '倒打一耙', characterId: 'bajie', kind: 'dash', multiplier: 0.9, cooldown: 1500, cost: 20, range: 200, description: '回身突进，耙击退敌。' },
@@ -264,6 +264,40 @@
       2: '黑风洞中黑熊精窃袈裟，妖风阵阵。',
       3: '火焰山烈焰焚天，牛魔王据守，终局之战。',
     },
+  };
+
+  // ===== 每位角色独立的开场 CG =====
+  // 选谁就播谁那段前史，不再全员共用悟空的大闹天宫。都是四幕，节奏统一。
+  XY.STORY.charCg = {
+    wukong: XY.STORY.prologue,
+
+    bajie: [
+      { bgTop: '#2a1a3a', bgBottom: '#4d2a5c', glyph: '🍑', title: '第一幕 · 天蓬元帅', lines: ['天庭水军八万，皆归天蓬元帅统率。', '蟠桃会上贪杯，醉醺醺离了席。'], duration: 2600 },
+      { bgTop: '#3a1a2a', bgBottom: '#6b1f33', glyph: '🌙', title: '第二幕 · 醉闯广寒', lines: ['误入广寒宫，戏弄嫦娥。', '玉帝震怒，两千锤杖责，贬下凡尘。'], duration: 2600 },
+      { bgTop: '#2a2318', bgBottom: '#4a3a1e', glyph: '🐷', title: '第三幕 · 错投猪胎', lines: ['投胎误入畜生道，落得猪头人身。', '流落福陵山云栈洞，吃人度日。'], duration: 2600 },
+      { bgTop: '#1a2418', bgBottom: '#2e4020', glyph: '🏠', title: '第四幕 · 高老庄', lines: ['观音点化，赐名猪悟能。', '在此等候取经人，却先等来一场妖祸。'], duration: 3000 },
+    ],
+
+    tangseng: [
+      { bgTop: '#2a2010', bgBottom: '#4d3818', glyph: '🪷', title: '第一幕 · 金蝉遭贬', lines: ['如来座下二弟子金蝉子，轻慢佛法。', '贬入轮回，转世为凡。'], duration: 2600 },
+      { bgTop: '#10202a', bgBottom: '#173a4d', glyph: '🚣', title: '第二幕 · 江流儿', lines: ['父陈光瑞赴任遇害，母殷温娇忍辱偷生。', '婴儿顺江漂流，被金山寺法明和尚救起。'], duration: 2800 },
+      { bgTop: '#2a2418', bgBottom: '#4d4020', glyph: '📜', title: '第三幕 · 奉旨西行', lines: ['唐王赐号三藏，西天取经。', '手无缚鸡之力，却敢一人上路。'], duration: 2600 },
+      { bgTop: '#241a2a', bgBottom: '#3d2a4d', glyph: '🙏', title: '第四幕 · 出长安', lines: ['妖气蔽日，佛光亦可行。', '此去十万八千里，步步是劫。'], duration: 3000 },
+    ],
+
+    shaseng: [
+      { bgTop: '#1a1a2a', bgBottom: '#2a2a4d', glyph: '🛡', title: '第一幕 · 卷帘大将', lines: ['玉帝身边卷帘大将，掌銮驾仪仗。', '失手打碎琉璃盏，一朝跌落。'], duration: 2600 },
+      { bgTop: '#0e1a24', bgBottom: '#12303a', glyph: '💧', title: '第二幕 · 贬落流沙', lines: ['贬入流沙河，每七日飞剑穿胸百余下。', '苦楚无边，怨气成瘴。'], duration: 2600 },
+      { bgTop: '#141a1a', bgBottom: '#1f2e26', glyph: '💀', title: '第三幕 · 流沙吃人', lines: ['河中吃人无数，颈挂九个骷髅。', '皆是前世的取经人。'], duration: 2600 },
+      { bgTop: '#1a2418', bgBottom: '#2a3d22', glyph: '🪔', title: '第四幕 · 皈依佛门', lines: ['观音点化，法名悟净。', '在此赎尽前愆，等候师父。'], duration: 3000 },
+    ],
+
+    bailongma: [
+      { bgTop: '#0e1a2a', bgBottom: '#12304d', glyph: '🐉', title: '第一幕 · 西海龙子', lines: ['西海龙王三太子敖烈，纵火烧了殿上明珠。', '父王上表，告其忤逆。'], duration: 2600 },
+      { bgTop: '#2a1a1a', bgBottom: '#4d2020', glyph: '⚔', title: '第二幕 · 忤逆之罪', lines: ['玉帝判斩，悬于天柱。', '观音求情，免死贬下凡尘。'], duration: 2600 },
+      { bgTop: '#0e2028', bgBottom: '#123a40', glyph: '🌊', title: '第三幕 · 鹰愁涧', lines: ['盘踞鹰愁涧，吞了唐僧的白马。', '涧水森寒，龙气未散。'], duration: 2600 },
+      { bgTop: '#1a2028', bgBottom: '#2a3540', glyph: '🐎', title: '第四幕 · 化马驮经', lines: ['观音点化，化作白龙马。', '驮着师父，一路西行。'], duration: 3000 },
+    ],
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = XY;
@@ -994,31 +1028,79 @@
     const body = flash ? '#ffffff' : null;
 
     if (e.kind === 'wolf') {
-      rr(ctx, -18, -26, 34, 20, 8); shape(ctx, body || '#6b4a2b', 1.4);
-      // 头
+      // 妖狼：靠剪影认人——弓背、长吻、大尖耳、粗尾、四条粗腿
+      const fur = body || '#7a5432', dark = body || '#462d17';
+      const g = Math.sin(t / 95) * 2.6;
+      // 尾巴：向后扬起
       ctx.beginPath();
-      ctx.moveTo(10, -28); ctx.lineTo(24, -34); ctx.lineTo(22, -20); ctx.closePath();
-      shape(ctx, body || '#7d5632', 1.3);
-      // 腿
-      ctx.strokeStyle = body || '#4a3220'; ctx.lineWidth = 2.6;
-      for (let i = -1; i <= 1; i += 2) {
-        const ph = Math.sin(t / 110 + i) * 2.5;
-        line(ctx, i * 10, -8, i * 10 + ph, 0, 2.6, body || '#4a3220');
-      }
-      circle(ctx, 18, -30, 1.6); ctx.fillStyle = '#ff5e5e'; ctx.fill();
+      ctx.moveTo(-18, -23);
+      ctx.quadraticCurveTo(-31, -27, -28, -36);
+      ctx.strokeStyle = dark; ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.stroke();
+      // 远侧两腿（暗一档，垫在后面）
+      line(ctx, -11, -14, -8 + g, -1, 3.2, dark);
+      line(ctx, 9, -14, 12 - g, -1, 3.2, dark);
+      // 近侧两腿：后腿带弯，前腿直撑
+      line(ctx, -14, -15, -15 - g, -7, 4.2, fur);
+      line(ctx, -15 - g, -7, -12 - g * 0.5, -1, 3.8, fur);
+      line(ctx, 8, -15, 10 + g, -1, 4.2, fur);
+      // 身体：背线拱起，前胸高后腰低
+      ctx.beginPath();
+      ctx.moveTo(-20, -14);
+      ctx.quadraticCurveTo(-23, -29, -8, -30);
+      ctx.quadraticCurveTo(6, -31, 12, -24);
+      ctx.quadraticCurveTo(15, -16, 6, -13);
+      ctx.quadraticCurveTo(-8, -11, -20, -14);
+      ctx.closePath();
+      shape(ctx, fur, 1.5);
+      // 头：大，长吻前探
+      ctx.beginPath();
+      ctx.moveTo(5, -27);
+      ctx.quadraticCurveTo(16, -34, 25, -28);
+      ctx.quadraticCurveTo(29, -23.5, 24.5, -19.5);
+      ctx.lineTo(8, -19);
+      ctx.closePath();
+      shape(ctx, fur, 1.5);
+      // 大尖耳（最醒目的狼特征）
+      ctx.beginPath(); ctx.moveTo(8.5, -28); ctx.lineTo(6, -38); ctx.lineTo(15.5, -30.5); ctx.closePath(); shape(ctx, dark, 1);
+      ctx.beginPath(); ctx.moveTo(17, -31); ctx.lineTo(20, -39); ctx.lineTo(23.5, -30); ctx.closePath(); shape(ctx, dark, 1);
+      // 獠牙
+      ctx.beginPath(); ctx.moveTo(22.5, -22); ctx.lineTo(23.5, -17.5); ctx.lineTo(20.5, -21); ctx.closePath(); shape(ctx, '#f2e8d5', 0.6);
+      // 红瞳
+      circle(ctx, 19, -26.5, 2.2); ctx.fillStyle = '#ff4d4d'; ctx.fill();
+      circle(ctx, 19.7, -27.1, 0.85); ctx.fillStyle = '#fff2c0'; ctx.fill();
     } else if (e.kind === 'spider') {
-      ctx.fillStyle = body || '#5a2b6b';
+      // 毒蛛：大圆身 + 小头，八条腿从身下向外撑开、脚齐地面
+      const skin = body || '#5a2b6b', dark = body || '#3a1746', leg = body || '#6a2f80';
+      const bcx = -3, bcy = -15, br = 10.5;
+      // 腹部
+      circle(ctx, bcx, bcy, br); shape(ctx, skin, 1.5);
+      // 背脊亮线
       ctx.beginPath();
-      if (ctx.ellipse) ctx.ellipse(0, -16, 16, 13, 0, 0, Math.PI * 2);
-      else ctx.arc(0, -16, 13, 0, Math.PI * 2);
-      shape(ctx, body || '#5a2b6b', 1.4);
-      ctx.strokeStyle = body || '#3d1c49'; ctx.lineWidth = 2;
-      for (let i = 0; i < 4; i++) {
-        const leg = -12 + i * 8, ph = Math.sin(t / 90 + i) * 2;
-        line(ctx, leg, -14, leg - 4, -2 + ph, 2, body || '#3d1c49');
-        line(ctx, leg, -14, leg + 6, -2 - ph, 2, body || '#3d1c49');
+      ctx.moveTo(bcx - 6.5, bcy - 7.5);
+      ctx.quadraticCurveTo(bcx, bcy - 11.5, bcx + 6.5, bcy - 6.5);
+      ctx.strokeStyle = body || '#8e44ad'; ctx.lineWidth = 1.6; ctx.lineCap = 'round'; ctx.stroke();
+      // 八条腿：越靠外的腿撑得越开，带轻微爬行相位
+      for (let i = 0; i < 8; i++) {
+        const left = i < 4, k = i % 4;
+        const sgn = left ? -1 : 1;
+        const fx = bcx + sgn * (9.5 + k * 4.3);
+        const ph = Math.sin(t / 90 + i * 0.7) * 1.1;
+        const rx0 = bcx + sgn * (1.4 + k * 2.1);
+        const ry0 = -12.5 + k * 1.1;
+        ctx.beginPath();
+        ctx.moveTo(rx0, ry0);
+        ctx.quadraticCurveTo((rx0 + fx) * 0.5, -15 + ph, fx, -0.8 + ph * 0.4);
+        ctx.strokeStyle = leg; ctx.lineWidth = 2.2;
+        ctx.lineCap = 'round'; ctx.stroke();
       }
-      for (const ex of [-6, -2, 2, 6]) { circle(ctx, ex, -20, 1.5); ctx.fillStyle = '#ff6b6b'; ctx.fill(); }
+      // 头胸部
+      circle(ctx, 10, -16.5, 6.2); shape(ctx, skin, 1.4);
+      // 螯肢
+      ctx.beginPath(); ctx.moveTo(13.5, -13); ctx.lineTo(18, -8.5); ctx.lineTo(12, -11); ctx.closePath(); shape(ctx, dark, 0.8);
+      // 眼：两颗大的在前
+      circle(ctx, 12.4, -19.6, 1.9); ctx.fillStyle = '#ff6b6b'; ctx.fill();
+      circle(ctx, 15, -16.8, 1.5); ctx.fillStyle = '#ff6b6b'; ctx.fill();
+      circle(ctx, 8.6, -20.4, 1.1); ctx.fillStyle = '#ff9b9b'; ctx.fill();
     } else if (e.kind === 'boss') {
       // 牛魔王
       ctx.fillStyle = body || '#8e2b2b';
@@ -3630,7 +3712,8 @@
   };
 
   // ===== 过场 CG =====
-  UI.drawCutscene = function (ctx, beat, alpha, t) {
+  UI.drawCutscene = function (ctx, beat, alpha, t, charId, index, total) {
+    if (!beat) beat = { bgTop: '#101018', bgBottom: '#1a1a28', glyph: '✦', title: '', lines: [] };
     const g = ctx.createLinearGradient(0, 0, 0, H);
     g.addColorStop(0, beat.bgTop); g.addColorStop(1, beat.bgBottom);
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
@@ -3643,10 +3726,48 @@
       ctx.lineTo(W / 2 + Math.cos(a) * 700, 240 + Math.sin(a) * 700); ctx.stroke();
     }
     ctx.globalAlpha = 1;
-    center(ctx, beat.glyph, 206, '86px serif', 'rgba(255,255,255,0.95)');
-    center(ctx, beat.title, 282, 'bold 30px serif', '#ffd479');
-    for (let i = 0; i < beat.lines.length; i++) center(ctx, beat.lines[i], 330 + i * 30, '17px "PingFang SC", sans-serif', '#eae4d8');
-    center(ctx, '按 Enter / 空格 跳过', 500, '13px "PingFang SC", sans-serif', '#8a93a6');
+
+    // 角色立绘：半透明剪影，缓缓呼吸起伏——每一幕都得有"人在场"的分量
+    if (charId && XY.Art && XY.Art.drawCharacter) {
+      const bob = Math.sin(t / 1400) * 2.6;
+      ctx.save();
+      // 脚下光晕：三层同心圆堆叠代替径向渐变，测试桩里也安全
+      ctx.save();
+      for (let i = 0; i < 3; i++) {
+        ctx.globalAlpha = 0.09 - i * 0.028;
+        ctx.fillStyle = '#ffde99';
+        ctx.beginPath();
+        ctx.arc(W / 2, 368, 190 - i * 56, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+      ctx.globalAlpha = 0.36;
+      XY.Art.drawCharacter(ctx, W / 2, 398 + bob, 3.15, charId, { state: 'idle', t, facing: 1 });
+      ctx.restore();
+    }
+
+    // 文字区压暗：半透明立绘之上也要看得清
+    const shade = ctx.createLinearGradient(0, 318, 0, H);
+    shade.addColorStop(0, 'rgba(0,0,0,0)');
+    shade.addColorStop(0.3, 'rgba(0,0,0,0.64)');
+    shade.addColorStop(1, 'rgba(0,0,0,0.84)');
+    ctx.fillStyle = shade; ctx.fillRect(0, 318, W, H - 318);
+
+    center(ctx, beat.glyph, 152, '26px serif', 'rgba(255,255,255,0.85)');
+    center(ctx, beat.title, 406, 'bold 29px serif', '#ffd479');
+    for (let i = 0; i < beat.lines.length; i++) center(ctx, beat.lines[i], 446 + i * 29, '17px "PingFang SC", sans-serif', '#eae4d8');
+
+    // 幕次进度
+    if (total > 1) {
+      const gap = 17, sx = W - 46 - (total - 1) * gap;
+      for (let i = 0; i < total; i++) {
+        ctx.beginPath();
+        ctx.arc(sx + i * gap, 34, i === index ? 4.2 : 2.6, 0, Math.PI * 2);
+        ctx.fillStyle = i === index ? '#ffd479' : 'rgba(255,255,255,0.38)';
+        ctx.fill();
+      }
+    }
+    center(ctx, '按 Enter / 空格 跳过', 512, '13px "PingFang SC", sans-serif', '#8a93a6');
   };
 
   // ===== 关卡前情 =====
@@ -4063,15 +4184,18 @@
           if (I.pressed('KeyD') || I.pressed('ArrowRight')) this.charIndex = (this.charIndex + 1) % XY.CHARACTER_ORDER.length;
           if (this.confirmPressed(I)) {
             this.initRun();
+            // 按当前角色取自己的前史 CG
+            this.cutBeats = (XY.STORY.charCg && XY.STORY.charCg[this.charId]) || XY.STORY.prologue;
             this.state = (this.levelIndex === 0) ? 'cutscene' : 'levelIntro';
             this.cutIndex = 0; this.cutTimer = 0;
           }
           break;
         case 'cutscene': {
-          const beats = XY.STORY.prologue;
+          const beats = this.cutBeats || XY.STORY.prologue;
           if (this.confirmPressed(I)) { this.state = 'levelIntro'; break; }
           this.cutTimer += dt * 1000;
-          if (this.cutTimer > beats[this.cutIndex].duration) {
+          const cur = beats[this.cutIndex];
+          if (!cur || this.cutTimer > cur.duration) {
             this.cutIndex++; this.cutTimer = 0;
             if (this.cutIndex >= beats.length) this.state = 'levelIntro';
           }
@@ -4328,7 +4452,7 @@
           const ground = XY.groundYAt(this.level.platforms, sx + dir * 118, pl.y + pl.h);
           this.specials.push({
             x: sx, y: sy, vx: dir * 300, vy: -440, spin: 0, state: 'fly',
-            ground: ground, radius: a.radius || 172, mult2: mult,
+            ground: ground, radius: a.radius || 132, mult2: mult,
             dir: dir, landAt: 0, fade: 1, dead: false,
           });
           this.fx.spark(sx, sy, 10, '#ffd479', { speed: 220, angle: dir > 0 ? 0 : Math.PI, spread: 1.2 });
@@ -4696,7 +4820,12 @@
       switch (this.state) {
         case 'title': XY.UI.drawTitle(ctx, this.uiTime); break;
         case 'charselect': XY.UI.drawCharSelect(ctx, this); break;
-        case 'cutscene': XY.UI.drawCutscene(ctx, XY.STORY.prologue[this.cutIndex], 1, this.uiTime); break;
+        case 'cutscene': {
+          const beats = this.cutBeats || (XY.STORY.charCg && XY.STORY.charCg[this.charId]) || XY.STORY.prologue;
+          const beat = beats[this.cutIndex] || beats[0];
+          XY.UI.drawCutscene(ctx, beat, 1, this.uiTime, this.charId, this.cutIndex, beats.length);
+          break;
+        }
         case 'levelIntro': XY.UI.drawLevelIntro(ctx, this); break;
         case 'playing': this.renderPlaying(); break;
         case 'pause': this.renderPlaying(); XY.UI.drawPause(ctx); break;
