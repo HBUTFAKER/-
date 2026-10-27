@@ -44,6 +44,29 @@
   XY.CHARACTER_ORDER = ['wukong', 'bajie', 'tangseng', 'shaseng', 'bailongma'];
   XY.getCharacter = (id) => XY.CHARACTERS[id];
 
+  // ===== 成长曲线：每升一级自动提升（商店买到的属性另算）=====
+  XY.GROWTH = { maxHp: 22, attack: 4, defense: 2, critRate: 0.004, moveSpeed: 1.2 };
+
+  // ===== 货币（三种，各管一摊）=====
+  XY.CURRENCIES = {
+    gold: { id: 'gold', name: '金币', color: '#f4c430', use: '属性商店' },
+    jade: { id: 'jade', name: '仙玉', color: '#7CFC9B', use: '技能参悟' },
+    soul: { id: 'soul', name: '妖魂', color: '#c39bff', use: '锻造神兵' },
+  };
+
+  // ===== 属性商店：金币买属性，越买越贵 =====
+  XY.SHOP = [
+    { key: 'attack', name: '攻击', step: 3, base: 120, rate: 1.32, max: 30, unit: '' },
+    { key: 'maxHp', name: '气血', step: 20, base: 100, rate: 1.27, max: 30, unit: '' },
+    { key: 'defense', name: '防御', step: 2, base: 110, rate: 1.30, max: 25, unit: '' },
+    { key: 'critRate', name: '暴击', step: 0.02, base: 160, rate: 1.38, max: 12, unit: '%' },
+    { key: 'moveSpeed', name: '身法', step: 4, base: 130, rate: 1.30, max: 15, unit: '' },
+  ];
+
+  // ===== 技能参悟：仙玉升级，每级 +10% 伤害 / -5.5% 冷却 =====
+  XY.SKILL_MAX_LV = 5;
+  XY.SKILL_JADE_COST = [60, 140, 300, 620]; // 升到 2/3/4/5 级所需仙玉
+
   // ===== 技能（每位 ≥3）=====
   XY.SKILLS = {
     wk_smash: { id: 'wk_smash', name: '如意棒击', characterId: 'wukong', kind: 'melee', anim: 'giantChop', multiplier: 1.55, cooldown: 1300, cost: 16, range: 168, description: '金箍棒骤然暴涨十丈，自天而降一记重劈。' },
@@ -86,7 +109,7 @@
   };
   XY.getTreasure = (id) => XY.TREASURES[id];
 
-  // ===== 材料 + 可合成法宝（被动装备）=====
+  // ===== 材料 + 可锻造的武器/护甲/饰物（三档）=====
   XY.ITEMS = {
     mat_wood: { id: 'mat_wood', name: '桃木枝', kind: 'material', description: '花果山常见的桃木，可作法器之材。' },
     mat_stone: { id: 'mat_stone', name: '玄铁石', kind: 'material', description: '坚硬的黑色矿石，重而锋利。' },
@@ -94,14 +117,39 @@
     mat_fire: { id: 'mat_fire', name: '三昧火种', kind: 'material', description: '残存的火灵之力。' },
     mat_soul: { id: 'mat_soul', name: '妖魂碎片', kind: 'material', description: '被击败妖怪残留的妖魂。' },
 
-    eq_staff: { id: 'eq_staff', name: '如意金箍棒', kind: 'treasure', slot: 'weapon', rarity: 'epic', description: '重一万三千斤，攻击与暴击大涨。', bonus: { attack: 18, critRate: 0.1 } },
-    eq_robe: { id: 'eq_robe', name: '锁子黄金甲', kind: 'treasure', slot: 'armor', rarity: 'rare', description: '护体金甲，防御与血量提升。', bonus: { defense: 12, maxHp: 60 } },
-    eq_boots: { id: 'eq_boots', name: '筋斗云履', kind: 'treasure', slot: 'trinket', rarity: 'rare', description: '踏云而行，身法更快、更易暴击。', bonus: { moveSpeed: 40, critRate: 0.05 } },
+    // —— 兵器 ——
+    eq_stick: { id: 'eq_stick', name: '桃木棍', kind: 'treasure', slot: 'weapon', tier: 1, rarity: 'common', description: '削桃木为棍，聊胜于无。', bonus: { attack: 7 } },
+    eq_iron: { id: 'eq_iron', name: '玄铁棍', kind: 'treasure', slot: 'weapon', tier: 2, rarity: 'rare', description: '玄铁铸就，重逾百斤。', bonus: { attack: 15, critRate: 0.03 } },
+    eq_staff: { id: 'eq_staff', name: '如意金箍棒', kind: 'treasure', slot: 'weapon', tier: 3, rarity: 'epic', description: '重一万三千斤，攻击与暴击大涨。', bonus: { attack: 26, critRate: 0.1 } },
+
+    // —— 护甲 ——
+    eq_cloth: { id: 'eq_cloth', name: '粗布衣', kind: 'treasure', slot: 'armor', tier: 1, rarity: 'common', description: '缝补过的粗布，挡得住爪牙。', bonus: { defense: 4, maxHp: 20 } },
+    eq_chain: { id: 'eq_chain', name: '锁子甲', kind: 'treasure', slot: 'armor', tier: 2, rarity: 'rare', description: '环环相扣，刀枪难入。', bonus: { defense: 11, maxHp: 48 } },
+    eq_robe: { id: 'eq_robe', name: '锁子黄金甲', kind: 'treasure', slot: 'armor', tier: 3, rarity: 'epic', description: '护体金甲，防御与血量提升。', bonus: { defense: 18, maxHp: 90 } },
+
+    // —— 饰物 ——
+    eq_sandals: { id: 'eq_sandals', name: '麻编草鞋', kind: 'treasure', slot: 'trinket', tier: 1, rarity: 'common', description: '走山路不磨脚。', bonus: { moveSpeed: 13 } },
+    eq_cloudboots: { id: 'eq_cloudboots', name: '云纹靴', kind: 'treasure', slot: 'trinket', tier: 2, rarity: 'rare', description: '靴底绣云纹，脚步轻快。', bonus: { moveSpeed: 28, critRate: 0.02 } },
+    eq_boots: { id: 'eq_boots', name: '筋斗云履', kind: 'treasure', slot: 'trinket', tier: 3, rarity: 'epic', description: '踏云而行，身法更快、更易暴击。', bonus: { moveSpeed: 48, critRate: 0.05 } },
+  };
+  XY.RARITY = {
+    common: { name: '凡品', color: '#9fb0c8' },
+    rare: { name: '灵品', color: '#5cc8ff' },
+    epic: { name: '神品', color: '#ffb35c' },
   };
   XY.RECIPES = [
-    { id: 'r_staff', name: '锻造·如意金箍棒', inputs: { mat_wood: 3, mat_stone: 2, mat_soul: 1 }, output: { itemId: 'eq_staff', count: 1 }, description: '集齐桃木、玄铁与妖魂，锻造传说武器。' },
-    { id: 'r_robe', name: '缝制·锁子黄金甲', inputs: { mat_stone: 2, mat_herb: 3 }, output: { itemId: 'eq_robe', count: 1 }, description: '以玄铁与灵芝织就护体金甲。' },
-    { id: 'r_boots', name: '凝云·筋斗云履', inputs: { mat_herb: 2, mat_fire: 2 }, output: { itemId: 'eq_boots', count: 1 }, description: '引三昧真火，凝云为靴。' },
+    // 一档：桃木 + 灵芝，新手就能打
+    { id: 'r_stick', name: '削制·桃木棍', tier: 1, inputs: { mat_wood: 4 }, gold: 0, output: { itemId: 'eq_stick', count: 1 }, description: '四根桃木削成一根棍，先有个称手的。' },
+    { id: 'r_cloth', name: '缝制·粗布衣', tier: 1, inputs: { mat_wood: 2, mat_herb: 3 }, gold: 0, output: { itemId: 'eq_cloth', count: 1 }, description: '桃木纤维混灵芝汁，缝出结实的布甲。' },
+    { id: 'r_sandals', name: '编结·麻编草鞋', tier: 1, inputs: { mat_wood: 3, mat_herb: 1 }, gold: 0, output: { itemId: 'eq_sandals', count: 1 }, description: '草绳编底，走山路不磨脚。' },
+    // 二档：玄铁 + 火种
+    { id: 'r_iron', name: '锻打·玄铁棍', tier: 2, inputs: { mat_stone: 4, mat_wood: 3 }, gold: 200, output: { itemId: 'eq_iron', count: 1 }, description: '玄铁反复锻打，棍身沉而不折。' },
+    { id: 'r_chain', name: '锻造·锁子甲', tier: 2, inputs: { mat_stone: 4, mat_herb: 2 }, gold: 180, output: { itemId: 'eq_chain', count: 1 }, description: '千枚铁环相扣，刀枪难入。' },
+    { id: 'r_cloudboots', name: '凝云·云纹靴', tier: 2, inputs: { mat_herb: 4, mat_fire: 2 }, gold: 180, output: { itemId: 'eq_cloudboots', count: 1 }, description: '引三昧真火凝云为靴。' },
+    // 三档：妖魂 + 火种，须打首领
+    { id: 'r_staff', name: '铸炼·如意金箍棒', tier: 3, inputs: { mat_stone: 5, mat_soul: 4, mat_fire: 3 }, gold: 800, output: { itemId: 'eq_staff', count: 1 }, description: '集玄铁、妖魂与真火，铸出传说兵器。' },
+    { id: 'r_robe', name: '织造·锁子黄金甲', tier: 3, inputs: { mat_stone: 4, mat_herb: 5, mat_soul: 3 }, gold: 700, output: { itemId: 'eq_robe', count: 1 }, description: '金丝织甲，魂魄为线。' },
+    { id: 'r_boots', name: '踏云·筋斗云履', tier: 3, inputs: { mat_fire: 4, mat_soul: 3, mat_herb: 3 }, gold: 600, output: { itemId: 'eq_boots', count: 1 }, description: '一团祥云锁进靴底，起落如风。' },
   ];
   XY.getItem = (id) => XY.ITEMS[id];
 

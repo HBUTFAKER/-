@@ -16,6 +16,7 @@
       this.uiTime = 0; this.now = 0; this.lastT = 0;
       this.toasts = []; this.floaters = []; this.expPops = [];
       this.charIndex = 0; this.craftIndex = 0;
+      this.shopIndex = 0; this.skillIndex = 0;
       this.levelIndex = 0;
       this.projectiles = [];
       this.specials = [];       // 掷出的兵器等"有自己生命周期的招式"
@@ -53,6 +54,25 @@
       const fresh = {
         inventory: {}, equipped: {}, treasures: [], treasureSlots: [null, null, null],
         charId: 'wukong', levelReached: 0,
+        gold: 0, jade: 0, level: 1, exp: 0, attr: {}, skillLv: {},
+      };
+      const cleanAttr = (raw) => {
+        const out = {};
+        if (!raw || typeof raw !== 'object') return out;
+        for (const row of XY.SHOP) {
+          const n = Math.floor(Number(raw[row.key]));
+          if (Number.isFinite(n) && n > 0) out[row.key] = Math.min(n, row.max);
+        }
+        return out;
+      };
+      const cleanSkillLv = (raw) => {
+        const out = {};
+        if (!raw || typeof raw !== 'object') return out;
+        for (const id of Object.keys(XY.SKILLS)) {
+          const n = Math.floor(Number(raw[id]));
+          if (Number.isFinite(n) && n > 0) out[id] = Math.min(n, XY.SKILL_MAX_LV);
+        }
+        return out;
       };
       try {
         const raw = localStorage.getItem(SAVE_KEY);
@@ -74,6 +94,12 @@
           treasureSlots: slots,
           charId: XY.CHARACTERS[d.charId] ? d.charId : 'wukong',
           levelReached: Number.isInteger(d.levelReached) ? d.levelReached : 0,
+          gold: Math.max(0, Math.floor(Number(d.gold) || 0)),
+          jade: Math.max(0, Math.floor(Number(d.jade) || 0)),
+          level: Math.max(1, Math.floor(Number(d.level) || 1)),
+          exp: Math.max(0, Number(d.exp) || 0),
+          attr: cleanAttr(d.attr),
+          skillLv: cleanSkillLv(d.skillLv),
         };
       } catch (e) { return fresh; }
     }
@@ -84,6 +110,10 @@
       this.persist.treasureSlots = this.treasureSlots;
       this.persist.charId = this.charId;
       this.persist.levelReached = this.levelIndex;
+      if (this.player) {
+        this.persist.level = this.player.level;
+        this.persist.exp = this.player.exp;
+      }
       try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.persist)); } catch (e) { /* 忽略 */ }
     }
 
@@ -94,14 +124,11 @@
     rebuildPlayer() {
       const old = this.player;
       const ratio = old ? old.hp / old.maxHp : 1;
-      const lvl = old ? old.level : 1;
-      const exp = old ? old.exp : 0;
+      if (old) { this.persist.level = old.level; this.persist.exp = old.exp; }
       const charDef = XY.CHARACTERS[this.charId];
       const slots = ['weapon', 'armor', 'trinket'];
       const equippedItems = slots.map((s) => (this.equipped[s] ? XY.ITEMS[this.equipped[s]] : null)).filter(Boolean);
-      const p = XY.makePlayer(charDef, equippedItems, this.treasureSlots);
-      p.level = lvl; p.exp = exp;
-      for (let i = 2; i <= lvl; i++) { p.stats.maxHp += 20; p.stats.attack += 4; p.stats.defense += 2; }
+      const p = XY.makePlayer(charDef, equippedItems, this.treasureSlots, this.persist);
       p.maxHp = p.stats.maxHp;
       p.hp = Math.max(1, Math.round(p.maxHp * ratio));
       // 关键：换装不能把人传送回出生点
@@ -112,6 +139,47 @@
         p.skillCd = old.skillCd; p.treasureCd = old.treasureCd;
       }
       this.player = p;
+    }
+
+    // —— 货币 ——
+    get gold() { return this.persist.gold || 0; }
+    set gold(v) { this.persist.gold = Math.max(0, Math.floor(Number(v) || 0)); }
+    get jade() { return this.persist.jade || 0; }
+    set jade(v) { this.persist.jade = Math.max(0, Math.floor(Number(v) || 0)); }
+    addGold(n) { const before = this.gold; this.gold = before + n; return this.gold - before; }
+    addJade(n) { const before = this.jade; this.jade = before + n; return this.jade - before; }
+
+    // 商店购买：钱够就扣、记一次购买、立刻重算属性
+    buyAttr(row) {
+      const owned = (this.persist.attr[row.key] || 0);
+      if (owned >= row.max) { this.toast('『' + row.name + '』已买到上限'); return false; }
+      const price = XY.shopPrice(row, owned);
+      if (this.gold < price) { this.toast('金币不足 · 需 ' + price); return false; }
+      this.gold -= price;
+      this.persist.attr[row.key] = owned + 1;
+      if (this.player) this.player.recalcStats({ fullHeal: false });
+      this.toast('『' + row.name + '』+' + this.attrStepText(row) + '（第 ' + (owned + 1) + ' 次）');
+      this.save();
+      return true;
+    }
+    attrStepText(row) {
+      return row.unit === '%' ? Math.round(row.step * 100) + '%' : String(row.step);
+    }
+
+    // 技能参悟：用仙玉升级，不花金币
+    upgradeSkill(skillId) {
+      const sk = XY.getSkill(skillId);
+      if (!sk) return false;
+      const lv = (this.persist.skillLv[skillId] || 1);
+      const cost = XY.skillUpCost(lv);
+      if (cost == null) { this.toast('『' + sk.name + '』已至化境'); return false; }
+      if (this.jade < cost) { this.toast('仙玉不足 · 需 ' + cost); return false; }
+      this.jade -= cost;
+      this.persist.skillLv[skillId] = lv + 1;
+      if (this.player) this.player.skillLv = this.persist.skillLv;
+      this.toast('『' + sk.name + '』参悟至 ' + (lv + 1) + ' 重');
+      this.save();
+      return true;
     }
 
     initRun() {
@@ -224,6 +292,8 @@
         case 'playing': this.updatePlaying(dt); break;
         case 'bag': this.updateBag(); break;
         case 'craft': this.updateCraft(); break;
+        case 'shop': this.updateShop(); break;
+        case 'skillup': this.updateSkillUp(); break;
         case 'pause':
           if (I.pressed('KeyP') || I.pressed('Escape')) this.state = 'playing';
           if (I.pressed('KeyR')) this.state = 'title';
@@ -292,6 +362,8 @@
       if (I.pressed('KeyP') || I.pressed('Escape')) { this.state = 'pause'; return; }
       if (I.pressed('KeyB')) { this.bagTab = 0; this.bagIndex = 0; this.state = 'bag'; return; }
       if (I.pressed('KeyL') || I.pressed('KeyC')) { this.craftIndex = 0; this.state = 'craft'; return; }
+      if (I.pressed('KeyG')) { this.shopIndex = 0; this.state = 'shop'; return; }
+      if (I.pressed('KeyH')) { this.skillIndex = 0; this.state = 'skillup'; return; }
 
       pl.update(dt, I, lv, now);
       this.drainPlayerFx(pl);
@@ -414,6 +486,9 @@
       const bossAlive = lv.enemies.some((e) => e.isBoss && e.alive);
       const cleared = lv.hasBoss ? !bossAlive : (pl.x + pl.w >= lv.goal.x);
       if (cleared) {
+        const jadeReward = 8 + this.levelIndex * 6;
+        this.addJade(jadeReward);
+        this.toast('过关 · 获得仙玉 ' + jadeReward);
         if (this.levelIndex + 1 < XY.LEVELS.length) { this.levelIndex++; this.save(); this.state = 'levelIntro'; }
         else { this.levelIndex = 0; this.persist.levelReached = 0; this.save(); this.state = 'win'; }
       }
@@ -561,8 +636,17 @@
       const names = Object.keys(drops).map((id) => XY.ITEMS[id].name + '×' + drops[id]).join(' ');
       if (names) this.toast('获得 ' + names);
 
+      // —— 货币：小怪给金币，首领另给仙玉 ——
+      const lvNum = Math.max(1, e.level || 1);
+      const goldGain = e.isBoss ? 260 : Math.round(5 + lvNum * 4);
+      this.addGold(goldGain);
+      const jadeGain = e.isBoss ? 45 : 0;
+      if (jadeGain) this.addJade(jadeGain);
+      this.floater(e.x + e.w / 2, e.y - 34, '+' + goldGain + ' 金', '#f4c430');
+      if (jadeGain) this.floater(e.x + e.w / 2, e.y - 52, '+' + jadeGain + ' 仙玉', '#7CFC9B');
+
       // —— 经验值：世界飘字 + HUD 弹出 + 击杀特效 ——
-      const exp = XY.killExp(e.level || 1);
+      const exp = XY.killExp(lvNum);
       this.player.gainExp(exp, this);
       this.floater(e.x + e.w / 2, e.y - 18, '+' + exp + ' EXP', '#9be7ff');
       this.expPops.push({ text: '+' + exp + ' EXP', life: 1.1, color: '#9be7ff' });
@@ -645,24 +729,61 @@
       }
     }
 
-    // —— 合成 ——
+    // —— 锻造 ——
     updateCraft() {
       const I = XY.Input;
       if (I.pressed('Escape') || I.pressed('KeyL') || I.pressed('KeyC')) { this.state = 'playing'; return; }
       if (I.pressed('KeyB')) { this.bagTab = 0; this.bagIndex = 0; this.state = 'bag'; return; }
-      if (I.pressed('ArrowUp') || I.pressed('KeyW')) this.craftIndex = (this.craftIndex + XY.RECIPES.length - 1) % XY.RECIPES.length;
-      if (I.pressed('ArrowDown') || I.pressed('KeyS')) this.craftIndex = (this.craftIndex + 1) % XY.RECIPES.length;
+      if (I.pressed('KeyG')) { this.shopIndex = 0; this.state = 'shop'; return; }
+      if (I.pressed('KeyH')) { this.skillIndex = 0; this.state = 'skillup'; return; }
+      const n = XY.RECIPES.length;
+      // 3×3 网格：W/S 上下换档，A/D 左右换部位
+      if (I.pressed('ArrowUp') || I.pressed('KeyW')) this.craftIndex = (this.craftIndex + n - 3) % n;
+      if (I.pressed('ArrowDown') || I.pressed('KeyS')) this.craftIndex = (this.craftIndex + 3) % n;
+      if (I.pressed('ArrowLeft') || I.pressed('KeyA')) this.craftIndex = (this.craftIndex + n - 1) % n;
+      if (I.pressed('ArrowRight') || I.pressed('KeyD')) this.craftIndex = (this.craftIndex + 1) % n;
       if (I.pressed('Enter') || I.pressed('Space')) {
         const r = XY.RECIPES[this.craftIndex];
-        if (XY.canCraft(this.inventory, r)) {
-          this.inventory = XY.craft(this.inventory, r);
-          const out = XY.ITEMS[r.output.itemId];
-          if (out.slot) this.equipped[out.slot] = out.id;
-          this.rebuildPlayer();
-          this.toast('合成成功：' + out.name + '（已自动装备）');
-          this.fx.levelUp(this.player.x + this.player.w / 2, this.player.y + this.player.h);
-          this.save();
-        } else this.toast('材料不足');
+        if (!XY.canCraft(this.inventory, r)) { this.toast('材料不足'); return; }
+        if (this.gold < (r.gold || 0)) { this.toast('金币不足 · 需 ' + r.gold); return; }
+        this.gold -= (r.gold || 0);
+        this.inventory = XY.craft(this.inventory, r);
+        const out = XY.ITEMS[r.output.itemId];
+        if (out.slot) this.equipped[out.slot] = out.id;
+        this.rebuildPlayer();
+        this.toast('锻造成功：' + out.name + '（已自动装备）');
+        this.fx.levelUp(this.player.x + this.player.w / 2, this.player.y + this.player.h);
+        this.save();
+      }
+    }
+
+    // —— 属性商店（金币）——
+    updateShop() {
+      const I = XY.Input;
+      if (I.pressed('Escape') || I.pressed('KeyG')) { this.state = 'playing'; return; }
+      if (I.pressed('KeyB')) { this.bagTab = 0; this.bagIndex = 0; this.state = 'bag'; return; }
+      if (I.pressed('KeyH')) { this.skillIndex = 0; this.state = 'skillup'; return; }
+      if (I.pressed('KeyL') || I.pressed('KeyC')) { this.craftIndex = 0; this.state = 'craft'; return; }
+      const n = XY.SHOP.length;
+      if (I.pressed('ArrowUp') || I.pressed('KeyW')) this.shopIndex = (this.shopIndex + n - 1) % n;
+      if (I.pressed('ArrowDown') || I.pressed('KeyS')) this.shopIndex = (this.shopIndex + 1) % n;
+      if (I.pressed('Enter') || I.pressed('Space')) this.buyAttr(XY.SHOP[this.shopIndex]);
+    }
+
+    // —— 技能参悟（仙玉）——
+    updateSkillUp() {
+      const I = XY.Input;
+      if (I.pressed('Escape') || I.pressed('KeyH')) { this.state = 'playing'; return; }
+      if (I.pressed('KeyB')) { this.bagTab = 0; this.bagIndex = 0; this.state = 'bag'; return; }
+      if (I.pressed('KeyG')) { this.shopIndex = 0; this.state = 'shop'; return; }
+      if (I.pressed('KeyL') || I.pressed('KeyC')) { this.craftIndex = 0; this.state = 'craft'; return; }
+      const ids = this.player ? this.player.char.skills : [];
+      const n = Math.max(1, ids.length);
+      if (I.pressed('ArrowUp') || I.pressed('KeyW')) this.skillIndex = (this.skillIndex + n - 1) % n;
+      if (I.pressed('ArrowDown') || I.pressed('KeyS')) this.skillIndex = (this.skillIndex + 1) % n;
+      if (I.pressed('Enter') || I.pressed('Space')) {
+        const sid = ids[clamp(this.skillIndex, 0, ids.length - 1)];
+        if (sid) this.upgradeSkill(sid);
       }
     }
 
@@ -782,11 +903,23 @@
       this.treasureSlots = ['tr_wuxing', 'tr_kunxian', 'tr_bajiao'];
       this.player.treasures = this.treasureSlots;
       this.equipped.weapon = 'eq_staff';
+      // 预览用：给一笔钱和一个中段等级，方便看商店/技能/锻造界面
+      this.persist.gold = 2400;
+      this.persist.jade = 380;
+      this.persist.level = 6;
+      this.persist.exp = 40;
+      this.persist.attr = { attack: 3, maxHp: 1 };
+      this.persist.skillLv = { wk_smash: 3, wk_dash: 2 };
       this.rebuildPlayer();
+      // rebuildPlayer 以旧玩家等级为准，这里显式覆盖成预览等级
+      this.player.level = 6;
+      this.player.exp = 40;
+      this.player.recalcStats({ fullHeal: true });
       this.player.x = 300;
       const map = {
         title: 'title', charselect: 'charselect', cutscene: 'cutscene', intro: 'levelIntro',
         play: 'playing', bag: 'bag', craft: 'craft', pause: 'pause', gameover: 'gameover', win: 'win',
+        shop: 'shop', skillup: 'skillup',
       };
       this.state = map[scene] || 'playing';
       if (this.state === 'charselect') this.player = this.player || null;
@@ -848,6 +981,8 @@
         case 'pause': this.renderPlaying(); XY.UI.drawPause(ctx); break;
         case 'bag': XY.UI.drawBag(ctx, this); break;
         case 'craft': XY.UI.drawCraft(ctx, this); break;
+        case 'shop': XY.UI.drawShop(ctx, this); break;
+        case 'skillup': XY.UI.drawSkillUp(ctx, this); break;
         case 'gameover': XY.UI.drawGameOver(ctx, this); break;
         case 'win': XY.UI.drawWin(ctx, this); break;
       }

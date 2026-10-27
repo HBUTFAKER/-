@@ -59,29 +59,42 @@ test.describe('drops · 掉落', () => {
   });
 });
 
-test.describe('crafting · 法宝合成', () => {
-  const recipe = XY.RECIPES[0];
-  test.it('材料足够可合成，消耗正确', () => {
-    const inv = { mat_wood: 5, mat_stone: 5, mat_soul: 5 };
+test.describe('crafting · 锻造', () => {
+  // 取一个需要两种以上材料的配方，避免依赖配表顺序
+  const recipe = XY.RECIPES.find((r) => Object.keys(r.inputs).length >= 2);
+  test.it('材料足够可锻造，消耗正确', () => {
+    const inv = {};
+    for (const k of Object.keys(recipe.inputs)) inv[k] = recipe.inputs[k] + 3;
+    const before = Object.assign({}, inv);
     assert.strictEqual(XY.canCraft(inv, recipe), true);
     const out = XY.craft(inv, recipe);
     assert.strictEqual(out[recipe.output.itemId], recipe.output.count);
-    assert.strictEqual(out.mat_wood, 5 - recipe.inputs.mat_wood);
-    assert.strictEqual(out.mat_soul, 5 - recipe.inputs.mat_soul);
+    for (const k of Object.keys(recipe.inputs)) {
+      assert.strictEqual(out[k], before[k] - recipe.inputs[k], k + ' 扣除不对');
+    }
   });
   test.it('材料不足返回 null，不改动入参', () => {
-    const inv = { mat_wood: 0, mat_stone: 0, mat_soul: 0 };
+    const inv = {};
+    for (const k of Object.keys(recipe.inputs)) inv[k] = 0;
     const before = Object.assign({}, inv);
     assert.strictEqual(XY.canCraft(inv, recipe), false);
     assert.strictEqual(XY.craft(inv, recipe), null);
     assert.deepStrictEqual(inv, before);
   });
+  test.it('金币不足时 canForge 为 false', () => {
+    const inv = {};
+    for (const k of Object.keys(recipe.inputs)) inv[k] = recipe.inputs[k] + 1;
+    const need = recipe.gold || 0;
+    assert.strictEqual(XY.canForge(inv, recipe, need), true);
+    if (need > 0) assert.strictEqual(XY.canForge(inv, recipe, need - 1), false);
+  });
   test.it('totalStats 叠加 bonus', () => {
     const base = { maxHp: 200, attack: 20, defense: 5, moveSpeed: 180, critRate: 0.1 };
     const t = XY.totalStats(base, [XY.ITEMS.eq_staff, XY.ITEMS.eq_robe]);
-    assert.strictEqual(t.attack, 38);
-    assert.strictEqual(t.maxHp, 260);
-    assert.ok(Math.abs(t.critRate - 0.2) < 1e-9);
+    assert.strictEqual(t.attack, base.attack + XY.ITEMS.eq_staff.bonus.attack);
+    assert.strictEqual(t.maxHp, base.maxHp + XY.ITEMS.eq_robe.bonus.maxHp);
+    assert.ok(Math.abs(t.critRate - (0.1 + XY.ITEMS.eq_staff.bonus.critRate)) < 1e-9);
+    assert.strictEqual(base.attack, 20, '不能改动入参');
   });
 });
 

@@ -70,7 +70,7 @@
     <div id="app">
       <canvas id="game" width="960" height="540" tabindex="0"></canvas>
       <div class="hint">
-        <b>A D</b> 移动（双击奔跑） · <b>W</b> 跳（空中可二段跳） · <b>S</b> 快落 · <b>J</b> 普攻 · <b>K U I</b> 技能 · <b>1 2 3</b> 法宝 · <b>B</b> 背包 · <b>L</b> 合成 · <b>P</b> 暂停
+        <b>A D</b> 移动（双击奔跑） · <b>W</b> 跳（空中可二段跳） · <b>S</b> 快落 · <b>J</b> 普攻 · <b>K U I</b> 技能 · <b>1 2 3</b> 法宝 · <b>B</b> 背包 · <b>L</b> 锻造 · <b>G</b> 商店 · <b>H</b> 技能 · <b>P</b> 暂停
       </div>
       <!-- 键盘没接管时（预览面板/触屏）自动出现，用鼠标也能玩 -->
       <div id="pad" hidden>
@@ -88,7 +88,9 @@
         <button data-code="Digit3">宝3</button>
         <span class="sep"></span>
         <button data-code="KeyB">背包</button>
-        <button data-code="KeyL">合成</button>
+        <button data-code="KeyL">锻造</button>
+        <button data-code="KeyG">商店</button>
+        <button data-code="KeyH">技能</button>
         <button data-code="KeyQ">上一页</button>
         <button data-code="KeyE">下一页</button>
         <button data-code="Enter">确认</button>
@@ -146,6 +148,29 @@
   XY.CHARACTER_ORDER = ['wukong', 'bajie', 'tangseng', 'shaseng', 'bailongma'];
   XY.getCharacter = (id) => XY.CHARACTERS[id];
 
+  // ===== 成长曲线：每升一级自动提升（商店买到的属性另算）=====
+  XY.GROWTH = { maxHp: 22, attack: 4, defense: 2, critRate: 0.004, moveSpeed: 1.2 };
+
+  // ===== 货币（三种，各管一摊）=====
+  XY.CURRENCIES = {
+    gold: { id: 'gold', name: '金币', color: '#f4c430', use: '属性商店' },
+    jade: { id: 'jade', name: '仙玉', color: '#7CFC9B', use: '技能参悟' },
+    soul: { id: 'soul', name: '妖魂', color: '#c39bff', use: '锻造神兵' },
+  };
+
+  // ===== 属性商店：金币买属性，越买越贵 =====
+  XY.SHOP = [
+    { key: 'attack', name: '攻击', step: 3, base: 120, rate: 1.32, max: 30, unit: '' },
+    { key: 'maxHp', name: '气血', step: 20, base: 100, rate: 1.27, max: 30, unit: '' },
+    { key: 'defense', name: '防御', step: 2, base: 110, rate: 1.30, max: 25, unit: '' },
+    { key: 'critRate', name: '暴击', step: 0.02, base: 160, rate: 1.38, max: 12, unit: '%' },
+    { key: 'moveSpeed', name: '身法', step: 4, base: 130, rate: 1.30, max: 15, unit: '' },
+  ];
+
+  // ===== 技能参悟：仙玉升级，每级 +10% 伤害 / -5.5% 冷却 =====
+  XY.SKILL_MAX_LV = 5;
+  XY.SKILL_JADE_COST = [60, 140, 300, 620]; // 升到 2/3/4/5 级所需仙玉
+
   // ===== 技能（每位 ≥3）=====
   XY.SKILLS = {
     wk_smash: { id: 'wk_smash', name: '如意棒击', characterId: 'wukong', kind: 'melee', anim: 'giantChop', multiplier: 1.55, cooldown: 1300, cost: 16, range: 168, description: '金箍棒骤然暴涨十丈，自天而降一记重劈。' },
@@ -188,7 +213,7 @@
   };
   XY.getTreasure = (id) => XY.TREASURES[id];
 
-  // ===== 材料 + 可合成法宝（被动装备）=====
+  // ===== 材料 + 可锻造的武器/护甲/饰物（三档）=====
   XY.ITEMS = {
     mat_wood: { id: 'mat_wood', name: '桃木枝', kind: 'material', description: '花果山常见的桃木，可作法器之材。' },
     mat_stone: { id: 'mat_stone', name: '玄铁石', kind: 'material', description: '坚硬的黑色矿石，重而锋利。' },
@@ -196,14 +221,39 @@
     mat_fire: { id: 'mat_fire', name: '三昧火种', kind: 'material', description: '残存的火灵之力。' },
     mat_soul: { id: 'mat_soul', name: '妖魂碎片', kind: 'material', description: '被击败妖怪残留的妖魂。' },
 
-    eq_staff: { id: 'eq_staff', name: '如意金箍棒', kind: 'treasure', slot: 'weapon', rarity: 'epic', description: '重一万三千斤，攻击与暴击大涨。', bonus: { attack: 18, critRate: 0.1 } },
-    eq_robe: { id: 'eq_robe', name: '锁子黄金甲', kind: 'treasure', slot: 'armor', rarity: 'rare', description: '护体金甲，防御与血量提升。', bonus: { defense: 12, maxHp: 60 } },
-    eq_boots: { id: 'eq_boots', name: '筋斗云履', kind: 'treasure', slot: 'trinket', rarity: 'rare', description: '踏云而行，身法更快、更易暴击。', bonus: { moveSpeed: 40, critRate: 0.05 } },
+    // —— 兵器 ——
+    eq_stick: { id: 'eq_stick', name: '桃木棍', kind: 'treasure', slot: 'weapon', tier: 1, rarity: 'common', description: '削桃木为棍，聊胜于无。', bonus: { attack: 7 } },
+    eq_iron: { id: 'eq_iron', name: '玄铁棍', kind: 'treasure', slot: 'weapon', tier: 2, rarity: 'rare', description: '玄铁铸就，重逾百斤。', bonus: { attack: 15, critRate: 0.03 } },
+    eq_staff: { id: 'eq_staff', name: '如意金箍棒', kind: 'treasure', slot: 'weapon', tier: 3, rarity: 'epic', description: '重一万三千斤，攻击与暴击大涨。', bonus: { attack: 26, critRate: 0.1 } },
+
+    // —— 护甲 ——
+    eq_cloth: { id: 'eq_cloth', name: '粗布衣', kind: 'treasure', slot: 'armor', tier: 1, rarity: 'common', description: '缝补过的粗布，挡得住爪牙。', bonus: { defense: 4, maxHp: 20 } },
+    eq_chain: { id: 'eq_chain', name: '锁子甲', kind: 'treasure', slot: 'armor', tier: 2, rarity: 'rare', description: '环环相扣，刀枪难入。', bonus: { defense: 11, maxHp: 48 } },
+    eq_robe: { id: 'eq_robe', name: '锁子黄金甲', kind: 'treasure', slot: 'armor', tier: 3, rarity: 'epic', description: '护体金甲，防御与血量提升。', bonus: { defense: 18, maxHp: 90 } },
+
+    // —— 饰物 ——
+    eq_sandals: { id: 'eq_sandals', name: '麻编草鞋', kind: 'treasure', slot: 'trinket', tier: 1, rarity: 'common', description: '走山路不磨脚。', bonus: { moveSpeed: 13 } },
+    eq_cloudboots: { id: 'eq_cloudboots', name: '云纹靴', kind: 'treasure', slot: 'trinket', tier: 2, rarity: 'rare', description: '靴底绣云纹，脚步轻快。', bonus: { moveSpeed: 28, critRate: 0.02 } },
+    eq_boots: { id: 'eq_boots', name: '筋斗云履', kind: 'treasure', slot: 'trinket', tier: 3, rarity: 'epic', description: '踏云而行，身法更快、更易暴击。', bonus: { moveSpeed: 48, critRate: 0.05 } },
+  };
+  XY.RARITY = {
+    common: { name: '凡品', color: '#9fb0c8' },
+    rare: { name: '灵品', color: '#5cc8ff' },
+    epic: { name: '神品', color: '#ffb35c' },
   };
   XY.RECIPES = [
-    { id: 'r_staff', name: '锻造·如意金箍棒', inputs: { mat_wood: 3, mat_stone: 2, mat_soul: 1 }, output: { itemId: 'eq_staff', count: 1 }, description: '集齐桃木、玄铁与妖魂，锻造传说武器。' },
-    { id: 'r_robe', name: '缝制·锁子黄金甲', inputs: { mat_stone: 2, mat_herb: 3 }, output: { itemId: 'eq_robe', count: 1 }, description: '以玄铁与灵芝织就护体金甲。' },
-    { id: 'r_boots', name: '凝云·筋斗云履', inputs: { mat_herb: 2, mat_fire: 2 }, output: { itemId: 'eq_boots', count: 1 }, description: '引三昧真火，凝云为靴。' },
+    // 一档：桃木 + 灵芝，新手就能打
+    { id: 'r_stick', name: '削制·桃木棍', tier: 1, inputs: { mat_wood: 4 }, gold: 0, output: { itemId: 'eq_stick', count: 1 }, description: '四根桃木削成一根棍，先有个称手的。' },
+    { id: 'r_cloth', name: '缝制·粗布衣', tier: 1, inputs: { mat_wood: 2, mat_herb: 3 }, gold: 0, output: { itemId: 'eq_cloth', count: 1 }, description: '桃木纤维混灵芝汁，缝出结实的布甲。' },
+    { id: 'r_sandals', name: '编结·麻编草鞋', tier: 1, inputs: { mat_wood: 3, mat_herb: 1 }, gold: 0, output: { itemId: 'eq_sandals', count: 1 }, description: '草绳编底，走山路不磨脚。' },
+    // 二档：玄铁 + 火种
+    { id: 'r_iron', name: '锻打·玄铁棍', tier: 2, inputs: { mat_stone: 4, mat_wood: 3 }, gold: 200, output: { itemId: 'eq_iron', count: 1 }, description: '玄铁反复锻打，棍身沉而不折。' },
+    { id: 'r_chain', name: '锻造·锁子甲', tier: 2, inputs: { mat_stone: 4, mat_herb: 2 }, gold: 180, output: { itemId: 'eq_chain', count: 1 }, description: '千枚铁环相扣，刀枪难入。' },
+    { id: 'r_cloudboots', name: '凝云·云纹靴', tier: 2, inputs: { mat_herb: 4, mat_fire: 2 }, gold: 180, output: { itemId: 'eq_cloudboots', count: 1 }, description: '引三昧真火凝云为靴。' },
+    // 三档：妖魂 + 火种，须打首领
+    { id: 'r_staff', name: '铸炼·如意金箍棒', tier: 3, inputs: { mat_stone: 5, mat_soul: 4, mat_fire: 3 }, gold: 800, output: { itemId: 'eq_staff', count: 1 }, description: '集玄铁、妖魂与真火，铸出传说兵器。' },
+    { id: 'r_robe', name: '织造·锁子黄金甲', tier: 3, inputs: { mat_stone: 4, mat_herb: 5, mat_soul: 3 }, gold: 700, output: { itemId: 'eq_robe', count: 1 }, description: '金丝织甲，魂魄为线。' },
+    { id: 'r_boots', name: '踏云·筋斗云履', tier: 3, inputs: { mat_fire: 4, mat_soul: 3, mat_herb: 3 }, gold: 600, output: { itemId: 'eq_boots', count: 1 }, description: '一团祥云锁进靴底，起落如风。' },
   ];
   XY.getItem = (id) => XY.ITEMS[id];
 
@@ -394,6 +444,71 @@
       for (const k in item.bonus) t[k] += item.bonus[k];
     }
     return t;
+  };
+
+  // —— 成长：等级成长 + 商店属性 + 装备加成，统一在一处算 ——
+  // progress = { level, attr: { attack: 3, ... } }
+  XY.heroStats = function (base, progress, equipped) {
+    const p = progress || {};
+    const lv = Math.max(1, Math.floor(Number(p.level) || 1));
+    const g = XY.GROWTH || {};
+    const t = Object.assign({}, base);
+    for (const k in g) {
+      if (typeof t[k] === 'number') t[k] += g[k] * (lv - 1);
+    }
+    const attr = p.attr || {};
+    for (const row of (XY.SHOP || [])) {
+      const n = Math.max(0, Math.floor(Number(attr[row.key]) || 0));
+      if (n > 0) t[row.key] = (t[row.key] || 0) + row.step * n;
+    }
+    for (const item of (equipped || [])) {
+      if (!item || !item.bonus) continue;
+      for (const k in item.bonus) t[k] = (t[k] || 0) + item.bonus[k];
+    }
+    // 取整 + 夹取，避免长跑之后出现小数血量或爆率溢出
+    t.maxHp = Math.round(t.maxHp || 1);
+    t.attack = Math.round(t.attack || 0);
+    t.defense = Math.round(t.defense || 0);
+    t.moveSpeed = Math.round(t.moveSpeed || 0);
+    t.critRate = Math.max(0, Math.min(0.75, Number(t.critRate) || 0));
+    return t;
+  };
+
+  // 商店第 n 次购买的价格（n 从 0 开始）
+  XY.shopPrice = function (row, owned) {
+    const n = Math.max(0, Math.floor(Number(owned) || 0));
+    return Math.round(row.base * Math.pow(row.rate, n));
+  };
+
+  // 技能按等级换算实际数值：每级 +10% 倍率、-5.5% 冷却、+6% 范围
+  XY.skillAtLevel = function (sk, lv) {
+    if (!sk) return sk;
+    const maxLv = XY.SKILL_MAX_LV || 5;
+    const L = Math.max(1, Math.min(maxLv, Math.floor(Number(lv) || 1)));
+    const dmg = 1 + (L - 1) * 0.1;
+    const cd = 1 - (L - 1) * 0.055;
+    const out = Object.assign({}, sk, { level: L });
+    if (typeof sk.multiplier === 'number') out.multiplier = Math.round(sk.multiplier * dmg * 100) / 100;
+    if (typeof sk.cooldown === 'number') out.cooldown = Math.round(sk.cooldown * cd);
+    if (typeof sk.radius === 'number') out.radius = Math.round(sk.radius * (1 + (L - 1) * 0.06));
+    if (typeof sk.range === 'number' && sk.range > 0) out.range = Math.round(sk.range * (1 + (L - 1) * 0.04));
+    if (typeof sk.healPct === 'number') out.healPct = Math.min(0.8, Math.round(sk.healPct * (1 + (L - 1) * 0.12) * 1000) / 1000);
+    out.cost = sk.cost; // 耗气不随等级变化，避免升级反而更难放
+    return out;
+  };
+
+  // 技能升到下一级所需仙玉；满级返回 null
+  XY.skillUpCost = function (lv) {
+    const L = Math.max(1, Math.floor(Number(lv) || 1));
+    const table = XY.SKILL_JADE_COST || [];
+    if (L >= (XY.SKILL_MAX_LV || 5)) return null;
+    return table[L - 1] != null ? table[L - 1] : null;
+  };
+
+  // 锻造：材料 + 金币双重要求
+  XY.canForge = function (inv, recipe, gold) {
+    if (!XY.canCraft(inv, recipe)) return false;
+    return (Number(gold) || 0) >= (recipe.gold || 0);
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = XY;
@@ -2807,9 +2922,15 @@
   const anyPressed = (input, list) => list.some((k) => input.pressed(k));
   const anyDown = (input, list) => list.some((k) => input.isDown(k));
 
-  XY.makePlayer = function (charDef, equippedItems, treasureIds) {
-    const stats = XY.totalStats(charDef.base, equippedItems);
-    return new XY.Player(charDef, stats, equippedItems, treasureIds || []);
+  XY.makePlayer = function (charDef, equippedItems, treasureIds, progress) {
+    const prog = progress || { level: 1, exp: 0, attr: {}, skillLv: {} };
+    const stats = XY.heroStats(charDef.base, prog, equippedItems);
+    const p = new XY.Player(charDef, stats, equippedItems, treasureIds || []);
+    p.progress = prog;
+    p.level = Math.max(1, Math.floor(Number(prog.level) || 1));
+    p.exp = Math.max(0, Number(prog.exp) || 0);
+    p.skillLv = prog.skillLv || {};
+    return p;
   };
 
   XY.Player = class {
@@ -2819,6 +2940,8 @@
       this.stats = stats;
       this.equipped = equipped;
       this.treasures = treasures; // 可用法宝 id 列表（通常 3 格）
+      this.progress = null;      // 由 makePlayer 注入，保存成长数据
+      this.skillLv = {};         // 技能等级，影响倍率与冷却
       this.w = 34; this.h = 54;
       this.x = 80; this.y = 360;
       this.vx = 0; this.vy = 0;
@@ -2976,7 +3099,7 @@
     trySkill(i, now) {
       const sid = this.char.skills[i];
       if (!sid) return null;
-      const sk = XY.getSkill(sid);
+      const sk = XY.skillAtLevel(XY.getSkill(sid), (this.skillLv && this.skillLv[sid]) || 1);
       if (now < (this.skillCd[sid] || 0)) return null;
       if (this.energy < sk.cost) return null;
       this.energy -= sk.cost;
@@ -2994,21 +3117,37 @@
       this.castStart = now; this.castUntil = now + 300;
       return { kind: 'treasure', treasure: t, hitKey: 'tr' + tid + now };
     }
+    // 按当前成长数据重算属性（升级 / 商店买属性 / 换装都走这里）
+    recalcStats(opts) {
+      const o = opts || {};
+      const p = this.progress || { level: this.level, attr: {} };
+      p.level = this.level;
+      const ratio = this.maxHp > 0 ? this.hp / this.maxHp : 1;
+      this.stats = XY.heroStats(this.base, p, this.equipped || []);
+      this.maxHp = this.stats.maxHp;
+      this.hp = o.fullHeal ? this.maxHp : Math.max(1, Math.round(this.maxHp * ratio));
+      this.skillLv = p.skillLv || this.skillLv || {};
+    }
     gainExp(amount, game) {
-      this.exp += amount;
+      const add = Number(amount);
+      this.exp += Number.isFinite(add) ? Math.max(0, add) : 0;
       let ups = 0;
       while (this.exp >= XY.expToNext(this.level)) {
         this.exp -= XY.expToNext(this.level);
         this.level++;
-        this.stats.maxHp += 20; this.stats.attack += 4; this.stats.defense += 2;
-        this.maxHp = this.stats.maxHp;
-        this.hp = this.maxHp;
         ups++;
       }
-      if (ups > 0 && game) {
-        game.toast('升到 ' + this.level + ' 级！气血全满');
-        if (game.fx) game.fx.levelUp(this.x + this.w / 2, this.y + this.h);
-        if (game.expPops) game.expPops.push({ text: 'LEVEL UP! Lv.' + this.level, life: 1.6, color: '#ffd479' });
+      if (ups > 0) {
+        this.recalcStats({ fullHeal: true });
+        if (this.progress) { this.progress.level = this.level; this.progress.exp = this.exp; }
+        if (game) {
+          game.toast('升到 ' + this.level + ' 级！气血全满');
+          if (game.fx) game.fx.levelUp(this.x + this.w / 2, this.y + this.h);
+          if (game.expPops) game.expPops.push({ text: 'LEVEL UP! Lv.' + this.level, life: 1.6, color: '#ffd479' });
+          if (game.save) game.save();
+        }
+      } else if (this.progress) {
+        this.progress.exp = this.exp;
       }
       return ups;
     }
@@ -3487,6 +3626,10 @@
     ctx.fillText(game.level.hasBoss ? '击败牛魔王即可通关' : '妖物 ' + killed + '/' + total + ' · 抵达终点旗帜通关', W - 20, 48);
     ctx.textAlign = 'left';
 
+    // 货币：右上角常驻
+    currencyChip(ctx, W - 248, 56, '仙玉', game.jade, '#7CFC9B');
+    currencyChip(ctx, W - 128, 56, '金', game.gold, '#f4c430');
+
     // 状态图标（护盾/加速/攻击/防御）
     let bxx = 108;
     const now = game.now;
@@ -3585,7 +3728,7 @@
 
     // 底部提示
     ctx.fillStyle = 'rgba(140,152,175,0.85)'; ctx.font = '11px "PingFang SC", sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('B 背包 · L 合成 · P 暂停 · 双击 A/D 奔跑 · 空中再按 W 二段跳', W / 2, H - 6);
+    ctx.fillText('B 背包 · L 锻造 · G 商店 · H 技能 · P 暂停 · 双击 A/D 奔跑', W / 2, H - 6);
     ctx.textAlign = 'left';
 
     if (XY.Input && XY.Input.keyCount === 0) {
@@ -3646,7 +3789,7 @@
     // 操作说明
     ctx.fillStyle = '#93a3bb'; ctx.font = '12.5px "PingFang SC", sans-serif';
     ctx.fillText('A D 移动（双击奔跑） · W 跳（可二段跳） · S 快落 · J 普攻', 94, 462);
-    ctx.fillText('K U I 技能 · 1 2 3 法宝 · B 背包 · L 合成', 94, 484);
+    ctx.fillText('K U I 技能 · 1 2 3 法宝 · B 背包 · L 锻造 · G 商店 · H 技能', 94, 484);
     ctx.textAlign = 'left';
   };
 
@@ -3803,56 +3946,284 @@
     center(ctx, '按 Enter 回到标题', 322, '18px "PingFang SC", sans-serif', '#fff');
   };
 
-  // ===== 合成坊 =====
+  // ===== 通用：货币标签 =====
+  function currencyChip(ctx, x, y, name, value, color) {
+    const txt = name + ' ' + value;
+    ctx.font = 'bold 13px "PingFang SC", sans-serif';
+    const w = ctx.measureText(txt).width + 30;
+    rrect(ctx, x, y, w, 24, 12);
+    ctx.fillStyle = 'rgba(16,21,32,0.94)'; ctx.fill();
+    ctx.strokeStyle = color; ctx.lineWidth = 1.2; ctx.stroke();
+    ctx.beginPath(); ctx.arc(x + 13, y + 12, 4.5, 0, Math.PI * 2);
+    ctx.fillStyle = color; ctx.fill();
+    ctx.fillStyle = '#e6ecf5'; ctx.textAlign = 'left';
+    ctx.fillText(txt, x + 23, y + 17);
+    return w;
+  }
+
+  // ===== 锻造坊（材料 + 金币）=====
+  // 三行对应三档品阶，三列对应 兵器 / 护甲 / 佩饰，一眼看出该先做哪件
   UI.drawCraft = function (ctx, game) {
     UI.drawBackground(ctx, game.levelIndex, game.uiTime);
-    ctx.fillStyle = 'rgba(6,9,14,0.72)'; ctx.fillRect(0, 0, W, H);
-    center(ctx, '法宝合成坊', 56, 'bold 32px serif', '#ffd479');
-    center(ctx, 'W/S 或 ↑↓ 选择 · Enter 合成 · B 背包 · Esc 返回', 86, '13px "PingFang SC", sans-serif', '#cfe0f5');
-    const panelW = 720, px = (W - panelW) / 2;
+    ctx.fillStyle = 'rgba(6,9,14,0.84)'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#ffd479'; ctx.font = 'bold 30px serif';
+    ctx.fillText('锻 造 坊', 40, 50);
+    ctx.fillStyle = '#7d8798'; ctx.font = '12px "PingFang SC", sans-serif';
+    ctx.fillText('打怪掉材料 → 按品阶锻造 · 成品自动装备', 40, 70);
+
+    currencyChip(ctx, 906 - 118, 30, '金', game.gold, '#f4c430');
+    currencyChip(ctx, 906 - 118 - 108, 30, '仙玉', game.jade, '#7CFC9B');
+
+    const cols = 3, cardW = 280, cardH = 104, gapX = 12, gapY = 12;
+    const x0 = 40, y0 = 88;
+    const tierName = { 1: '凡品', 2: '灵品', 3: '神品' };
+    const tierColor = { 1: '#9fb0c8', 2: '#5cc8ff', 3: '#ffb35c' };
+
     for (let i = 0; i < XY.RECIPES.length; i++) {
       const r = XY.RECIPES[i];
-      const y = 118 + i * 96;
+      const col = i % cols, row = Math.floor(i / cols);
+      const x = x0 + col * (cardW + gapX), y = y0 + row * (cardH + gapY);
       const sel = i === game.craftIndex;
-      const can = XY.canCraft(game.inventory, r);
-      rrect(ctx, px, y, panelW, 82, 10);
-      ctx.fillStyle = sel ? 'rgba(42,53,80,0.96)' : 'rgba(18,24,36,0.9)'; ctx.fill();
-      ctx.strokeStyle = sel ? (can ? '#7CFC9B' : '#ffd479') : '#2a3550'; ctx.lineWidth = sel ? 3 : 1; ctx.stroke();
+      const hasMat = XY.canCraft(game.inventory, r);
+      const hasGold = game.gold >= (r.gold || 0);
+      const can = hasMat && hasGold;
+
+      rrect(ctx, x, y, cardW, cardH, 9);
+      ctx.fillStyle = sel ? 'rgba(42,53,80,0.97)' : 'rgba(16,21,32,0.92)'; ctx.fill();
+      ctx.strokeStyle = sel ? (can ? '#7CFC9B' : '#e0675a') : '#232c3e';
+      ctx.lineWidth = sel ? 2.5 : 1; ctx.stroke();
 
       const out = XY.ITEMS[r.output.itemId];
-      if (out) {
-        if (out.slot) Art().drawEquipIcon(ctx, px + 16, y + 13, 56, out);
-        else Art().drawMaterialIcon(ctx, px + 16, y + 13, 56, out.id);
+      if (out) Art().drawEquipIcon(ctx, x + 8, y + 10, 54, out);
+
+      ctx.fillStyle = tierColor[r.tier] || '#9fb0c8';
+      ctx.font = 'bold 10px "PingFang SC", sans-serif'; ctx.textAlign = 'right';
+      ctx.fillText(tierName[r.tier] || '', x + cardW - 10, y + 16); ctx.textAlign = 'left';
+
+      ctx.fillStyle = sel ? '#fff' : '#dbe4f0'; ctx.font = 'bold 14px "PingFang SC", sans-serif';
+      ctx.fillText(r.name.replace(/^[^·]*·/, ''), x + 70, y + 26);
+      if (out && out.bonus) {
+        const txt = Object.keys(out.bonus).map((k) => statName(k) + '+' + fmtStat(k, out.bonus[k])).join(' ');
+        ctx.fillStyle = '#9be7ff'; ctx.font = '10.5px "PingFang SC", sans-serif';
+        ctx.fillText(txt, x + 70, y + 44);
       }
-      ctx.fillStyle = '#fff'; ctx.font = 'bold 17px "PingFang SC", sans-serif';
-      ctx.fillText(r.name, px + 86, y + 26);
-      ctx.fillStyle = '#93a0b5'; ctx.font = '11.5px "PingFang SC", sans-serif';
-      ctx.fillText(r.description, px + 86, y + 45);
-      // 材料需求 + 图标
-      let ix = px + 86;
+
+      // 材料
+      let ix = x + 12;
       for (const id of Object.keys(r.inputs)) {
-        const it = XY.ITEMS[id];
         const need = r.inputs[id];
         const have = game.inventory[id] || 0;
-        Art().drawMaterialIcon(ctx, ix, y + 52, 22, id);
+        Art().drawMaterialIcon(ctx, ix, y + 56, 18, id);
         ctx.fillStyle = have >= need ? '#7CFC9B' : '#e0675a';
-        ctx.font = '11px "PingFang SC", sans-serif';
-        ctx.fillText(it.name + ' ' + have + '/' + need, ix + 26, y + 68);
-        ix += 128;
+        ctx.font = '10px "PingFang SC", sans-serif';
+        ctx.fillText(have + '/' + need, ix + 21, y + 70);
+        ix += 60;
       }
-      if (out && out.bonus) {
-        const txt = Object.keys(out.bonus).map((k) => statName(k) + '+' + (out.bonus[k] > 1 ? out.bonus[k] : Math.round(out.bonus[k] * 100) + '%')).join('  ');
-        ctx.fillStyle = '#9be7ff'; ctx.font = '11px "PingFang SC", sans-serif'; ctx.textAlign = 'right';
-        ctx.fillText(txt, px + panelW - 16, y + 68);
-        ctx.textAlign = 'left';
+
+      if (r.gold) {
+        ctx.fillStyle = hasGold ? '#f4c430' : '#e0675a';
+        ctx.font = 'bold 11px "PingFang SC", sans-serif'; ctx.textAlign = 'right';
+        ctx.fillText('金 ' + r.gold, x + cardW - 10, y + 96); ctx.textAlign = 'left';
       }
     }
+
+    ctx.fillStyle = 'rgba(150,162,182,0.9)'; ctx.font = '12px "PingFang SC", sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('W/S 或 A/D 选择 · Enter 锻造 · G 商店 · H 技能 · B 背包 · Esc 返回', W / 2, H - 16);
+    ctx.textAlign = 'left';
   };
 
   function statName(k) {
     return ({ maxHp: '气血', attack: '攻击', defense: '防御', moveSpeed: '身法', critRate: '暴击' })[k] || k;
   }
   UI.statName = statName;
+  function fmtStat(k, v) {
+    if (k === 'critRate') return Math.round(v * 100) + '%';
+    return String(Math.round(v * 10) / 10);
+  }
+
+  // ===== 属性商店（金币）=====
+  UI.drawShop = function (ctx, game) {
+    UI.drawBackground(ctx, game.levelIndex, game.uiTime);
+    ctx.fillStyle = 'rgba(6,9,14,0.84)'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#ffd479'; ctx.font = 'bold 30px serif';
+    ctx.fillText('属 性 商 店', 40, 50);
+    ctx.fillStyle = '#7d8798'; ctx.font = '12px "PingFang SC", sans-serif';
+    ctx.fillText('升级会自动加成；在此用金币额外加点，越买越贵', 40, 70);
+
+    let cx = 906;
+    const gw = currencyChip(ctx, cx - 118, 30, '金', game.gold, '#f4c430');
+    currencyChip(ctx, cx - 118 - (gw + 10) - 104, 30, '仙玉', game.jade, '#7CFC9B');
+
+    const pl = game.player;
+    // —— 左：当前面板 ——
+    const px = 40, py = 96, pw = 268, ph = 386;
+    rrect(ctx, px, py, pw, ph, 12);
+    ctx.fillStyle = 'rgba(14,19,28,0.94)'; ctx.fill();
+    ctx.strokeStyle = '#2a3550'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = '#8a93a6'; ctx.font = '11px "PingFang SC", sans-serif';
+    ctx.fillText('当前战况', px + 16, py + 24);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 17px "PingFang SC", sans-serif';
+    ctx.fillText(pl.char.name, px + 16, py + 50);
+    ctx.fillStyle = '#ffd479'; ctx.font = 'bold 13px "PingFang SC", sans-serif';
+    ctx.fillText('Lv.' + pl.level, px + pw - 60, py + 50);
+
+    const rows = [
+      ['气血', pl.stats.maxHp, ''],
+      ['攻击', pl.stats.attack, ''],
+      ['防御', pl.stats.defense, ''],
+      ['暴击', Math.round(pl.stats.critRate * 100), '%'],
+      ['身法', pl.stats.moveSpeed, ''],
+    ];
+    let yy = py + 80;
+    for (const r of rows) {
+      ctx.fillStyle = '#93a0b5'; ctx.font = '12px "PingFang SC", sans-serif';
+      ctx.fillText(r[0], px + 16, yy);
+      ctx.fillStyle = '#e6ecf5'; ctx.font = 'bold 15px "PingFang SC", sans-serif'; ctx.textAlign = 'right';
+      ctx.fillText(r[1] + r[2], px + pw - 16, yy); ctx.textAlign = 'left';
+      yy += 30;
+    }
+    // 成长明细
+    const grow = XY.GROWTH, lvUp = pl.level - 1;
+    ctx.fillStyle = '#5b6678'; ctx.font = '10.5px "PingFang SC", sans-serif';
+    ctx.fillText('成长 ×' + lvUp + '级  +攻' + Math.round(grow.attack * lvUp) + ' +血' + Math.round(grow.maxHp * lvUp), px + 16, py + 250);
+    ctx.fillText('商店加点  ' + XY.SHOP.map((r) => (game.persist.attr[r.key] || 0)).reduce((a, b) => a + b, 0) + ' 次', px + 16, py + 268);
+    ctx.fillText('装备加成  ' + ['weapon', 'armor', 'trinket'].filter((s) => game.equipped[s]).length + ' 件', px + 16, py + 286);
+
+    ctx.fillStyle = '#5b6678'; ctx.font = '10.5px "PingFang SC", sans-serif';
+    ctx.fillText('每升一级自动获得：', px + 16, py + 318);
+    ctx.fillStyle = '#9be7ff';
+    ctx.fillText('攻 +' + grow.attack + '  防 +' + grow.defense + '  血 +' + grow.maxHp, px + 16, py + 336);
+    ctx.fillText('暴击 +' + (grow.critRate * 100).toFixed(1) + '%  身法 +' + grow.moveSpeed, px + 16, py + 354);
+
+    // —— 右：属性列表 ——
+    const lx = 328, lw = 578, lh = 62, gap = 9, ly = 96;
+    for (let i = 0; i < XY.SHOP.length; i++) {
+      const row = XY.SHOP[i];
+      const own = game.persist.attr[row.key] || 0;
+      const maxed = own >= row.max;
+      const price = XY.shopPrice(row, own);
+      const afford = game.gold >= price;
+      const sel = i === game.shopIndex;
+      const y = ly + i * (lh + gap);
+      rrect(ctx, lx, y, lw, lh, 9);
+      ctx.fillStyle = sel ? 'rgba(42,53,80,0.97)' : 'rgba(16,21,32,0.9)'; ctx.fill();
+      ctx.strokeStyle = sel ? (maxed ? '#8a93a6' : (afford ? '#ffd479' : '#e0675a')) : '#232c3e';
+      ctx.lineWidth = sel ? 2.5 : 1; ctx.stroke();
+
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 16px "PingFang SC", sans-serif';
+      ctx.fillText(row.name, lx + 16, y + 26);
+      ctx.fillStyle = '#7CFC9B'; ctx.font = 'bold 12px "PingFang SC", sans-serif';
+      ctx.fillText('+' + game.attrStepText(row), lx + 16 + 46, y + 26);
+
+      // 已买进度条
+      const bx = lx + 120, bw = 210;
+      ctx.fillStyle = '#1a2130'; rrect(ctx, bx, y + 16, bw, 8, 4); ctx.fill();
+      if (own > 0) {
+        ctx.fillStyle = '#ffd479';
+        rrect(ctx, bx, y + 16, Math.max(4, bw * (own / row.max)), 8, 4); ctx.fill();
+      }
+      ctx.fillStyle = '#8a93a6'; ctx.font = '11px "PingFang SC", sans-serif';
+      ctx.fillText(own + ' / ' + row.max, bx, y + 44);
+
+      // 当前总属性
+      ctx.fillStyle = '#c9d4e4'; ctx.font = '12px "PingFang SC", sans-serif';
+      ctx.fillText('当前 ' + fmtStat(row.key, pl.stats[row.key] || 0) + row.unit, lx + 350, y + 26);
+
+      // 价格 / 已满
+      ctx.textAlign = 'right';
+      if (maxed) {
+        ctx.fillStyle = '#8a93a6'; ctx.font = 'bold 13px "PingFang SC", sans-serif';
+        ctx.fillText('已达上限', lx + lw - 16, y + 32);
+      } else {
+        ctx.fillStyle = afford ? '#f4c430' : '#e0675a'; ctx.font = 'bold 15px "PingFang SC", sans-serif';
+        ctx.fillText('金 ' + price, lx + lw - 16, y + 26);
+        ctx.fillStyle = '#5b6678'; ctx.font = '10.5px "PingFang SC", sans-serif';
+        ctx.fillText('第 ' + (own + 1) + ' 次', lx + lw - 16, y + 44);
+      }
+      ctx.textAlign = 'left';
+    }
+
+    ctx.fillStyle = 'rgba(150,162,182,0.9)'; ctx.font = '12px "PingFang SC", sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('W/S 选择 · Enter 购买 · H 技能参悟 · L 锻造 · B 背包 · Esc 返回', W / 2, H - 22);
+    ctx.textAlign = 'left';
+  };
+
+  // ===== 技能参悟（仙玉）=====
+  UI.drawSkillUp = function (ctx, game) {
+    UI.drawBackground(ctx, game.levelIndex, game.uiTime);
+    ctx.fillStyle = 'rgba(6,9,14,0.84)'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#ffd479'; ctx.font = 'bold 30px serif';
+    ctx.fillText('技 能 参 悟', 40, 50);
+    ctx.fillStyle = '#7d8798'; ctx.font = '12px "PingFang SC", sans-serif';
+    ctx.fillText('用仙玉提升技能重数：每重 +10% 威力、-5.5% 冷却、+6% 范围', 40, 70);
+
+    let cx = 906;
+    const gw = currencyChip(ctx, cx - 118, 30, '金', game.gold, '#f4c430');
+    currencyChip(ctx, cx - 118 - (gw + 10) - 104, 30, '仙玉', game.jade, '#7CFC9B');
+
+    const ids = game.player.char.skills;
+    const cardH = 108, gap = 14, y0 = 104;
+    for (let i = 0; i < ids.length; i++) {
+      const base = XY.getSkill(ids[i]);
+      const lv = game.persist.skillLv[ids[i]] || 1;
+      const cur = XY.skillAtLevel(base, lv);
+      const next = lv < XY.SKILL_MAX_LV ? XY.skillAtLevel(base, lv + 1) : null;
+      const cost = XY.skillUpCost(lv);
+      const afford = cost != null && game.jade >= cost;
+      const sel = i === game.skillIndex;
+      const y = y0 + i * (cardH + gap);
+
+      rrect(ctx, 48, y, 864, cardH, 11);
+      ctx.fillStyle = sel ? 'rgba(42,53,80,0.97)' : 'rgba(16,21,32,0.9)'; ctx.fill();
+      ctx.strokeStyle = sel ? (next ? (afford ? '#7CFC9B' : '#e0675a') : '#8a93a6') : '#232c3e';
+      ctx.lineWidth = sel ? 2.5 : 1; ctx.stroke();
+
+      Art().drawSkillIcon(ctx, 64, y + 24, 60, base, 0, true);
+
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 19px "PingFang SC", sans-serif';
+      ctx.fillText(base.name, 142, y + 38);
+      // 重数圆点
+      for (let k = 0; k < XY.SKILL_MAX_LV; k++) {
+        ctx.beginPath(); ctx.arc(146 + k * 16, y + 56, 5, 0, Math.PI * 2);
+        ctx.fillStyle = k < lv ? '#ffd479' : '#2a3550'; ctx.fill();
+      }
+      ctx.fillStyle = '#ffd479'; ctx.font = 'bold 12px "PingFang SC", sans-serif';
+      ctx.fillText(lv + ' / ' + XY.SKILL_MAX_LV + ' 重', 146 + XY.SKILL_MAX_LV * 16 + 8, y + 60);
+
+      // 当前 → 下一重
+      ctx.fillStyle = '#93a0b5'; ctx.font = '12px "PingFang SC", sans-serif';
+      ctx.fillText('威力 ×' + cur.multiplier, 330, y + 36);
+      ctx.fillText('冷却 ' + (cur.cooldown / 1000).toFixed(2) + 's', 330, y + 58);
+      if (cur.radius) ctx.fillText('范围 ' + cur.radius, 330, y + 80);
+      else if (cur.range) ctx.fillText('射程 ' + cur.range, 330, y + 80);
+
+      if (next) {
+        ctx.fillStyle = '#7CFC9B'; ctx.font = 'bold 12.5px "PingFang SC", sans-serif';
+        ctx.fillText('→ 威力 ×' + next.multiplier + '   冷却 ' + (next.cooldown / 1000).toFixed(2) + 's', 470, y + 36);
+        ctx.fillStyle = '#5b6678'; ctx.font = '11px "PingFang SC", sans-serif';
+        ctx.fillText('+' + Math.round((next.multiplier / cur.multiplier - 1) * 100) + '% 伤害 · ' + Math.round((1 - next.cooldown / cur.cooldown) * 100) + '% 冷却', 470, y + 58);
+      } else {
+        ctx.fillStyle = '#8a93a6'; ctx.font = 'bold 13px "PingFang SC", sans-serif';
+        ctx.fillText('已至化境', 470, y + 46);
+      }
+
+      ctx.textAlign = 'right';
+      if (cost == null) {
+        ctx.fillStyle = '#8a93a6'; ctx.font = 'bold 13px "PingFang SC", sans-serif';
+        ctx.fillText('满级', 892, y + 60);
+      } else {
+        ctx.fillStyle = afford ? '#7CFC9B' : '#e0675a'; ctx.font = 'bold 17px "PingFang SC", sans-serif';
+        ctx.fillText('仙玉 ' + cost, 892, y + 50);
+        ctx.fillStyle = '#5b6678'; ctx.font = '10.5px "PingFang SC", sans-serif';
+        ctx.fillText('参悟至 ' + (lv + 1) + ' 重', 892, y + 70);
+      }
+      ctx.textAlign = 'left';
+    }
+
+    ctx.fillStyle = 'rgba(150,162,182,0.9)'; ctx.font = '12px "PingFang SC", sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('W/S 选择 · Enter 参悟 · G 商店 · L 锻造 · B 背包 · Esc 返回', W / 2, H - 22);
+    ctx.textAlign = 'left';
+  };
 
   // ===== 背包 =====
   const TABS = ['材料', '法宝', '装备'];
@@ -3999,6 +4370,7 @@
       this.uiTime = 0; this.now = 0; this.lastT = 0;
       this.toasts = []; this.floaters = []; this.expPops = [];
       this.charIndex = 0; this.craftIndex = 0;
+      this.shopIndex = 0; this.skillIndex = 0;
       this.levelIndex = 0;
       this.projectiles = [];
       this.specials = [];       // 掷出的兵器等"有自己生命周期的招式"
@@ -4036,6 +4408,25 @@
       const fresh = {
         inventory: {}, equipped: {}, treasures: [], treasureSlots: [null, null, null],
         charId: 'wukong', levelReached: 0,
+        gold: 0, jade: 0, level: 1, exp: 0, attr: {}, skillLv: {},
+      };
+      const cleanAttr = (raw) => {
+        const out = {};
+        if (!raw || typeof raw !== 'object') return out;
+        for (const row of XY.SHOP) {
+          const n = Math.floor(Number(raw[row.key]));
+          if (Number.isFinite(n) && n > 0) out[row.key] = Math.min(n, row.max);
+        }
+        return out;
+      };
+      const cleanSkillLv = (raw) => {
+        const out = {};
+        if (!raw || typeof raw !== 'object') return out;
+        for (const id of Object.keys(XY.SKILLS)) {
+          const n = Math.floor(Number(raw[id]));
+          if (Number.isFinite(n) && n > 0) out[id] = Math.min(n, XY.SKILL_MAX_LV);
+        }
+        return out;
       };
       try {
         const raw = localStorage.getItem(SAVE_KEY);
@@ -4057,6 +4448,12 @@
           treasureSlots: slots,
           charId: XY.CHARACTERS[d.charId] ? d.charId : 'wukong',
           levelReached: Number.isInteger(d.levelReached) ? d.levelReached : 0,
+          gold: Math.max(0, Math.floor(Number(d.gold) || 0)),
+          jade: Math.max(0, Math.floor(Number(d.jade) || 0)),
+          level: Math.max(1, Math.floor(Number(d.level) || 1)),
+          exp: Math.max(0, Number(d.exp) || 0),
+          attr: cleanAttr(d.attr),
+          skillLv: cleanSkillLv(d.skillLv),
         };
       } catch (e) { return fresh; }
     }
@@ -4067,6 +4464,10 @@
       this.persist.treasureSlots = this.treasureSlots;
       this.persist.charId = this.charId;
       this.persist.levelReached = this.levelIndex;
+      if (this.player) {
+        this.persist.level = this.player.level;
+        this.persist.exp = this.player.exp;
+      }
       try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.persist)); } catch (e) { /* 忽略 */ }
     }
 
@@ -4077,14 +4478,11 @@
     rebuildPlayer() {
       const old = this.player;
       const ratio = old ? old.hp / old.maxHp : 1;
-      const lvl = old ? old.level : 1;
-      const exp = old ? old.exp : 0;
+      if (old) { this.persist.level = old.level; this.persist.exp = old.exp; }
       const charDef = XY.CHARACTERS[this.charId];
       const slots = ['weapon', 'armor', 'trinket'];
       const equippedItems = slots.map((s) => (this.equipped[s] ? XY.ITEMS[this.equipped[s]] : null)).filter(Boolean);
-      const p = XY.makePlayer(charDef, equippedItems, this.treasureSlots);
-      p.level = lvl; p.exp = exp;
-      for (let i = 2; i <= lvl; i++) { p.stats.maxHp += 20; p.stats.attack += 4; p.stats.defense += 2; }
+      const p = XY.makePlayer(charDef, equippedItems, this.treasureSlots, this.persist);
       p.maxHp = p.stats.maxHp;
       p.hp = Math.max(1, Math.round(p.maxHp * ratio));
       // 关键：换装不能把人传送回出生点
@@ -4095,6 +4493,47 @@
         p.skillCd = old.skillCd; p.treasureCd = old.treasureCd;
       }
       this.player = p;
+    }
+
+    // —— 货币 ——
+    get gold() { return this.persist.gold || 0; }
+    set gold(v) { this.persist.gold = Math.max(0, Math.floor(Number(v) || 0)); }
+    get jade() { return this.persist.jade || 0; }
+    set jade(v) { this.persist.jade = Math.max(0, Math.floor(Number(v) || 0)); }
+    addGold(n) { const before = this.gold; this.gold = before + n; return this.gold - before; }
+    addJade(n) { const before = this.jade; this.jade = before + n; return this.jade - before; }
+
+    // 商店购买：钱够就扣、记一次购买、立刻重算属性
+    buyAttr(row) {
+      const owned = (this.persist.attr[row.key] || 0);
+      if (owned >= row.max) { this.toast('『' + row.name + '』已买到上限'); return false; }
+      const price = XY.shopPrice(row, owned);
+      if (this.gold < price) { this.toast('金币不足 · 需 ' + price); return false; }
+      this.gold -= price;
+      this.persist.attr[row.key] = owned + 1;
+      if (this.player) this.player.recalcStats({ fullHeal: false });
+      this.toast('『' + row.name + '』+' + this.attrStepText(row) + '（第 ' + (owned + 1) + ' 次）');
+      this.save();
+      return true;
+    }
+    attrStepText(row) {
+      return row.unit === '%' ? Math.round(row.step * 100) + '%' : String(row.step);
+    }
+
+    // 技能参悟：用仙玉升级，不花金币
+    upgradeSkill(skillId) {
+      const sk = XY.getSkill(skillId);
+      if (!sk) return false;
+      const lv = (this.persist.skillLv[skillId] || 1);
+      const cost = XY.skillUpCost(lv);
+      if (cost == null) { this.toast('『' + sk.name + '』已至化境'); return false; }
+      if (this.jade < cost) { this.toast('仙玉不足 · 需 ' + cost); return false; }
+      this.jade -= cost;
+      this.persist.skillLv[skillId] = lv + 1;
+      if (this.player) this.player.skillLv = this.persist.skillLv;
+      this.toast('『' + sk.name + '』参悟至 ' + (lv + 1) + ' 重');
+      this.save();
+      return true;
     }
 
     initRun() {
@@ -4207,6 +4646,8 @@
         case 'playing': this.updatePlaying(dt); break;
         case 'bag': this.updateBag(); break;
         case 'craft': this.updateCraft(); break;
+        case 'shop': this.updateShop(); break;
+        case 'skillup': this.updateSkillUp(); break;
         case 'pause':
           if (I.pressed('KeyP') || I.pressed('Escape')) this.state = 'playing';
           if (I.pressed('KeyR')) this.state = 'title';
@@ -4275,6 +4716,8 @@
       if (I.pressed('KeyP') || I.pressed('Escape')) { this.state = 'pause'; return; }
       if (I.pressed('KeyB')) { this.bagTab = 0; this.bagIndex = 0; this.state = 'bag'; return; }
       if (I.pressed('KeyL') || I.pressed('KeyC')) { this.craftIndex = 0; this.state = 'craft'; return; }
+      if (I.pressed('KeyG')) { this.shopIndex = 0; this.state = 'shop'; return; }
+      if (I.pressed('KeyH')) { this.skillIndex = 0; this.state = 'skillup'; return; }
 
       pl.update(dt, I, lv, now);
       this.drainPlayerFx(pl);
@@ -4397,6 +4840,9 @@
       const bossAlive = lv.enemies.some((e) => e.isBoss && e.alive);
       const cleared = lv.hasBoss ? !bossAlive : (pl.x + pl.w >= lv.goal.x);
       if (cleared) {
+        const jadeReward = 8 + this.levelIndex * 6;
+        this.addJade(jadeReward);
+        this.toast('过关 · 获得仙玉 ' + jadeReward);
         if (this.levelIndex + 1 < XY.LEVELS.length) { this.levelIndex++; this.save(); this.state = 'levelIntro'; }
         else { this.levelIndex = 0; this.persist.levelReached = 0; this.save(); this.state = 'win'; }
       }
@@ -4544,8 +4990,17 @@
       const names = Object.keys(drops).map((id) => XY.ITEMS[id].name + '×' + drops[id]).join(' ');
       if (names) this.toast('获得 ' + names);
 
+      // —— 货币：小怪给金币，首领另给仙玉 ——
+      const lvNum = Math.max(1, e.level || 1);
+      const goldGain = e.isBoss ? 260 : Math.round(5 + lvNum * 4);
+      this.addGold(goldGain);
+      const jadeGain = e.isBoss ? 45 : 0;
+      if (jadeGain) this.addJade(jadeGain);
+      this.floater(e.x + e.w / 2, e.y - 34, '+' + goldGain + ' 金', '#f4c430');
+      if (jadeGain) this.floater(e.x + e.w / 2, e.y - 52, '+' + jadeGain + ' 仙玉', '#7CFC9B');
+
       // —— 经验值：世界飘字 + HUD 弹出 + 击杀特效 ——
-      const exp = XY.killExp(e.level || 1);
+      const exp = XY.killExp(lvNum);
       this.player.gainExp(exp, this);
       this.floater(e.x + e.w / 2, e.y - 18, '+' + exp + ' EXP', '#9be7ff');
       this.expPops.push({ text: '+' + exp + ' EXP', life: 1.1, color: '#9be7ff' });
@@ -4628,24 +5083,61 @@
       }
     }
 
-    // —— 合成 ——
+    // —— 锻造 ——
     updateCraft() {
       const I = XY.Input;
       if (I.pressed('Escape') || I.pressed('KeyL') || I.pressed('KeyC')) { this.state = 'playing'; return; }
       if (I.pressed('KeyB')) { this.bagTab = 0; this.bagIndex = 0; this.state = 'bag'; return; }
-      if (I.pressed('ArrowUp') || I.pressed('KeyW')) this.craftIndex = (this.craftIndex + XY.RECIPES.length - 1) % XY.RECIPES.length;
-      if (I.pressed('ArrowDown') || I.pressed('KeyS')) this.craftIndex = (this.craftIndex + 1) % XY.RECIPES.length;
+      if (I.pressed('KeyG')) { this.shopIndex = 0; this.state = 'shop'; return; }
+      if (I.pressed('KeyH')) { this.skillIndex = 0; this.state = 'skillup'; return; }
+      const n = XY.RECIPES.length;
+      // 3×3 网格：W/S 上下换档，A/D 左右换部位
+      if (I.pressed('ArrowUp') || I.pressed('KeyW')) this.craftIndex = (this.craftIndex + n - 3) % n;
+      if (I.pressed('ArrowDown') || I.pressed('KeyS')) this.craftIndex = (this.craftIndex + 3) % n;
+      if (I.pressed('ArrowLeft') || I.pressed('KeyA')) this.craftIndex = (this.craftIndex + n - 1) % n;
+      if (I.pressed('ArrowRight') || I.pressed('KeyD')) this.craftIndex = (this.craftIndex + 1) % n;
       if (I.pressed('Enter') || I.pressed('Space')) {
         const r = XY.RECIPES[this.craftIndex];
-        if (XY.canCraft(this.inventory, r)) {
-          this.inventory = XY.craft(this.inventory, r);
-          const out = XY.ITEMS[r.output.itemId];
-          if (out.slot) this.equipped[out.slot] = out.id;
-          this.rebuildPlayer();
-          this.toast('合成成功：' + out.name + '（已自动装备）');
-          this.fx.levelUp(this.player.x + this.player.w / 2, this.player.y + this.player.h);
-          this.save();
-        } else this.toast('材料不足');
+        if (!XY.canCraft(this.inventory, r)) { this.toast('材料不足'); return; }
+        if (this.gold < (r.gold || 0)) { this.toast('金币不足 · 需 ' + r.gold); return; }
+        this.gold -= (r.gold || 0);
+        this.inventory = XY.craft(this.inventory, r);
+        const out = XY.ITEMS[r.output.itemId];
+        if (out.slot) this.equipped[out.slot] = out.id;
+        this.rebuildPlayer();
+        this.toast('锻造成功：' + out.name + '（已自动装备）');
+        this.fx.levelUp(this.player.x + this.player.w / 2, this.player.y + this.player.h);
+        this.save();
+      }
+    }
+
+    // —— 属性商店（金币）——
+    updateShop() {
+      const I = XY.Input;
+      if (I.pressed('Escape') || I.pressed('KeyG')) { this.state = 'playing'; return; }
+      if (I.pressed('KeyB')) { this.bagTab = 0; this.bagIndex = 0; this.state = 'bag'; return; }
+      if (I.pressed('KeyH')) { this.skillIndex = 0; this.state = 'skillup'; return; }
+      if (I.pressed('KeyL') || I.pressed('KeyC')) { this.craftIndex = 0; this.state = 'craft'; return; }
+      const n = XY.SHOP.length;
+      if (I.pressed('ArrowUp') || I.pressed('KeyW')) this.shopIndex = (this.shopIndex + n - 1) % n;
+      if (I.pressed('ArrowDown') || I.pressed('KeyS')) this.shopIndex = (this.shopIndex + 1) % n;
+      if (I.pressed('Enter') || I.pressed('Space')) this.buyAttr(XY.SHOP[this.shopIndex]);
+    }
+
+    // —— 技能参悟（仙玉）——
+    updateSkillUp() {
+      const I = XY.Input;
+      if (I.pressed('Escape') || I.pressed('KeyH')) { this.state = 'playing'; return; }
+      if (I.pressed('KeyB')) { this.bagTab = 0; this.bagIndex = 0; this.state = 'bag'; return; }
+      if (I.pressed('KeyG')) { this.shopIndex = 0; this.state = 'shop'; return; }
+      if (I.pressed('KeyL') || I.pressed('KeyC')) { this.craftIndex = 0; this.state = 'craft'; return; }
+      const ids = this.player ? this.player.char.skills : [];
+      const n = Math.max(1, ids.length);
+      if (I.pressed('ArrowUp') || I.pressed('KeyW')) this.skillIndex = (this.skillIndex + n - 1) % n;
+      if (I.pressed('ArrowDown') || I.pressed('KeyS')) this.skillIndex = (this.skillIndex + 1) % n;
+      if (I.pressed('Enter') || I.pressed('Space')) {
+        const sid = ids[clamp(this.skillIndex, 0, ids.length - 1)];
+        if (sid) this.upgradeSkill(sid);
       }
     }
 
@@ -4765,11 +5257,23 @@
       this.treasureSlots = ['tr_wuxing', 'tr_kunxian', 'tr_bajiao'];
       this.player.treasures = this.treasureSlots;
       this.equipped.weapon = 'eq_staff';
+      // 预览用：给一笔钱和一个中段等级，方便看商店/技能/锻造界面
+      this.persist.gold = 2400;
+      this.persist.jade = 380;
+      this.persist.level = 6;
+      this.persist.exp = 40;
+      this.persist.attr = { attack: 3, maxHp: 1 };
+      this.persist.skillLv = { wk_smash: 3, wk_dash: 2 };
       this.rebuildPlayer();
+      // rebuildPlayer 以旧玩家等级为准，这里显式覆盖成预览等级
+      this.player.level = 6;
+      this.player.exp = 40;
+      this.player.recalcStats({ fullHeal: true });
       this.player.x = 300;
       const map = {
         title: 'title', charselect: 'charselect', cutscene: 'cutscene', intro: 'levelIntro',
         play: 'playing', bag: 'bag', craft: 'craft', pause: 'pause', gameover: 'gameover', win: 'win',
+        shop: 'shop', skillup: 'skillup',
       };
       this.state = map[scene] || 'playing';
       if (this.state === 'charselect') this.player = this.player || null;
@@ -4831,6 +5335,8 @@
         case 'pause': this.renderPlaying(); XY.UI.drawPause(ctx); break;
         case 'bag': XY.UI.drawBag(ctx, this); break;
         case 'craft': XY.UI.drawCraft(ctx, this); break;
+        case 'shop': XY.UI.drawShop(ctx, this); break;
+        case 'skillup': XY.UI.drawSkillUp(ctx, this); break;
         case 'gameover': XY.UI.drawGameOver(ctx, this); break;
         case 'win': XY.UI.drawWin(ctx, this); break;
       }

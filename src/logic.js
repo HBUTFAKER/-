@@ -88,5 +88,70 @@
     return t;
   };
 
+  // —— 成长：等级成长 + 商店属性 + 装备加成，统一在一处算 ——
+  // progress = { level, attr: { attack: 3, ... } }
+  XY.heroStats = function (base, progress, equipped) {
+    const p = progress || {};
+    const lv = Math.max(1, Math.floor(Number(p.level) || 1));
+    const g = XY.GROWTH || {};
+    const t = Object.assign({}, base);
+    for (const k in g) {
+      if (typeof t[k] === 'number') t[k] += g[k] * (lv - 1);
+    }
+    const attr = p.attr || {};
+    for (const row of (XY.SHOP || [])) {
+      const n = Math.max(0, Math.floor(Number(attr[row.key]) || 0));
+      if (n > 0) t[row.key] = (t[row.key] || 0) + row.step * n;
+    }
+    for (const item of (equipped || [])) {
+      if (!item || !item.bonus) continue;
+      for (const k in item.bonus) t[k] = (t[k] || 0) + item.bonus[k];
+    }
+    // 取整 + 夹取，避免长跑之后出现小数血量或爆率溢出
+    t.maxHp = Math.round(t.maxHp || 1);
+    t.attack = Math.round(t.attack || 0);
+    t.defense = Math.round(t.defense || 0);
+    t.moveSpeed = Math.round(t.moveSpeed || 0);
+    t.critRate = Math.max(0, Math.min(0.75, Number(t.critRate) || 0));
+    return t;
+  };
+
+  // 商店第 n 次购买的价格（n 从 0 开始）
+  XY.shopPrice = function (row, owned) {
+    const n = Math.max(0, Math.floor(Number(owned) || 0));
+    return Math.round(row.base * Math.pow(row.rate, n));
+  };
+
+  // 技能按等级换算实际数值：每级 +10% 倍率、-5.5% 冷却、+6% 范围
+  XY.skillAtLevel = function (sk, lv) {
+    if (!sk) return sk;
+    const maxLv = XY.SKILL_MAX_LV || 5;
+    const L = Math.max(1, Math.min(maxLv, Math.floor(Number(lv) || 1)));
+    const dmg = 1 + (L - 1) * 0.1;
+    const cd = 1 - (L - 1) * 0.055;
+    const out = Object.assign({}, sk, { level: L });
+    if (typeof sk.multiplier === 'number') out.multiplier = Math.round(sk.multiplier * dmg * 100) / 100;
+    if (typeof sk.cooldown === 'number') out.cooldown = Math.round(sk.cooldown * cd);
+    if (typeof sk.radius === 'number') out.radius = Math.round(sk.radius * (1 + (L - 1) * 0.06));
+    if (typeof sk.range === 'number' && sk.range > 0) out.range = Math.round(sk.range * (1 + (L - 1) * 0.04));
+    if (typeof sk.healPct === 'number') out.healPct = Math.min(0.8, Math.round(sk.healPct * (1 + (L - 1) * 0.12) * 1000) / 1000);
+    out.cost = sk.cost; // 耗气不随等级变化，避免升级反而更难放
+    return out;
+  };
+
+  // 技能升到下一级所需仙玉；满级返回 null
+  XY.skillUpCost = function (lv) {
+    const L = Math.max(1, Math.floor(Number(lv) || 1));
+    const table = XY.SKILL_JADE_COST || [];
+    if (L >= (XY.SKILL_MAX_LV || 5)) return null;
+    return table[L - 1] != null ? table[L - 1] : null;
+  };
+
+  // 锻造：材料 + 金币双重要求
+  XY.canForge = function (inv, recipe, gold) {
+    if (!XY.canCraft(inv, recipe)) return false;
+    return (Number(gold) || 0) >= (recipe.gold || 0);
+  };
+
   if (typeof module !== 'undefined' && module.exports) module.exports = XY;
 })(typeof window !== 'undefined' ? window : globalThis);

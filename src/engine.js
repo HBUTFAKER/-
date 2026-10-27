@@ -142,9 +142,15 @@
   const anyPressed = (input, list) => list.some((k) => input.pressed(k));
   const anyDown = (input, list) => list.some((k) => input.isDown(k));
 
-  XY.makePlayer = function (charDef, equippedItems, treasureIds) {
-    const stats = XY.totalStats(charDef.base, equippedItems);
-    return new XY.Player(charDef, stats, equippedItems, treasureIds || []);
+  XY.makePlayer = function (charDef, equippedItems, treasureIds, progress) {
+    const prog = progress || { level: 1, exp: 0, attr: {}, skillLv: {} };
+    const stats = XY.heroStats(charDef.base, prog, equippedItems);
+    const p = new XY.Player(charDef, stats, equippedItems, treasureIds || []);
+    p.progress = prog;
+    p.level = Math.max(1, Math.floor(Number(prog.level) || 1));
+    p.exp = Math.max(0, Number(prog.exp) || 0);
+    p.skillLv = prog.skillLv || {};
+    return p;
   };
 
   XY.Player = class {
@@ -154,6 +160,8 @@
       this.stats = stats;
       this.equipped = equipped;
       this.treasures = treasures; // 可用法宝 id 列表（通常 3 格）
+      this.progress = null;      // 由 makePlayer 注入，保存成长数据
+      this.skillLv = {};         // 技能等级，影响倍率与冷却
       this.w = 34; this.h = 54;
       this.x = 80; this.y = 360;
       this.vx = 0; this.vy = 0;
@@ -311,7 +319,7 @@
     trySkill(i, now) {
       const sid = this.char.skills[i];
       if (!sid) return null;
-      const sk = XY.getSkill(sid);
+      const sk = XY.skillAtLevel(XY.getSkill(sid), (this.skillLv && this.skillLv[sid]) || 1);
       if (now < (this.skillCd[sid] || 0)) return null;
       if (this.energy < sk.cost) return null;
       this.energy -= sk.cost;
@@ -329,21 +337,37 @@
       this.castStart = now; this.castUntil = now + 300;
       return { kind: 'treasure', treasure: t, hitKey: 'tr' + tid + now };
     }
+    // 按当前成长数据重算属性（升级 / 商店买属性 / 换装都走这里）
+    recalcStats(opts) {
+      const o = opts || {};
+      const p = this.progress || { level: this.level, attr: {} };
+      p.level = this.level;
+      const ratio = this.maxHp > 0 ? this.hp / this.maxHp : 1;
+      this.stats = XY.heroStats(this.base, p, this.equipped || []);
+      this.maxHp = this.stats.maxHp;
+      this.hp = o.fullHeal ? this.maxHp : Math.max(1, Math.round(this.maxHp * ratio));
+      this.skillLv = p.skillLv || this.skillLv || {};
+    }
     gainExp(amount, game) {
-      this.exp += amount;
+      const add = Number(amount);
+      this.exp += Number.isFinite(add) ? Math.max(0, add) : 0;
       let ups = 0;
       while (this.exp >= XY.expToNext(this.level)) {
         this.exp -= XY.expToNext(this.level);
         this.level++;
-        this.stats.maxHp += 20; this.stats.attack += 4; this.stats.defense += 2;
-        this.maxHp = this.stats.maxHp;
-        this.hp = this.maxHp;
         ups++;
       }
-      if (ups > 0 && game) {
-        game.toast('升到 ' + this.level + ' 级！气血全满');
-        if (game.fx) game.fx.levelUp(this.x + this.w / 2, this.y + this.h);
-        if (game.expPops) game.expPops.push({ text: 'LEVEL UP! Lv.' + this.level, life: 1.6, color: '#ffd479' });
+      if (ups > 0) {
+        this.recalcStats({ fullHeal: true });
+        if (this.progress) { this.progress.level = this.level; this.progress.exp = this.exp; }
+        if (game) {
+          game.toast('升到 ' + this.level + ' 级！气血全满');
+          if (game.fx) game.fx.levelUp(this.x + this.w / 2, this.y + this.h);
+          if (game.expPops) game.expPops.push({ text: 'LEVEL UP! Lv.' + this.level, life: 1.6, color: '#ffd479' });
+          if (game.save) game.save();
+        }
+      } else if (this.progress) {
+        this.progress.exp = this.exp;
       }
       return ups;
     }

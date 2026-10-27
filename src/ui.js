@@ -358,6 +358,10 @@
     ctx.fillText(game.level.hasBoss ? '击败牛魔王即可通关' : '妖物 ' + killed + '/' + total + ' · 抵达终点旗帜通关', W - 20, 48);
     ctx.textAlign = 'left';
 
+    // 货币：右上角常驻
+    currencyChip(ctx, W - 248, 56, '仙玉', game.jade, '#7CFC9B');
+    currencyChip(ctx, W - 128, 56, '金', game.gold, '#f4c430');
+
     // 状态图标（护盾/加速/攻击/防御）
     let bxx = 108;
     const now = game.now;
@@ -456,7 +460,7 @@
 
     // 底部提示
     ctx.fillStyle = 'rgba(140,152,175,0.85)'; ctx.font = '11px "PingFang SC", sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('B 背包 · L 合成 · P 暂停 · 双击 A/D 奔跑 · 空中再按 W 二段跳', W / 2, H - 6);
+    ctx.fillText('B 背包 · L 锻造 · G 商店 · H 技能 · P 暂停 · 双击 A/D 奔跑', W / 2, H - 6);
     ctx.textAlign = 'left';
 
     if (XY.Input && XY.Input.keyCount === 0) {
@@ -517,7 +521,7 @@
     // 操作说明
     ctx.fillStyle = '#93a3bb'; ctx.font = '12.5px "PingFang SC", sans-serif';
     ctx.fillText('A D 移动（双击奔跑） · W 跳（可二段跳） · S 快落 · J 普攻', 94, 462);
-    ctx.fillText('K U I 技能 · 1 2 3 法宝 · B 背包 · L 合成', 94, 484);
+    ctx.fillText('K U I 技能 · 1 2 3 法宝 · B 背包 · L 锻造 · G 商店 · H 技能', 94, 484);
     ctx.textAlign = 'left';
   };
 
@@ -674,56 +678,284 @@
     center(ctx, '按 Enter 回到标题', 322, '18px "PingFang SC", sans-serif', '#fff');
   };
 
-  // ===== 合成坊 =====
+  // ===== 通用：货币标签 =====
+  function currencyChip(ctx, x, y, name, value, color) {
+    const txt = name + ' ' + value;
+    ctx.font = 'bold 13px "PingFang SC", sans-serif';
+    const w = ctx.measureText(txt).width + 30;
+    rrect(ctx, x, y, w, 24, 12);
+    ctx.fillStyle = 'rgba(16,21,32,0.94)'; ctx.fill();
+    ctx.strokeStyle = color; ctx.lineWidth = 1.2; ctx.stroke();
+    ctx.beginPath(); ctx.arc(x + 13, y + 12, 4.5, 0, Math.PI * 2);
+    ctx.fillStyle = color; ctx.fill();
+    ctx.fillStyle = '#e6ecf5'; ctx.textAlign = 'left';
+    ctx.fillText(txt, x + 23, y + 17);
+    return w;
+  }
+
+  // ===== 锻造坊（材料 + 金币）=====
+  // 三行对应三档品阶，三列对应 兵器 / 护甲 / 佩饰，一眼看出该先做哪件
   UI.drawCraft = function (ctx, game) {
     UI.drawBackground(ctx, game.levelIndex, game.uiTime);
-    ctx.fillStyle = 'rgba(6,9,14,0.72)'; ctx.fillRect(0, 0, W, H);
-    center(ctx, '法宝合成坊', 56, 'bold 32px serif', '#ffd479');
-    center(ctx, 'W/S 或 ↑↓ 选择 · Enter 合成 · B 背包 · Esc 返回', 86, '13px "PingFang SC", sans-serif', '#cfe0f5');
-    const panelW = 720, px = (W - panelW) / 2;
+    ctx.fillStyle = 'rgba(6,9,14,0.84)'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#ffd479'; ctx.font = 'bold 30px serif';
+    ctx.fillText('锻 造 坊', 40, 50);
+    ctx.fillStyle = '#7d8798'; ctx.font = '12px "PingFang SC", sans-serif';
+    ctx.fillText('打怪掉材料 → 按品阶锻造 · 成品自动装备', 40, 70);
+
+    currencyChip(ctx, 906 - 118, 30, '金', game.gold, '#f4c430');
+    currencyChip(ctx, 906 - 118 - 108, 30, '仙玉', game.jade, '#7CFC9B');
+
+    const cols = 3, cardW = 280, cardH = 104, gapX = 12, gapY = 12;
+    const x0 = 40, y0 = 88;
+    const tierName = { 1: '凡品', 2: '灵品', 3: '神品' };
+    const tierColor = { 1: '#9fb0c8', 2: '#5cc8ff', 3: '#ffb35c' };
+
     for (let i = 0; i < XY.RECIPES.length; i++) {
       const r = XY.RECIPES[i];
-      const y = 118 + i * 96;
+      const col = i % cols, row = Math.floor(i / cols);
+      const x = x0 + col * (cardW + gapX), y = y0 + row * (cardH + gapY);
       const sel = i === game.craftIndex;
-      const can = XY.canCraft(game.inventory, r);
-      rrect(ctx, px, y, panelW, 82, 10);
-      ctx.fillStyle = sel ? 'rgba(42,53,80,0.96)' : 'rgba(18,24,36,0.9)'; ctx.fill();
-      ctx.strokeStyle = sel ? (can ? '#7CFC9B' : '#ffd479') : '#2a3550'; ctx.lineWidth = sel ? 3 : 1; ctx.stroke();
+      const hasMat = XY.canCraft(game.inventory, r);
+      const hasGold = game.gold >= (r.gold || 0);
+      const can = hasMat && hasGold;
+
+      rrect(ctx, x, y, cardW, cardH, 9);
+      ctx.fillStyle = sel ? 'rgba(42,53,80,0.97)' : 'rgba(16,21,32,0.92)'; ctx.fill();
+      ctx.strokeStyle = sel ? (can ? '#7CFC9B' : '#e0675a') : '#232c3e';
+      ctx.lineWidth = sel ? 2.5 : 1; ctx.stroke();
 
       const out = XY.ITEMS[r.output.itemId];
-      if (out) {
-        if (out.slot) Art().drawEquipIcon(ctx, px + 16, y + 13, 56, out);
-        else Art().drawMaterialIcon(ctx, px + 16, y + 13, 56, out.id);
+      if (out) Art().drawEquipIcon(ctx, x + 8, y + 10, 54, out);
+
+      ctx.fillStyle = tierColor[r.tier] || '#9fb0c8';
+      ctx.font = 'bold 10px "PingFang SC", sans-serif'; ctx.textAlign = 'right';
+      ctx.fillText(tierName[r.tier] || '', x + cardW - 10, y + 16); ctx.textAlign = 'left';
+
+      ctx.fillStyle = sel ? '#fff' : '#dbe4f0'; ctx.font = 'bold 14px "PingFang SC", sans-serif';
+      ctx.fillText(r.name.replace(/^[^·]*·/, ''), x + 70, y + 26);
+      if (out && out.bonus) {
+        const txt = Object.keys(out.bonus).map((k) => statName(k) + '+' + fmtStat(k, out.bonus[k])).join(' ');
+        ctx.fillStyle = '#9be7ff'; ctx.font = '10.5px "PingFang SC", sans-serif';
+        ctx.fillText(txt, x + 70, y + 44);
       }
-      ctx.fillStyle = '#fff'; ctx.font = 'bold 17px "PingFang SC", sans-serif';
-      ctx.fillText(r.name, px + 86, y + 26);
-      ctx.fillStyle = '#93a0b5'; ctx.font = '11.5px "PingFang SC", sans-serif';
-      ctx.fillText(r.description, px + 86, y + 45);
-      // 材料需求 + 图标
-      let ix = px + 86;
+
+      // 材料
+      let ix = x + 12;
       for (const id of Object.keys(r.inputs)) {
-        const it = XY.ITEMS[id];
         const need = r.inputs[id];
         const have = game.inventory[id] || 0;
-        Art().drawMaterialIcon(ctx, ix, y + 52, 22, id);
+        Art().drawMaterialIcon(ctx, ix, y + 56, 18, id);
         ctx.fillStyle = have >= need ? '#7CFC9B' : '#e0675a';
-        ctx.font = '11px "PingFang SC", sans-serif';
-        ctx.fillText(it.name + ' ' + have + '/' + need, ix + 26, y + 68);
-        ix += 128;
+        ctx.font = '10px "PingFang SC", sans-serif';
+        ctx.fillText(have + '/' + need, ix + 21, y + 70);
+        ix += 60;
       }
-      if (out && out.bonus) {
-        const txt = Object.keys(out.bonus).map((k) => statName(k) + '+' + (out.bonus[k] > 1 ? out.bonus[k] : Math.round(out.bonus[k] * 100) + '%')).join('  ');
-        ctx.fillStyle = '#9be7ff'; ctx.font = '11px "PingFang SC", sans-serif'; ctx.textAlign = 'right';
-        ctx.fillText(txt, px + panelW - 16, y + 68);
-        ctx.textAlign = 'left';
+
+      if (r.gold) {
+        ctx.fillStyle = hasGold ? '#f4c430' : '#e0675a';
+        ctx.font = 'bold 11px "PingFang SC", sans-serif'; ctx.textAlign = 'right';
+        ctx.fillText('金 ' + r.gold, x + cardW - 10, y + 96); ctx.textAlign = 'left';
       }
     }
+
+    ctx.fillStyle = 'rgba(150,162,182,0.9)'; ctx.font = '12px "PingFang SC", sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('W/S 或 A/D 选择 · Enter 锻造 · G 商店 · H 技能 · B 背包 · Esc 返回', W / 2, H - 16);
+    ctx.textAlign = 'left';
   };
 
   function statName(k) {
     return ({ maxHp: '气血', attack: '攻击', defense: '防御', moveSpeed: '身法', critRate: '暴击' })[k] || k;
   }
   UI.statName = statName;
+  function fmtStat(k, v) {
+    if (k === 'critRate') return Math.round(v * 100) + '%';
+    return String(Math.round(v * 10) / 10);
+  }
+
+  // ===== 属性商店（金币）=====
+  UI.drawShop = function (ctx, game) {
+    UI.drawBackground(ctx, game.levelIndex, game.uiTime);
+    ctx.fillStyle = 'rgba(6,9,14,0.84)'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#ffd479'; ctx.font = 'bold 30px serif';
+    ctx.fillText('属 性 商 店', 40, 50);
+    ctx.fillStyle = '#7d8798'; ctx.font = '12px "PingFang SC", sans-serif';
+    ctx.fillText('升级会自动加成；在此用金币额外加点，越买越贵', 40, 70);
+
+    let cx = 906;
+    const gw = currencyChip(ctx, cx - 118, 30, '金', game.gold, '#f4c430');
+    currencyChip(ctx, cx - 118 - (gw + 10) - 104, 30, '仙玉', game.jade, '#7CFC9B');
+
+    const pl = game.player;
+    // —— 左：当前面板 ——
+    const px = 40, py = 96, pw = 268, ph = 386;
+    rrect(ctx, px, py, pw, ph, 12);
+    ctx.fillStyle = 'rgba(14,19,28,0.94)'; ctx.fill();
+    ctx.strokeStyle = '#2a3550'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = '#8a93a6'; ctx.font = '11px "PingFang SC", sans-serif';
+    ctx.fillText('当前战况', px + 16, py + 24);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 17px "PingFang SC", sans-serif';
+    ctx.fillText(pl.char.name, px + 16, py + 50);
+    ctx.fillStyle = '#ffd479'; ctx.font = 'bold 13px "PingFang SC", sans-serif';
+    ctx.fillText('Lv.' + pl.level, px + pw - 60, py + 50);
+
+    const rows = [
+      ['气血', pl.stats.maxHp, ''],
+      ['攻击', pl.stats.attack, ''],
+      ['防御', pl.stats.defense, ''],
+      ['暴击', Math.round(pl.stats.critRate * 100), '%'],
+      ['身法', pl.stats.moveSpeed, ''],
+    ];
+    let yy = py + 80;
+    for (const r of rows) {
+      ctx.fillStyle = '#93a0b5'; ctx.font = '12px "PingFang SC", sans-serif';
+      ctx.fillText(r[0], px + 16, yy);
+      ctx.fillStyle = '#e6ecf5'; ctx.font = 'bold 15px "PingFang SC", sans-serif'; ctx.textAlign = 'right';
+      ctx.fillText(r[1] + r[2], px + pw - 16, yy); ctx.textAlign = 'left';
+      yy += 30;
+    }
+    // 成长明细
+    const grow = XY.GROWTH, lvUp = pl.level - 1;
+    ctx.fillStyle = '#5b6678'; ctx.font = '10.5px "PingFang SC", sans-serif';
+    ctx.fillText('成长 ×' + lvUp + '级  +攻' + Math.round(grow.attack * lvUp) + ' +血' + Math.round(grow.maxHp * lvUp), px + 16, py + 250);
+    ctx.fillText('商店加点  ' + XY.SHOP.map((r) => (game.persist.attr[r.key] || 0)).reduce((a, b) => a + b, 0) + ' 次', px + 16, py + 268);
+    ctx.fillText('装备加成  ' + ['weapon', 'armor', 'trinket'].filter((s) => game.equipped[s]).length + ' 件', px + 16, py + 286);
+
+    ctx.fillStyle = '#5b6678'; ctx.font = '10.5px "PingFang SC", sans-serif';
+    ctx.fillText('每升一级自动获得：', px + 16, py + 318);
+    ctx.fillStyle = '#9be7ff';
+    ctx.fillText('攻 +' + grow.attack + '  防 +' + grow.defense + '  血 +' + grow.maxHp, px + 16, py + 336);
+    ctx.fillText('暴击 +' + (grow.critRate * 100).toFixed(1) + '%  身法 +' + grow.moveSpeed, px + 16, py + 354);
+
+    // —— 右：属性列表 ——
+    const lx = 328, lw = 578, lh = 62, gap = 9, ly = 96;
+    for (let i = 0; i < XY.SHOP.length; i++) {
+      const row = XY.SHOP[i];
+      const own = game.persist.attr[row.key] || 0;
+      const maxed = own >= row.max;
+      const price = XY.shopPrice(row, own);
+      const afford = game.gold >= price;
+      const sel = i === game.shopIndex;
+      const y = ly + i * (lh + gap);
+      rrect(ctx, lx, y, lw, lh, 9);
+      ctx.fillStyle = sel ? 'rgba(42,53,80,0.97)' : 'rgba(16,21,32,0.9)'; ctx.fill();
+      ctx.strokeStyle = sel ? (maxed ? '#8a93a6' : (afford ? '#ffd479' : '#e0675a')) : '#232c3e';
+      ctx.lineWidth = sel ? 2.5 : 1; ctx.stroke();
+
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 16px "PingFang SC", sans-serif';
+      ctx.fillText(row.name, lx + 16, y + 26);
+      ctx.fillStyle = '#7CFC9B'; ctx.font = 'bold 12px "PingFang SC", sans-serif';
+      ctx.fillText('+' + game.attrStepText(row), lx + 16 + 46, y + 26);
+
+      // 已买进度条
+      const bx = lx + 120, bw = 210;
+      ctx.fillStyle = '#1a2130'; rrect(ctx, bx, y + 16, bw, 8, 4); ctx.fill();
+      if (own > 0) {
+        ctx.fillStyle = '#ffd479';
+        rrect(ctx, bx, y + 16, Math.max(4, bw * (own / row.max)), 8, 4); ctx.fill();
+      }
+      ctx.fillStyle = '#8a93a6'; ctx.font = '11px "PingFang SC", sans-serif';
+      ctx.fillText(own + ' / ' + row.max, bx, y + 44);
+
+      // 当前总属性
+      ctx.fillStyle = '#c9d4e4'; ctx.font = '12px "PingFang SC", sans-serif';
+      ctx.fillText('当前 ' + fmtStat(row.key, pl.stats[row.key] || 0) + row.unit, lx + 350, y + 26);
+
+      // 价格 / 已满
+      ctx.textAlign = 'right';
+      if (maxed) {
+        ctx.fillStyle = '#8a93a6'; ctx.font = 'bold 13px "PingFang SC", sans-serif';
+        ctx.fillText('已达上限', lx + lw - 16, y + 32);
+      } else {
+        ctx.fillStyle = afford ? '#f4c430' : '#e0675a'; ctx.font = 'bold 15px "PingFang SC", sans-serif';
+        ctx.fillText('金 ' + price, lx + lw - 16, y + 26);
+        ctx.fillStyle = '#5b6678'; ctx.font = '10.5px "PingFang SC", sans-serif';
+        ctx.fillText('第 ' + (own + 1) + ' 次', lx + lw - 16, y + 44);
+      }
+      ctx.textAlign = 'left';
+    }
+
+    ctx.fillStyle = 'rgba(150,162,182,0.9)'; ctx.font = '12px "PingFang SC", sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('W/S 选择 · Enter 购买 · H 技能参悟 · L 锻造 · B 背包 · Esc 返回', W / 2, H - 22);
+    ctx.textAlign = 'left';
+  };
+
+  // ===== 技能参悟（仙玉）=====
+  UI.drawSkillUp = function (ctx, game) {
+    UI.drawBackground(ctx, game.levelIndex, game.uiTime);
+    ctx.fillStyle = 'rgba(6,9,14,0.84)'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#ffd479'; ctx.font = 'bold 30px serif';
+    ctx.fillText('技 能 参 悟', 40, 50);
+    ctx.fillStyle = '#7d8798'; ctx.font = '12px "PingFang SC", sans-serif';
+    ctx.fillText('用仙玉提升技能重数：每重 +10% 威力、-5.5% 冷却、+6% 范围', 40, 70);
+
+    let cx = 906;
+    const gw = currencyChip(ctx, cx - 118, 30, '金', game.gold, '#f4c430');
+    currencyChip(ctx, cx - 118 - (gw + 10) - 104, 30, '仙玉', game.jade, '#7CFC9B');
+
+    const ids = game.player.char.skills;
+    const cardH = 108, gap = 14, y0 = 104;
+    for (let i = 0; i < ids.length; i++) {
+      const base = XY.getSkill(ids[i]);
+      const lv = game.persist.skillLv[ids[i]] || 1;
+      const cur = XY.skillAtLevel(base, lv);
+      const next = lv < XY.SKILL_MAX_LV ? XY.skillAtLevel(base, lv + 1) : null;
+      const cost = XY.skillUpCost(lv);
+      const afford = cost != null && game.jade >= cost;
+      const sel = i === game.skillIndex;
+      const y = y0 + i * (cardH + gap);
+
+      rrect(ctx, 48, y, 864, cardH, 11);
+      ctx.fillStyle = sel ? 'rgba(42,53,80,0.97)' : 'rgba(16,21,32,0.9)'; ctx.fill();
+      ctx.strokeStyle = sel ? (next ? (afford ? '#7CFC9B' : '#e0675a') : '#8a93a6') : '#232c3e';
+      ctx.lineWidth = sel ? 2.5 : 1; ctx.stroke();
+
+      Art().drawSkillIcon(ctx, 64, y + 24, 60, base, 0, true);
+
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 19px "PingFang SC", sans-serif';
+      ctx.fillText(base.name, 142, y + 38);
+      // 重数圆点
+      for (let k = 0; k < XY.SKILL_MAX_LV; k++) {
+        ctx.beginPath(); ctx.arc(146 + k * 16, y + 56, 5, 0, Math.PI * 2);
+        ctx.fillStyle = k < lv ? '#ffd479' : '#2a3550'; ctx.fill();
+      }
+      ctx.fillStyle = '#ffd479'; ctx.font = 'bold 12px "PingFang SC", sans-serif';
+      ctx.fillText(lv + ' / ' + XY.SKILL_MAX_LV + ' 重', 146 + XY.SKILL_MAX_LV * 16 + 8, y + 60);
+
+      // 当前 → 下一重
+      ctx.fillStyle = '#93a0b5'; ctx.font = '12px "PingFang SC", sans-serif';
+      ctx.fillText('威力 ×' + cur.multiplier, 330, y + 36);
+      ctx.fillText('冷却 ' + (cur.cooldown / 1000).toFixed(2) + 's', 330, y + 58);
+      if (cur.radius) ctx.fillText('范围 ' + cur.radius, 330, y + 80);
+      else if (cur.range) ctx.fillText('射程 ' + cur.range, 330, y + 80);
+
+      if (next) {
+        ctx.fillStyle = '#7CFC9B'; ctx.font = 'bold 12.5px "PingFang SC", sans-serif';
+        ctx.fillText('→ 威力 ×' + next.multiplier + '   冷却 ' + (next.cooldown / 1000).toFixed(2) + 's', 470, y + 36);
+        ctx.fillStyle = '#5b6678'; ctx.font = '11px "PingFang SC", sans-serif';
+        ctx.fillText('+' + Math.round((next.multiplier / cur.multiplier - 1) * 100) + '% 伤害 · ' + Math.round((1 - next.cooldown / cur.cooldown) * 100) + '% 冷却', 470, y + 58);
+      } else {
+        ctx.fillStyle = '#8a93a6'; ctx.font = 'bold 13px "PingFang SC", sans-serif';
+        ctx.fillText('已至化境', 470, y + 46);
+      }
+
+      ctx.textAlign = 'right';
+      if (cost == null) {
+        ctx.fillStyle = '#8a93a6'; ctx.font = 'bold 13px "PingFang SC", sans-serif';
+        ctx.fillText('满级', 892, y + 60);
+      } else {
+        ctx.fillStyle = afford ? '#7CFC9B' : '#e0675a'; ctx.font = 'bold 17px "PingFang SC", sans-serif';
+        ctx.fillText('仙玉 ' + cost, 892, y + 50);
+        ctx.fillStyle = '#5b6678'; ctx.font = '10.5px "PingFang SC", sans-serif';
+        ctx.fillText('参悟至 ' + (lv + 1) + ' 重', 892, y + 70);
+      }
+      ctx.textAlign = 'left';
+    }
+
+    ctx.fillStyle = 'rgba(150,162,182,0.9)'; ctx.font = '12px "PingFang SC", sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('W/S 选择 · Enter 参悟 · G 商店 · L 锻造 · B 背包 · Esc 返回', W / 2, H - 22);
+    ctx.textAlign = 'left';
+  };
 
   // ===== 背包 =====
   const TABS = ['材料', '法宝', '装备'];
