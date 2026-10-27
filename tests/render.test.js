@@ -502,20 +502,28 @@ test.it('普攻四式为「劈/戳/挑/甩」，判定与手感各不相同', ()
   assert.deepStrictEqual(kinds.slice(4, 8), [0, 1, 2, 3], '四段之后应回到第一段，实际 ' + kinds);
   assert.strictEqual(new Set(ranges.slice(0, 4)).size, 4, '四段判定长度应互不相同，实际 ' + ranges);
   assert.ok(ranges[1] > ranges[0], '戳比劈探得更远');
-  const cfg = XY.BASIC_COMBO;
-  assert.strictEqual(cfg.length, 4, '招式表应为四段');
-  const styles = cfg.map((c) => c.style);
-  assert.strictEqual(new Set(styles).size, 4, '四段刀光样式应各不相同，实际 ' + styles);
-  for (const c of cfg) {
-    assert.ok(c.dur > 0 && c.mult > 0 && c.range > 0 && c.strike > 0 && c.strike < 1, c.name + ' 的招式参数不全');
-    for (let q = 0; q <= 1.0001; q += 0.05) {
-      const sp = XY.Art.swingProfile(cfg.indexOf(c), q);
-      assert.ok(Number.isFinite(sp.arm) && Number.isFinite(sp.wpn) && Number.isFinite(sp.g || 0), c.name + ' 的轨迹在 p=' + q + ' 出现非法值');
-      const mv = XY.Art.attackMotion(cfg.indexOf(c), q);
-      assert.ok(Number.isFinite(mv.tilt) && Number.isFinite(mv.x) && Number.isFinite(mv.y), c.name + ' 的身体动作在 p=' + q + ' 出现非法值');
+  // 每个人一套四式：判定长度、倍率、曲线都得互不相同，不然就是换皮
+  const table = XY.BASIC_COMBO;
+  for (const id of XY.CHARACTER_ORDER) assert.ok(Array.isArray(table[id]) && table[id].length === 4, id + ' 应有一套四式');
+  const sigs = new Set();
+  for (const id of XY.CHARACTER_ORDER) {
+    const cfg = XY.comboFor(id);
+    assert.strictEqual(new Set(cfg.map((c) => c.range)).size, 4, id + ' 四段的判定长度应互不相同');
+    assert.strictEqual(new Set(cfg.map((c) => c.name)).size, 4, id + ' 四段的招式名应互不相同');
+    for (const c of cfg) {
+      assert.ok(c.dur > 0 && c.mult > 0 && c.range > 0 && c.strike > 0 && c.strike < 1, id + '·' + c.name + ' 的招式参数不全');
+      for (let q = 0; q <= 1.0001; q += 0.05) {
+        const sp = XY.Art.swingProfile(c.path, q);
+        assert.ok(Number.isFinite(sp.arm) && Number.isFinite(sp.wpn) && Number.isFinite(sp.g || 0), id + '·' + c.name + ' 的轨迹在 p=' + q + ' 出现非法值');
+        const mv = XY.Art.attackMotion(c.body, q);
+        assert.ok(Number.isFinite(mv.tilt) && Number.isFinite(mv.x) && Number.isFinite(mv.y), id + '·' + c.name + ' 的身体动作在 p=' + q + ' 出现非法值');
+      }
+      sigs.add(c.path + '/' + c.body);
     }
   }
-  assert.ok(cfg[3].back > 0, '甩应能扫到身后');
+  assert.ok(sigs.size >= 12, '五个角色的招式曲线应有明显区分，实际只有 ' + sigs.size + ' 种');
+  assert.ok(XY.comboFor('bajie')[3].back > 0.5, '八戒抡一圈应该能打到身后');
+  assert.ok(XY.comboFor('bailongma')[0].range > XY.comboFor('wukong')[1].range, '龙枪直刺应比金箍棒平捅更长');
 });
 
 test.it('如意棒击：金箍棒暴涨重劈，特效生成且延迟到落点才结算伤害', () => {

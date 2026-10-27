@@ -331,8 +331,9 @@
       if (this._dbgSlash && this.player && now - this._dbgSlashAt > 190) {
         const pl = this.player, k = this._dbgSlash.k;
         const mx = pl.x + pl.w / 2, my = pl.y + pl.h / 2;
-        this.fx.slashStyle(mx + pl.facing * (k === 1 ? 22 : (k === 3 ? 10 : 12)),
-          my + (k === 2 ? 7 : (k === 1 ? 2 : 0)), pl.facing,
+        const dx = this._dbgSlash.fxDx !== undefined ? this._dbgSlash.fxDx : (k === 1 ? 22 : (k === 3 ? 10 : 12));
+        const dy = this._dbgSlash.fxDy !== undefined ? this._dbgSlash.fxDy : (k === 2 ? 7 : (k === 1 ? 2 : 0));
+        this.fx.slashStyle(mx + pl.facing * dx, my + dy, pl.facing,
           k >= 2 ? '#ffb648' : '#ffd15c', k >= 2 ? 1.42 : 1.12, 0.34, this._dbgSlash.style);
         this._dbgSlashAt = now;
       }
@@ -722,8 +723,8 @@
             if (!me) return;
             const mx = me.x + me.w / 2, my = me.y + me.h / 2;
             const dirNow = me.facing;
-            const fxX = mx + dirNow * (k === 1 ? 22 : (k === 3 ? 10 : 12));
-            const fxY = my + (k === 2 ? 7 : (k === 1 ? 2 : 0));
+            const fxX = mx + dirNow * (a.fxDx !== undefined ? a.fxDx : (k === 1 ? 22 : (k === 3 ? 10 : 12)));
+            const fxY = my + (a.fxDy !== undefined ? a.fxDy : (k === 2 ? 7 : (k === 1 ? 2 : 0)));
             // 刀光跟着兵器走：戳是细长平条、挑是上挑弧、甩是横扇、劈是斜劈弧
             this.fx.slashStyle(fxX, fxY, dirNow,
               a.heavy ? '#ffb648' : '#ffd15c', a.heavy ? 1.42 : 1.12,
@@ -1157,9 +1158,9 @@
       if (params.get('atk') != null) {
         const ak = clamp(parseInt(params.get('atk'), 10) || 0, 0, 3);
         const ap = Math.min(0.98, Math.max(0, parseFloat(params.get('atkp') || '0.5') || 0.5));
-        const cfg = (XY.BASIC_COMBO || [])[ak] || { dur: 260, style: 'arc' };
-        this.player._dbgAtk = { k: ak, p: ap };
-        this._dbgSlash = { k: ak, p: ap, style: cfg.style };
+        const cfg = (XY.comboFor(this.player.char.id) || [])[ak] || { dur: 260, style: 'arc', path: 'arc', body: 'chop' };
+        this.player._dbgAtk = { k: ak, p: ap, path: cfg.path, body: cfg.body };
+        this._dbgSlash = { k: ak, p: ap, style: cfg.style, fxDx: cfg.fxDx, fxDy: cfg.fxDy };
         this._dbgSlashAt = -9999;
       }
       const map = {

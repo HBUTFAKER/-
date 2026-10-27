@@ -289,6 +289,7 @@
         return {
           t: this.animT, state: 'attack', facing: this.facing,
           attackP: this._dbgAtk.p, attackKind: this._dbgAtk.k,
+          attackPath: this._dbgAtk.path, attackBody: this._dbgAtk.body,
           castP: undefined, hurtP: undefined, castId: null,
           noWeapon: false, combo: this._dbgAtk.k, sprint: false,
         };
@@ -306,6 +307,8 @@
         t: this.animT, state, facing: this.facing,
         attackP: atk, castP: cast, hurtP: hurtP,
         attackKind: this.attackKind,
+        attackPath: this.attackPath,
+        attackBody: this.attackBody,
         castId: now < this.castUntil ? this.castSkillId : null,
         noWeapon: now < this.noWeaponUntil,
         combo: this.combo,
@@ -313,27 +316,31 @@
       };
     }
 
-    // 普攻四段：劈 → 戳 → 挑 → 甩。每段有自己的动作曲线、判定范围、位移与手感
+    // 普攻：每个人四式（见 XY.BASIC_COMBO），连按循环
     tryBasic(now) {
       if (now < this.attackReady) return null;
-      const table = XY.BASIC_COMBO || [];
-      const n = table.length || 3;
+      const table = (XY.comboFor ? XY.comboFor(this.char.id) : XY.BASIC_COMBO) || [];
+      const n = table.length || 4;
       const quick = now - this.lastAttackAt < 820;
       this.combo = quick ? (this.combo + 1) % n : 0;
       this.lastAttackAt = now;
       const kind = this.combo;
       const cfg = table[kind] || table[0] || { dur: 260, ready: 300, range: 68, mult: 0.92, lunge: 40 };
       this.attackKind = kind;
+      this.attackPath = cfg.path || 'arc';
+      this.attackBody = cfg.body || 'chop';
       this.attackStart = now; this.attackUntil = now + cfg.dur;
       this.attackReady = now + cfg.ready;
-      // 进步：每段的脚下一蹬不一样（戳最远、挑几乎原地）
+      // 进步：每段的脚下一蹬不一样（枪最远、金刚掌几乎原地）
       if (cfg.lunge && this.onGround) { this.vx = this.facing * cfg.lunge; this.lungeUntil = now + 150; }
       return {
         kind: 'melee', atkKind: kind, style: cfg.style, sfx: cfg.sfx,
         dur: cfg.dur, strike: cfg.strike,
         range: cfg.range, mult: cfg.mult, hitLag: cfg.hitLag, shake: cfg.shake,
         backRange: cfg.back ? cfg.range * cfg.back : 0,
-        name: cfg.name, hitKey: 'atk' + now, combo: this.combo, heavy: kind >= 2,
+        name: cfg.name, hitKey: 'atk' + now, combo: this.combo,
+        fxDx: cfg.fxDx, fxDy: cfg.fxDy,
+        heavy: cfg.heavy !== undefined ? cfg.heavy : kind >= 2,
       };
     }
     trySkill(i, now) {

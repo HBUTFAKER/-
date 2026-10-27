@@ -47,32 +47,70 @@
   // ===== 成长曲线：每升一级自动提升（商店买到的属性另算）=====
   XY.GROWTH = { maxHp: 22, attack: 4, defense: 2, critRate: 0.004, moveSpeed: 1.2 };
 
-  // ===== 普攻连段：四段四种招式 =====
-  // 动作曲线在 art.js（swingProfile / attackMotion），刀光在 fx.js（style）
+  // ===== 普攻连段：每个人一套四式，动作曲线在 art.js（PATHS / BODIES）=====
+  // path=兵器轨迹 body=身体语言 style=刀光 sfx=音效
   // dur=动作时长(ms) ready=下次可出手 range=身前判定 mult=倍率 lunge=前冲
-  // hitLag=命中顿帧(ms) shake=震屏 style=刀光样式 back=反手横扫的背面判定系数
-  XY.BASIC_COMBO = [
-    {
-      key: 'chop', name: '劈', style: 'arc', sfx: 'swing',
-      dur: 260, ready: 300, range: 68, mult: 0.92, lunge: 44, strike: 0.52,
-      hitLag: 40, shake: 2.6,
-    },
-    {
-      key: 'thrust', name: '戳', style: 'thrust', sfx: 'thrust',
-      dur: 200, ready: 252, range: 104, mult: 0.88, lunge: 190, strike: 0.46,
-      hitLag: 46, shake: 2.0,
-    },
-    {
-      key: 'lift', name: '挑', style: 'lift', sfx: 'swingHeavy',
-      dur: 310, ready: 384, range: 82, mult: 1.16, lunge: 16, strike: 0.56,
-      hitLag: 58, shake: 3.6,
-    },
-    {
-      key: 'sweep', name: '甩', style: 'sweep', sfx: 'sweep',
-      dur: 360, ready: 470, range: 106, mult: 1.40, lunge: 76, strike: 0.5,
-      hitLag: 74, shake: 5.4, back: 0.62,   // 反手回扫也能扫到身后 62%
-    },
-  ];
+  // strike=判定落在动作的百分之几 hitLag=命中顿帧(ms) shake=震屏 back=反手背面判定系数
+  XY.BASIC_COMBO = {
+    // 悟空 · 金箍棒：轻快、花，四招四套轨迹
+    wukong: [
+      { key: 'chop', name: '劈', path: 'arc', body: 'chop', style: 'arc', sfx: 'swing',
+        dur: 260, ready: 300, range: 68, mult: 0.92, lunge: 44, strike: 0.52, hitLag: 40, shake: 2.6 },
+      { key: 'stab', name: '戳', path: 'thrust', body: 'thrust', style: 'thrust', sfx: 'thrust',
+        dur: 200, ready: 252, range: 104, mult: 0.88, lunge: 190, strike: 0.46, hitLag: 46, shake: 2.0 },
+      { key: 'lift', name: '挑', path: 'lift', body: 'lift', style: 'lift', sfx: 'swingHeavy', heavy: true,
+        dur: 310, ready: 384, range: 82, mult: 1.16, lunge: 16, strike: 0.56, hitLag: 58, shake: 3.6 },
+      { key: 'sweep', name: '甩', path: 'sweep', body: 'sweep', style: 'sweep', sfx: 'sweep', heavy: true,
+        dur: 360, ready: 470, range: 106, mult: 1.40, lunge: 76, strike: 0.5, hitLag: 74, shake: 5.4, back: 0.62 },
+    ],
+    // 八戒 · 九齿钉耙：慢、重、大开大合，第四下原地抡一圈
+    bajie: [
+      { key: 'smash', name: '筑', path: 'smash', body: 'smash', style: 'arc', sfx: 'swingHeavy', heavy: true,
+        dur: 400, ready: 500, range: 88, mult: 1.06, lunge: 34, strike: 0.6, hitLag: 68, shake: 6.0 },
+      { key: 'reel', name: '搂', path: 'reel', body: 'reel', style: 'sweep', sfx: 'sweep',
+        dur: 330, ready: 420, range: 96, mult: 1.02, lunge: 26, strike: 0.48, hitLag: 52, shake: 3.4, back: 0.42 },
+      { key: 'ram', name: '撞', path: 'ram', body: 'charge', style: 'thrust', sfx: 'thrust',
+        dur: 300, ready: 400, range: 76, mult: 0.96, lunge: 250, strike: 0.42, hitLag: 46, shake: 4.6 },
+      { key: 'whirl', name: '抡', path: 'spin', body: 'sweep', style: 'sweep', sfx: 'sweep', heavy: true,
+        dur: 460, ready: 620, range: 112, mult: 1.55, lunge: 60, strike: 0.55, hitLag: 84, shake: 7.4, back: 0.85 },
+    ],
+    // 唐僧 · 空手：轻、快、飘，掌/袖/腿三段加一记合十
+    tangseng: [
+      { key: 'palm', name: '推掌', path: 'palm', body: 'thrust', style: 'thrust', sfx: 'swing',
+        dur: 210, ready: 258, range: 62, mult: 0.80, lunge: 74, strike: 0.44, hitLag: 30, shake: 1.4, fxDx: 18 },
+      { key: 'sleeve', name: '拂袖', path: 'sleeve', body: 'sweep', style: 'sweep', sfx: 'sweep',
+        dur: 240, ready: 300, range: 94, mult: 0.72, lunge: 30, strike: 0.48, hitLag: 28, shake: 1.2, fxDx: 12, fxDy: -2 },
+      { key: 'kick', name: '侧踢', path: 'kick', body: 'kick', style: 'arc', sfx: 'swing',
+        dur: 280, ready: 344, range: 70, mult: 1.06, lunge: 96, strike: 0.46, hitLag: 42, shake: 2.4, fxDx: 14, fxDy: 15 },
+      { key: 'pray', name: '金刚掌', path: 'pray', body: 'calm', style: 'thrust', sfx: 'swingHeavy', heavy: true,
+        dur: 380, ready: 480, range: 76, mult: 1.32, lunge: 12, strike: 0.58, hitLag: 62, shake: 3.4, fxDx: 26 },
+    ],
+    // 沙僧 · 降妖宝杖：沉、稳、贴身，全是短促重击
+    shaseng: [
+      { key: 'gouge', name: '铲', path: 'scoop', body: 'lift', style: 'lift', sfx: 'swingHeavy', heavy: true,
+        dur: 330, ready: 410, range: 88, mult: 1.04, lunge: 36, strike: 0.56, hitLag: 54, shake: 4.2 },
+      { key: 'sweepLow', name: '扫', path: 'sweepLow', body: 'lift', style: 'sweep', sfx: 'sweep',
+        dur: 300, ready: 380, range: 102, mult: 0.98, lunge: 52, strike: 0.5, hitLag: 46, shake: 3.0 },
+      { key: 'butt', name: '顶', path: 'butt', body: 'thrust', style: 'arc', sfx: 'thrust',
+        dur: 190, ready: 242, range: 78, mult: 0.86, lunge: 136, strike: 0.4, hitLag: 34, shake: 2.4, fxDx: 18, fxDy: 8 },
+      { key: 'press', name: '压顶', path: 'press', body: 'smash', style: 'lift', sfx: 'swingHeavy', heavy: true,
+        dur: 400, ready: 500, range: 96, mult: 1.40, lunge: 24, strike: 0.58, hitLag: 72, shake: 5.8 },
+    ],
+    // 白龙马 · 龙枪：长、直、快，全靠距离和身法
+    bailongma: [
+      { key: 'pierce', name: '刺', path: 'thrust2', body: 'thrust', style: 'thrust', sfx: 'thrust',
+        dur: 230, ready: 280, range: 128, mult: 0.95, lunge: 214, strike: 0.42, hitLag: 44, shake: 2.4 },
+      { key: 'rise', name: '撩', path: 'lift2', body: 'lift', style: 'lift', sfx: 'swing',
+        dur: 260, ready: 330, range: 96, mult: 1.08, lunge: 40, strike: 0.52, hitLag: 50, shake: 3.2 },
+      { key: 'press', name: '压杆', path: 'parry', body: 'smash', style: 'arc', sfx: 'swing',
+        dur: 240, ready: 300, range: 84, mult: 0.92, lunge: 22, strike: 0.46, hitLag: 38, shake: 2.6 },
+      { key: 'backstab', name: '回马枪', path: 'back', body: 'sweep', style: 'thrust', sfx: 'thrust', heavy: true,
+        dur: 340, ready: 430, range: 104, mult: 1.42, lunge: -70, strike: 0.56, hitLag: 68, shake: 5.0, back: 0.78, fxDx: -36 },
+    ],
+  };
+  // 取某个角色的连段表；没有就退回悟空那套
+  XY.comboFor = function (id) { return XY.BASIC_COMBO[id] || XY.BASIC_COMBO.wukong; };
+
 
   // ===== 货币（三种，各管一摊）=====
   XY.CURRENCIES = {

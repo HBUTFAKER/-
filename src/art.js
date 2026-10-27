@@ -301,7 +301,7 @@
       bodyTilt = -0.34 * Math.sin(Math.min(1, hurt * 1.25) * Math.PI);
       ctx.translate(-7 * hurtK, 3 * hurtK);
     } else if (atk !== undefined) {
-      const m = attackMotion(pose.attackKind || 0, atk);
+      const m = attackMotion(pose.attackBody || pose.attackKind || 0, atk);
       bodyTilt = m.tilt;
       legA += m.legA; legB += m.legB;      // 弓步/马步：腿也跟着招式走
       headDx = m.headX; headDy = m.headY;  // 头比躯干慢半拍
@@ -315,16 +315,17 @@
     // 手臂与兵器分开驱动：arm 控手臂，wpn 是兵器的绝对角 → 兵器始终握在手里。
     // weaponBehind：像"甩"的反手蓄力，棒子要甩到背脊后面去，画在躯干前会从脸上穿过去。
     const SHX = 6, SHY = -41, ARM = 14;   // 肩点、手臂长度（角色坐标）
-    let armAng, wpnAng, offX = 0, offY = 0, wpnShift = 0, weaponBehind = false, armLen = ARM;
+    let armAng, wpnAng, offX = 0, offY = 0, wpnShift = 0, weaponBehind = false, armLen = ARM, backArmAng = null;
     if (hurt !== undefined) {
       // 挨打：手臂被甩到身后，兵器顺手往下滑，护不住架势
       armAng = 0.62 + 0.5 * hurtK; wpnAng = 0.2 + 1.05 * hurtK;
       offX = -2 * hurtK; offY = 2 * hurtK;
     } else if (atk !== undefined) {
-      const sp = swingProfile(pose.attackKind || 0, atk);
+      const sp = swingProfile(pose.attackPath || pose.attackKind || 0, atk);
       armAng = sp.arm; wpnAng = sp.wpn; offX = sp.x; offY = sp.y; wpnShift = sp.g || 0;
       armLen = sp.armLen || ARM;   // 手臂跟着招式伸缩，握点不会飞离手掌
       weaponBehind = !!sp.behind;
+      if (sp.backArm !== undefined) backArmAng = sp.backArm;  // 空手招式要两条胳膊一起动
     } else if (pose.castId === 'wk_smash') {
       const q = cast === undefined ? 0 : cast;
       armAng = -2.0 + q * 0.2; wpnAng = -0.5 + q * 0.14;      // 举棒过顶，蓄力
@@ -400,7 +401,7 @@
     // —— 后腿 ——
     drawLeg(ctx, -3.5, legB, A);
     // —— 后臂 ——
-    drawArm(ctx, -4.5, -42, armBase + 0.3, A, 15);
+    drawArm(ctx, -4.5, -42, backArmAng !== null ? backArmAng : armBase + 0.3, A, 15);
 
     // —— 脖子 ——
     rr(ctx, -3.2, -52, 6.4, 8, 2.6); shape(ctx, A.skin, 1.1);
@@ -511,11 +512,36 @@
     ctx.restore();
   }
 
-  // —— 普攻的身体语言 ——
-  // 光靠手臂甩看起来就是"抖手腕"，所以每段招式还要给重心、倾斜、弓步、头部各一套参数。
+  // ============================================================
+  // 普攻动作：path（兵器轨迹）× body（身体语言）两套曲线
+  // 每个角色的四式在 data.js 的 XY.BASIC_COMBO 里指定用哪条曲线，
+  // 所以五个人打起来是五种身法，不是同一套动作换皮。
+  // ============================================================
+  function seg(p, a, b) { return Math.min(1, Math.max(0, (p - a) / (b - a))); }
+  function easeOut(p) { return 1 - (1 - p) * (1 - p); }
+  function easeIn(p) { return p * p; }
+  function easeInOut(p) { return p < 0.5 ? 2 * p * p : 1 - 2 * (1 - p) * (1 - p); }
+
+  // —— 身体语言 ——
   // 返回：tilt 躯干倾角 / x,y 整体位移（y 正=下沉）/ headX,headY 头部滞后 / legA,legB 前后腿
-  function attackMotion(kind, p) {
-    if (kind === 1) {                       // 戳：沉腰后坐 → 弓步捅出去，身体几乎不上下
+  // 约定：tilt 正=往前压，负=后仰；legA/legB 负=腿往前迈
+  const BODIES = {
+    // 劈：举棒过顶（后仰、踮起）→ 劈下来（前压、屈膝、扎马步）→ 压住重心
+    chop(p) {
+      const rai = easeOut(seg(p, 0, 0.26));
+      const down = easeOut(seg(p, 0.34, 0.58));
+      const ret = seg(p, 0.8, 1);
+      return {
+        tilt: -0.22 * rai + 0.55 * down - 0.32 * ret,
+        x: -4 * rai + 12 * down - 8 * ret,
+        y: -3 * rai + 7 * down - 4 * ret,
+        headX: 2 * down - 2 * ret, headY: -2 * rai + 5 * down - 3 * ret,
+        legA: 0.15 - 0.85 * down + 0.6 * ret,
+        legB: -0.06 + 0.5 * rai + 0.2 * down,
+      };
+    },
+    // 戳：沉腰后坐 → 弓步捅出去，身体几乎不上下
+    thrust(p) {
       const back = easeOut(seg(p, 0, 0.22));
       const out = easeOut(seg(p, 0.3, 0.5));
       const ret = seg(p, 0.7, 1);
@@ -527,8 +553,9 @@
         legA: 0.18 - 0.92 * out + 0.68 * ret,
         legB: -0.05 + 0.7 * back + 0.26 * out - 0.42 * ret,
       };
-    }
-    if (kind === 2) {                       // 挑：先蹲到底 → 拔身撩起，整个人往上"长"
+    },
+    // 挑：先蹲到底 → 拔身撩起，整个人往上"长"
+    lift(p) {
       const low = easeOut(seg(p, 0, 0.26));
       const up = easeOut(seg(p, 0.34, 0.62));
       const ret = seg(p, 0.8, 1);
@@ -540,8 +567,9 @@
         legA: -0.1 + 0.5 * low - 0.3 * up,
         legB: 0.16 + 0.7 * low - 0.35 * up,
       };
-    }
-    if (kind === 3) {                       // 甩：拧腰蓄力 → 一圈横扫 → 收势偏后、腿扎马步
+    },
+    // 甩：拧腰蓄力 → 一圈横扫 → 收势偏后、腿扎马步
+    sweep(p) {
       const wind = easeOut(seg(p, 0, 0.24));
       const sw = easeOut(seg(p, 0.32, 0.6));
       const ret = seg(p, 0.76, 1);
@@ -553,33 +581,107 @@
         legA: -0.3 - 0.35 * wind + 0.3 * sw,
         legB: 0.35 + 0.28 * wind - 0.2 * sw,
       };
-    }
-    // 劈：举棒过顶（后仰、踮起）→ 劈下来（前压、屈膝、扎马步）→ 压住重心
-    const rai = easeOut(seg(p, 0, 0.26));
-    const down = easeOut(seg(p, 0.34, 0.58));
-    const ret = seg(p, 0.8, 1);
-    return {
-      tilt: -0.22 * rai + 0.55 * down - 0.32 * ret,
-      x: -4 * rai + 12 * down - 8 * ret,
-      y: -3 * rai + 7 * down - 4 * ret,
-      headX: 2 * down - 2 * ret, headY: -2 * rai + 5 * down - 3 * ret,
-      legA: 0.15 - 0.85 * down + 0.6 * ret,
-      legB: -0.06 + 0.5 * rai + 0.2 * down,
-    };
+    },
+    // 砸（八戒筑 / 沙僧铲）：双手举过头顶 → 整个人压下去，蹲得最深
+    smash(p) {
+      const up = easeOut(seg(p, 0, 0.26));
+      const down = easeIn(seg(p, 0.32, 0.56));
+      const ret = seg(p, 0.8, 1);
+      return {
+        tilt: -0.3 * up + 0.66 * down - 0.34 * ret,
+        x: -3 * up + 9 * down - 6 * ret,
+        y: -7 * up + 11 * down - 4 * ret,
+        headX: 1.5 * down - 1 * ret, headY: -4 * up + 7 * down - 3 * ret,
+        legA: 0.3 - 0.95 * down + 0.65 * ret,
+        legB: -0.2 + 0.6 * up + 0.3 * down,
+      };
+    },
+    // 搂（八戒）：耙子探出去 → 整个人往后坐、往回拽
+    reel(p) {
+      const out = easeOut(seg(p, 0, 0.2));
+      const pull = easeOut(seg(p, 0.22, 0.52));
+      const ret = seg(p, 0.8, 1);
+      return {
+        tilt: 0.16 * out - 0.44 * pull + 0.28 * ret,
+        x: 5 * out - 9 * pull + 4 * ret,
+        y: 2 * out + 3 * pull - 2 * ret,
+        headX: 2 * out - 3 * pull + 1 * ret, headY: 1 * out + 2 * pull,
+        legA: 0.2 * out + 0.45 * pull - 0.45 * ret,
+        legB: -0.1 * out - 0.5 * pull + 0.35 * ret,
+      };
+    },
+    // 撞（八戒）：先正面压低蓄力 → 整个人前倾冲出去
+    charge(p) {
+      const crouch = easeOut(seg(p, 0, 0.18));
+      const go = easeOut(seg(p, 0.2, 0.46));
+      const ret = seg(p, 0.7, 1);
+      return {
+        tilt: 0.1 * crouch + 0.42 * go - 0.3 * ret,
+        x: -3 * crouch + 11 * go - 8 * ret,
+        y: 5 * crouch - 4 * go + 1 * ret,
+        headX: 3 * go - 1 * ret, headY: 3 * crouch - 2 * go,
+        legA: 0.35 * crouch + 0.75 * go - 0.7 * ret,
+        legB: -0.25 * crouch - 0.65 * go + 0.55 * ret,
+      };
+    },
+    // 踢（唐僧）：抬膝 → 侧踢出去 → 收腿，上身反着后仰
+    kick(p) {
+      const chamber = easeOut(seg(p, 0, 0.22));
+      const out = easeOut(seg(p, 0.26, 0.5));
+      const ret = seg(p, 0.72, 1);
+      return {
+        tilt: 0.18 * chamber - 0.42 * out + 0.22 * ret,
+        x: -1 * chamber + 4 * out - 3 * ret,
+        y: -1 * chamber - 2 * out + 1 * ret,
+        headX: 1.6 * out - 1 * ret, headY: -1 * chamber,
+        legA: 0.25 * chamber - 1.5 * out + 1.3 * ret,
+        legB: 0.1 * chamber - 0.12 * out,
+      };
+    },
+    // 站定（唐僧金刚掌）：身体几乎不动，只有一点前送——靠手臂和光效撑住
+    calm(p) {
+      const push = easeOut(seg(p, 0.2, 0.55));
+      const ret = seg(p, 0.8, 1);
+      return {
+        tilt: 0.1 * push - 0.05 * ret,
+        x: 1 * push - 1 * ret,
+        y: 4 * push - 1 * ret,
+        headX: 1 * push, headY: 2.4 * push,
+        legA: 0.28 * push - 0.1 * ret, legB: -0.32 * push + 0.1 * ret,
+      };
+    },
+  };
+  const BODY_BY_KIND = ['chop', 'thrust', 'lift', 'sweep'];
+  function attackMotion(body, p) {
+    if (typeof body === 'number') body = BODY_BY_KIND[body] || 'chop';
+    return (BODIES[body] || BODIES.chop)(p);
   }
   Art.attackMotion = attackMotion;
 
-  // —— 三段普攻的兵器轨迹 ——
-  // 返回：手臂角 arm、兵器绝对角 wpn、握点偏移 x/y。p 为动作进度 0..1。
-  function seg(p, a, b) { return Math.min(1, Math.max(0, (p - a) / (b - a))); }
-  function easeOut(p) { return 1 - (1 - p) * (1 - p); }
-  function easeIn(p) { return p * p; }
-  function swingProfile(kind, p) {
-    if (kind === 1) {              // 戳：斜举蓄势 → 手往前一送、棒子平捅出去 → 收回
-      // 不做"把棒子拖到身后"的蓄力：那会让棒尾从后脑勺穿出来。
-      // 改成身前平推，握点始终在身体前方，读起来就是一下"捅"。
+  // —— 兵器轨迹 ——
+  // 返回：手臂角 arm（0 垂下，正=往后摆）、兵器绝对角 wpn（0 竖直向上，正=棒头往前倒）、
+  //       握点偏移 x/y、握把偏移 g（正=握点靠近棒头）、手臂伸展 armLen、behind 画在躯干后
+  const PATHS = {
+    // 劈：棒子先抡到肩后 → 一整条圆弧劈到前下方
+    arc(p) {
+      const raiArm = easeOut(seg(p, 0, 0.14));
+      const rai = easeOut(seg(p, 0.06, 0.26));
+      const down = easeIn(seg(p, 0.28, 0.52));
+      const over = easeOut(seg(p, 0.58, 0.7));
+      const ret = seg(p, 0.8, 1);
+      return {
+        arm: -0.34 + raiArm * 0.84 - down * 1.59 + over * 0.02 + ret * 0.75,
+        wpn: -0.2 - rai * 0.8 + down * 3.12 - ret * 2.8,
+        armLen: 14 - raiArm * 1 + down * 2 - ret * 1,
+        x: -rai * 2 + down * 6 + over * 2 - ret * 6,
+        y: -rai * 2.5 + down * 4 - ret * 1.5,
+        g: -down * 7 - over * 2 + ret * 9,
+      };
+    },
+    // 戳：身前斜举 → 手往前一送、棒子平捅出去
+    thrust(p) {
       const out = easeOut(seg(p, 0.14, 0.42));
-      const hold = seg(p, 0.42, 0.58);      // 捅到底那一瞬停住，力道才顶得出去
+      const hold = seg(p, 0.42, 0.58);
       const ret = seg(p, 0.72, 1);
       return {
         arm: 0.36 - out * 0.92 - hold * 0.03 + ret * 0.55,
@@ -587,13 +689,14 @@
         armLen: 12.5 + out * 3.4 - ret * 3,
         x: -1.5 + out * 8.5 - ret * 6,
         y: -9 + out * 0.5 + ret * 4,
-        g: -2 - out * 5,             // 握点前移：棒尾留在胸前，刺出去的是前半截
+        g: -2 - out * 5,
       };
-    }
-    if (kind === 2) {              // 挑：棒梢压到前下方 → 一路撩到头顶 → 落回
+    },
+    // 挑：棒梢压到前下方 → 一路撩到头顶
+    lift(p) {
       const low = easeOut(seg(p, 0, 0.26));
       const up = easeOut(seg(p, 0.34, 0.62));
-      const over = seg(p, 0.62, 0.76);     // 撩过头的一点余势
+      const over = seg(p, 0.62, 0.76);
       const ret = seg(p, 0.8, 1);
       return {
         arm: -0.06 + low * 0.66 - up * 1.9 - over * 0.16 + ret * 1.1,
@@ -603,8 +706,9 @@
         y: low * 4 - up * 7 - over * 2 + ret * 5,
         g: low * 3 - up * 2,
       };
-    }
-    if (kind === 3) {              // 甩：棒子甩到背后（画在躯干后）→ 抡一圈横抽 → 收势
+    },
+    // 甩：棒子甩到背后（画在躯干后）→ 抡一圈横抽
+    sweep(p) {
       const wind = easeOut(seg(p, 0, 0.24));
       const sw = easeOut(seg(p, 0.32, 0.6));
       const over = easeOut(seg(p, 0.6, 0.74));
@@ -618,23 +722,250 @@
         y: wind * 2 + sw * 1 - ret * 3,
         g: -wind * 5 + sw * 8 - ret * 3,
       };
-    }
-    // 劈：棒子先抡到肩后（手往后拉、棒身斜指后上方）→ 一整条圆弧劈到前下方 → 压住重心
-    const raiArm = easeOut(seg(p, 0, 0.14));
-    const rai = easeOut(seg(p, 0.06, 0.26));
-    const down = easeIn(seg(p, 0.34, 0.58));
-    const over = easeOut(seg(p, 0.58, 0.7));  // 砸到底的余势（棒头再压一点）
-    const ret = seg(p, 0.8, 1);
-    return {
-      arm: -0.34 + raiArm * 0.84 - down * 1.59 + over * 0.02 + ret * 0.75,
-      wpn: -0.2 - rai * 0.8 + down * 3.12 - ret * 2.8,
-      armLen: 14 - raiArm * 1 + down * 2 - ret * 1,
-      x: -rai * 2 + down * 6 + over * 2 - ret * 6,
-      y: -rai * 2.5 + down * 4 - ret * 1.5,
-      g: -down * 7 - over * 2 + ret * 9,    // 劈到末端时握把往后收，棒身更多压向前方
-    };
+    },
+    // 砸：举到头顶 → 直直压到前下方，落点比劈更靠里
+    smash(p) {
+      const up = easeOut(seg(p, 0, 0.24));
+      const down = easeIn(seg(p, 0.3, 0.54));
+      const hold = seg(p, 0.54, 0.68);
+      const ret = seg(p, 0.8, 1);
+      return {
+        arm: 0.1 + up * 0.46 - down * 1.42 + hold * 0.04 + ret * 0.9,
+        wpn: -0.12 - up * 0.62 + down * 2.95 - ret * 2.2,
+        armLen: 14 - up * 1 + down * 2,
+        x: -up * 2 + down * 6 - ret * 5,
+        y: -up * 3 + down * 2 - ret * 1,
+        g: -up * 3 + down * 6 - ret * 3,
+      };
+    },
+    // 搂：耙子先探出去 → 连人带耙往回搂，耙头从前方翻到脑后
+    reel(p) {
+      const out = easeOut(seg(p, 0, 0.2));
+      const pull = easeOut(seg(p, 0.22, 0.52));
+      const ret = seg(p, 0.78, 1);
+      return {
+        arm: -0.2 + out * 0.7 - pull * 1.55 + ret * 1.0,
+        wpn: 1.5 + out * 0.32 - pull * 2.2 + ret * 0.4,
+        armLen: 13 + out * 2 - pull * 3,
+        x: out * 6 - pull * 9 + ret * 3,
+        y: out * 1 - pull * 2 + ret * 1,
+        g: out * 4 - pull * 5,
+      };
+    },
+    // 抡：原地把兵器转一整圈，前后都能打到
+    spin(p) {
+      const wind = easeOut(seg(p, 0, 0.18));
+      const go = easeInOut(seg(p, 0.2, 0.62));
+      const ret = seg(p, 0.8, 1);
+      return {
+        behind: p < 0.3,
+        arm: 0.05 + wind * 0.5 - go * 0.85 + ret * 0.3,
+        wpn: -0.25 - wind * 0.5 + go * 6.85 - ret * 0.1,
+        armLen: 13 + go * 3 - ret * 2,
+        x: -wind * 2 + go * 4 - ret * 2,
+        y: -wind * 1 - go * 1,
+        g: go * 3,
+      };
+    },
+    // 扫：人沉下去，兵器贴地横扫
+    sweepLow(p) {
+      const wind = easeOut(seg(p, 0, 0.2));
+      const sw = easeOut(seg(p, 0.26, 0.56));
+      const ret = seg(p, 0.76, 1);
+      return {
+        arm: 0.5 + wind * 0.5 - sw * 1.3 + ret * 0.7,
+        wpn: -0.9 - wind * 0.5 + sw * 2.85 - ret * 1.1,
+        armLen: 14 + sw * 2 - ret * 2,
+        x: -wind * 2 + sw * 5 - ret * 3,
+        y: 5 + wind * 2 - sw * 1 + ret * 3,
+        g: -wind * 3 + sw * 5 - ret * 2,
+      };
+    },
+    // 压：举起来竖着往下摁，杖头始终朝前
+    press(p) {
+      const up = easeOut(seg(p, 0, 0.26));
+      const down = easeIn(seg(p, 0.32, 0.58));
+      const ret = seg(p, 0.8, 1);
+      return {
+        arm: -0.2 + up * 0.9 - down * 1.5 + ret * 0.8,
+        wpn: 0.9 - up * 1.5 + down * 1.35 - ret * 0.7,
+        armLen: 14 + up * 1 - down * 1,
+        x: -up * 1 + down * 4 - ret * 3,
+        y: -up * 5 + down * 6 - ret * 3,
+        g: -up * 5 + down * 7 - ret * 2,
+      };
+    },
+    // 铲（沙僧）：棒头先杵到身前地面上，贴着地往前推一段——是"铲"，不是往上兜
+    scoop(p) {
+      const dig = easeOut(seg(p, 0, 0.24));
+      const up = easeIn(seg(p, 0.3, 0.62));
+      const ret = seg(p, 0.8, 1);
+      return {
+        arm: 0.5 + dig * 0.24 - up * 0.3 + ret * 0.2,
+        wpn: 2.02 + dig * 0.4 - up * 0.1 + ret * 0.3,
+        armLen: 14 + dig * 1 + up * 2 - ret * 2,
+        x: -dig * 2 + up * 9 - ret * 5,
+        y: dig * 6 - up * 8 + ret * 3,
+        g: dig * 5 - up * 5,
+      };
+    },
+    // 拨（白龙马）：竖枪一挡，顺着挡势把枪尖斜着送出去（角度比直刺高，身架更直）
+    parry(p) {
+      const guard = easeOut(seg(p, 0, 0.22));
+      const jab = easeOut(seg(p, 0.34, 0.56));
+      const ret = seg(p, 0.78, 1);
+      return {
+        arm: 0.05 + guard * 0.45 - jab * 1.15 + ret * 0.8,
+        wpn: 0.15 + guard * 0.1 + jab * 0.75 + jab * 0.15 - ret * 1.2,
+        armLen: 12.5 + jab * 3 - ret * 2.5,
+        x: -guard * 1 + jab * 6 - ret * 5,
+        y: -4 - guard * 2 + jab * 0,
+        g: -2 - jab * 3,
+      };
+    },
+    // 顶：握着棒尾，用棒尾往前撞（棒头朝后）
+    butt(p) {
+      const wind = easeOut(seg(p, 0, 0.16));
+      const out = easeOut(seg(p, 0.2, 0.4));
+      const hold = seg(p, 0.4, 0.56);
+      const ret = seg(p, 0.72, 1);
+      return {
+        arm: 0.3 + wind * 0.4 - out * 1.35 + hold * 0.03 + ret * 0.6,
+        wpn: -0.55 - wind * 0.3 - out * 0.51 - ret * 0.5,    // 杖身斜向脑后，棒尾朝前下方顶出去
+        armLen: 13 + out * 3 - ret * 2,
+        x: -wind * 2 + out * 9 - ret * 7,
+        y: -2 - out * 1 + ret * 1,
+        g: 10 + out * 6 - ret * 12,
+      };
+    },
+    // 推掌（唐僧）：空手，胸前推出→手臂伸直
+    palm(p) {
+      const wind = easeOut(seg(p, 0, 0.18));
+      const out = easeOut(seg(p, 0.22, 0.46));
+      const hold = seg(p, 0.46, 0.62);
+      const ret = seg(p, 0.74, 1);
+      return {
+        arm: -0.1 + wind * 0.55 - out * 1.2 - hold * 0.04 + ret * 0.65,
+        wpn: 0.2 - out * 0.3,
+        armLen: 12 + out * 4.5 - ret * 2.5,
+        backArm: 0.5 - out * 0.8 + ret * 0.4,
+        x: -wind * 2 + out * 6 - ret * 4,
+        y: -3 + out * 1 + ret * 2,
+        g: 0,
+      };
+    },
+    // 拂袖（唐僧）：长袖横着一记大扫
+    sleeve(p) {
+      const wind = easeOut(seg(p, 0, 0.22));
+      const sw = easeOut(seg(p, 0.28, 0.58));
+      const ret = seg(p, 0.78, 1);
+      return {
+        arm: 0.7 + wind * 0.5 - sw * 1.95 + ret * 0.7,
+        wpn: 0.6 - wind * 0.4 + sw * 0.3,
+        armLen: 13 + sw * 2.5 - ret * 2,
+        backArm: 0.62 + wind * 0.3 - sw * 0.7,
+        x: -wind * 2 + sw * 5 - ret * 3,
+        y: -6 + sw * 1 + ret * 4,
+        g: 0,
+      };
+    },
+    // 踢（唐僧）：手往后一收让开，腿才是主角（见 BODIES.kick）
+    kick(p) {
+      const chamber = easeOut(seg(p, 0, 0.22));
+      const out = easeOut(seg(p, 0.26, 0.5));
+      const ret = seg(p, 0.72, 1);
+      return {
+        arm: 0.2 + chamber * 0.55 - out * 0.45 + ret * 0.2,
+        wpn: 0.3 + chamber * 0.4 - out * 0.5,
+        armLen: 13 - out * 1,
+        backArm: 0.2 + chamber * 0.7 - out * 0.5,
+        x: -chamber * 1 + out * 2 - ret * 1,
+        y: -2 + out * 1,
+        g: 0,
+      };
+    },
+    // 金刚掌（唐僧）：双手在胸前合一 → 沉马步，双掌往下按（跟推掌的平推是两个劲）
+    pray(p) {
+      const gather = easeOut(seg(p, 0, 0.4));
+      const push = easeOut(seg(p, 0.42, 0.62));
+      const ret = seg(p, 0.8, 1);
+      return {
+        arm: 0.05 + gather * 0.5 - push * 1.0 + ret * 0.45,
+        wpn: 0.02 - push * 0.1,
+        armLen: 12 + push * 5 - ret * 4,
+        backArm: 0.05 + gather * 0.5 - push * 1.0 + ret * 0.45,
+        x: -gather * 1 + push * 4 - ret * 3,
+        y: -2 + push * 3 + ret * 1,
+        g: 0,
+      };
+    },
+    // 撞（八戒）：兵器收在身侧，全靠肩膀和肚子
+    ram(p) {
+      const crouch = easeOut(seg(p, 0, 0.18));
+      const go = easeOut(seg(p, 0.2, 0.46));
+      const ret = seg(p, 0.7, 1);
+      return {
+        arm: 0.5 + crouch * 0.55 - go * 0.7 + ret * 0.15,
+        wpn: -0.5 - crouch * 0.6 + go * 0.55,
+        armLen: 12 + go * 1,
+        x: -crouch * 2 + go * 4 - ret * 2,
+        y: 2 - go * 2,
+        g: -4,
+      };
+    },
+    // 刺（白龙马）：枪尖几乎水平，手往前送得最远
+    thrust2(p) {
+      const wind = easeOut(seg(p, 0, 0.18));
+      const out = easeOut(seg(p, 0.2, 0.42));
+      const hold = seg(p, 0.42, 0.6);
+      const ret = seg(p, 0.75, 1);
+      return {
+        arm: 0.5 + wind * 0.55 - out * 1.08 + hold * 0.03 + ret * 0.5,
+        wpn: 0.35 + wind * 0.25 + out * 0.85 - ret * 1.3,   // 枪尖最后走平，是一记平刺
+        armLen: 12 + out * 5 - ret * 3,
+        x: -wind * 3 + out * 13 - ret * 9,
+        y: -6 + out * 1 + ret * 3,
+        g: 6 - out * 10 + ret * 4,
+      };
+    },
+    // 撩（白龙马）：枪头先垂到前下方 → 一路挑到头顶
+    lift2(p) {
+      const low = easeOut(seg(p, 0, 0.22));
+      const up = easeOut(seg(p, 0.28, 0.56));
+      const over = seg(p, 0.56, 0.7);
+      const ret = seg(p, 0.8, 1);
+      return {
+        arm: -0.2 + low * 0.5 - up * 1.5 - over * 0.1 + ret * 1.0,
+        wpn: 0.7 + low * 1.6 - up * 2.35 - over * 0.2 + ret * 0.4,
+        armLen: 13 + low * 1 - up * 2 + ret * 1.5,
+        x: -low * 2 + up * 4 - ret * 2,
+        y: low * 5 - up * 8 + ret * 4,
+        g: low * 3 - up * 2,
+      };
+    },
+    // 回马枪：手转到身后，枪尖朝后下方扎
+    back(p) {
+      const turn = easeOut(seg(p, 0, 0.3));
+      const jab = easeOut(seg(p, 0.34, 0.56));
+      const ret = seg(p, 0.76, 1);
+      return {
+        behind: p < 0.42,
+        arm: 0.1 + turn * 1.05 - jab * 0.2 + ret * 0.2,
+        wpn: 0.2 - turn * 1.75 - jab * 0.1 + ret * 1.7,     // 枪尖转到身后，别扎进地里
+        armLen: 13 + jab * 3 - ret * 2,
+        x: -turn * 3 - jab * 6 + ret * 8,
+        y: -2 - jab * 1 + ret * 2,
+        g: -jab * 6,
+      };
+    },
+  };
+  const PATH_BY_KIND = ['arc', 'thrust', 'lift', 'sweep'];
+  function swingProfile(path, p) {
+    if (typeof path === 'number') path = PATH_BY_KIND[path] || 'arc';
+    return (PATHS[path] || PATHS.arc)(p);
   }
   Art.swingProfile = swingProfile;
+  Art.PATHS = PATHS; Art.BODIES = BODIES;
   function drawWeapon(ctx, A) {
     switch (A.weapon) {
       case 'staff': { // 金箍棒（红杆金箍）
