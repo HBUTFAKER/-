@@ -1,0 +1,10 @@
+{
+  "name": "xiyou-action",
+  "private": true,
+  "version": "0.1.0",
+  "description": "2D 横版动作闯关小游戏（西游记题材，造梦西游风格，含5角色/15技能/12法宝/大闹天宫CG/剧情，法宝合成微创新）。零依赖，双击 index.html 即玩。",
+  "scripts": {
+    "test": "node --test",
+    "start": "node server.js"
+  }
+}

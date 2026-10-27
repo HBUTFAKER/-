@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>西游·降妖录 — 横版动作闯关</title>
+    <style>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0; padding: 0; height: 100%;
+        background: #0b0e14;
+        font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+        color: #e6e6e6; overflow: hidden;
+      }
+      #app {
+        display: flex; flex-direction: column; align-items: center;
+        justify-content: center; height: 100%; gap: 12px;
+      }
+      #game {
+        display: block; background: #11151f; border: 1px solid #2a3142;
+        border-radius: 8px; box-shadow: 0 12px 40px rgba(0,0,0,.5);
+        image-rendering: pixelated; max-width: 100%; max-height: 82vh;
+        outline: none;
+      }
+      .hint { font-size: 13px; color: #8a93a6; letter-spacing: .5px; }
+      .hint b { color: #ffd479; }
+      #pad {
+        display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+        justify-content: center; max-width: 900px;
+      }
+      #pad[hidden] { display: none; }
+      #pad button {
+        min-width: 46px; height: 42px; padding: 0 10px; cursor: pointer;
+        background: #1b2233; color: #e6e6e6; border: 1px solid #3a4a66;
+        border-radius: 8px; font-size: 14px; font-family: inherit;
+        user-select: none; touch-action: none;
+      }
+      #pad button.on { background: #2a3550; border-color: #ffd479; color: #ffd479; }
+      #pad .sep { width: 10px; }
+      #pad .tip { font-size: 12px; color: #8a93a6; margin-left: 6px; }
+      #diag {
+        display: none; position: fixed; left: 0; right: 0; bottom: 0; max-height: 42vh;
+        overflow: auto; margin: 0; padding: 12px 16px; white-space: pre-wrap;
+        background: rgba(120,10,10,.94); color: #ffe3e3; font-size: 12px;
+        font-family: Consolas, monospace; z-index: 99;
+      }
+    </style>
+    <!-- 启动诊断：脚本一出错就直接显示在页面底部，不再白屏 -->
+    <script>
+      window.__bootErrors = [];
+      window.__diag = function (msg) {
+        try {
+          var el = document.getElementById('diag');
+          window.__bootErrors.push(msg);
+          if (el) { el.style.display = 'block'; el.textContent += msg + '\n'; }
+          if (window.console) console.error(msg);
+        } catch (e) { /* 忽略 */ }
+      };
+      window.addEventListener('error', function (e) {
+        var where = (e.filename || '') + (e.lineno ? ':' + e.lineno : '');
+        window.__diag('[脚本错误] ' + (e.message || e.error || '未知') + (where ? '\n  ' + where : ''));
+      }, true);
+      window.addEventListener('unhandledrejection', function (e) {
+        window.__diag('[Promise 错误] ' + (e.reason && e.reason.message ? e.reason.message : e.reason));
+      });
+    </script>
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="game" width="960" height="540" tabindex="0"></canvas>
+      <div class="hint">
+        <b>A D</b> 移动（双击奔跑） · <b>W</b> 跳（空中可二段跳） · <b>S</b> 快落 · <b>J</b> 普攻 · <b>K U I</b> 技能 · <b>1 2 3</b> 法宝 · <b>B</b> 背包 · <b>L</b> 合成 · <b>P</b> 暂停
+      </div>
+      <!-- 键盘没接管时（预览面板/触屏）自动出现，用鼠标也能玩 -->
+      <div id="pad" hidden>
+        <button data-code="KeyA">A</button>
+        <button data-code="KeyD">D</button>
+        <button data-code="KeyW">W 跳</button>
+        <button data-code="KeyS">S</button>
+        <button data-code="KeyJ">普攻</button>
+        <button data-code="KeyK">技1</button>
+        <button data-code="KeyU">技2</button>
+        <button data-code="KeyI">技3</button>
+        <span class="sep"></span>
+        <button data-code="Digit1">宝1</button>
+        <button data-code="Digit2">宝2</button>
+        <button data-code="Digit3">宝3</button>
+        <span class="sep"></span>
+        <button data-code="KeyB">背包</button>
+        <button data-code="KeyL">合成</button>
+        <button data-code="KeyQ">上一页</button>
+        <button data-code="KeyE">下一页</button>
+        <button data-code="Enter">确认</button>
+        <button data-code="KeyP">暂停</button>
+        <span class="tip">键盘未接管时用这些按钮</span>
+      </div>
+    </div>
+    <pre id="diag"></pre>
+    <!-- 经典脚本顺序加载，无需打包/联网，双击即可游玩 -->
+    <script src="src/data.js"></script>
+    <script src="src/logic.js"></script>
+    <script src="src/art.js"></script>
+    <script src="src/fx.js"></script>
+    <script src="src/scenery.js"></script>
+    <script src="src/engine.js"></script>
+    <script src="src/ui.js"></script>
+    <script src="src/game.js"></script>
+    <!-- 屏幕按钮：把点击映射成"按住某个键"，键盘不生效时也能玩 -->
+    <script>
+      (function () {
+        var pad = document.getElementById('pad');
+        var canvas = document.getElementById('game');
+        function setKey(code, on) {
+          if (window.XY && XY.Input && XY.Input.setVirtual) XY.Input.setVirtual(code, on);
+        }
+        if (pad) {
+          var btns = pad.querySelectorAll('button');
+          for (var i = 0; i < btns.length; i++) {
+            (function (b) {
+              var code = b.getAttribute('data-code');
+              b.addEventListener('pointerdown', function (e) {
+                e.preventDefault();
+                b.classList.add('on');
+                try { b.setPointerCapture(e.pointerId); } catch (err) { /* 忽略 */ }
+                setKey(code, true);
+              });
+              var release = function () { b.classList.remove('on'); setKey(code, false); };
+              b.addEventListener('pointerup', release);
+              b.addEventListener('pointercancel', release);
+              b.addEventListener('pointerleave', release);
+              b.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+            })(btns[i]);
+          }
+        }
+        // 键盘一次都没响过 → 露出屏幕按钮；一旦有真实按键就自动收起
+        setInterval(function () {
+          if (!pad) return;
+          var keyboardDead = !(window.XY && XY.Input && XY.Input.keyCount > 0);
+          pad.hidden = !keyboardDead;
+        }, 700);
+        if (canvas) {
+          canvas.addEventListener('mousedown', function () {
+            try { canvas.focus(); window.focus(); } catch (e) { /* 忽略 */ }
+          });
+        }
+      })();
+    </script>
+  </body>
+</html>
