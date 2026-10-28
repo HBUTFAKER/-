@@ -355,7 +355,14 @@
     const total = game.level.enemies.length;
     const killed = game.level.enemies.filter((e) => !e.alive).length;
     ctx.fillStyle = '#8a93a6'; ctx.font = '11px sans-serif';
-    ctx.fillText(game.level.hasBoss ? '击败牛魔王即可通关' : '妖物 ' + killed + '/' + total + ' · 抵达终点旗帜通关', W - 20, 48);
+    if (game.level.hasBoss) {
+      // 首领名从场上那只 boss 取，别写死"牛魔王"——12 关里三只首领各不同
+      let bossName = '';
+      for (const e of game.level.enemies) if (e.isBoss && e.name) bossName = e.name;
+      ctx.fillText(bossName ? '击败 ' + bossName + ' 即可通关' : '击败首领即可通关', W - 20, 48);
+    } else {
+      ctx.fillText('妖物 ' + killed + '/' + total + ' · 抵达终点旗帜通关', W - 20, 48);
+    }
     ctx.textAlign = 'left';
 
     // 货币：右上角常驻
@@ -628,7 +635,188 @@
     ctx.fillStyle = '#3a2a06'; ctx.font = 'bold 15px "PingFang SC", sans-serif';
     ctx.fillText('以 ' + cur.name + ' 出战 · Enter', b.x + b.w / 2, b.y + 22);
     ctx.textAlign = 'left';
-    center(ctx, 'A / D 或 ← → 选择 · 点卡片直接出战', 522, '14px "PingFang SC", sans-serif', '#9fb0c8');
+    center(ctx, 'A / D 或 ← → 选择 · 点卡片直接出战 · Esc 回主菜单', 522, '14px "PingFang SC", sans-serif', '#9fb0c8');
+  };
+
+  // ===== 关卡选择 =====
+  // 4 列 × 3 行的卡片墙：主线 8 关排在前面，支线 4 关接在后面（顺序由 XY.levelGrid 定）
+  UI.LEVEL_L = { cols: 4, cardW: 200, cardH: 114, gapX: 18, gapY: 14, y: 104 };
+  UI.levelSelectLayout = function () {
+    const L = UI.LEVEL_L;
+    const order = XY.levelGrid ? XY.levelGrid() : [];
+    const n = order.length;
+    const rows = Math.max(1, Math.ceil(n / L.cols));
+    const totalW = L.cols * L.cardW + (L.cols - 1) * L.gapX;
+    return {
+      n, rows, order, cols: L.cols, cardW: L.cardW, cardH: L.cardH,
+      gapX: L.gapX, gapY: L.gapY, x0: (W - totalW) / 2, y0: L.y,
+    };
+  };
+  // 鼠标命中：返回卡片在网格里的序号（不是关卡下标），跟 game.js 里 order[pos] 的换算一致
+  UI.levelCardAt = function (px, py, n) {
+    const L = UI.levelSelectLayout();
+    const count = Number.isFinite(n) ? Math.min(n | 0, L.n) : L.n;
+    if (!(py >= L.y0)) return -1;
+    const r = Math.floor((py - L.y0) / (L.cardH + L.gapY));
+    if (r < 0 || r >= L.rows) return -1;
+    if (py > L.y0 + r * (L.cardH + L.gapY) + L.cardH) return -1;
+    for (let c = 0; c < L.cols; c++) {
+      const x = L.x0 + c * (L.cardW + L.gapX);
+      if (px >= x && px <= x + L.cardW) {
+        const pos = r * L.cols + c;
+        return pos < count ? pos : -1;
+      }
+    }
+    return -1;
+  };
+
+  // 三种场景各一套色：卡片左侧色条 + 锁定时的底色
+  const LV_TINT = [
+    { band: '#5f9c6a', dim: 'rgba(17,27,20,0.95)' },   // 花果山：山林绿
+    { band: '#4b8fb5', dim: 'rgba(15,25,34,0.95)' },   // 涧 / 河：水蓝
+    { band: '#c4614a', dim: 'rgba(33,18,14,0.95)' },   // 火焰山：火红
+  ];
+  // 关卡名拆成「第几回」+「地点」，卡片里分两行放才不挤
+  function lvParts(lv) {
+    const s = String(lv.name || '');
+    const at = s.indexOf('·');
+    if (at < 0) return { chapter: lv.kind === 'side' ? '支线' : '主线', title: s };
+    return { chapter: s.slice(0, at).trim(), title: s.slice(at + 1).trim() };
+  }
+  // 未解锁时告诉玩家差哪一关
+  function lvNeed(lv, idx) {
+    if (lv.kind === 'side') {
+      const rq = XY.LEVELS[lv.require];
+      return rq ? '需先通关 ' + rq.name : '需先通关任意主线';
+    }
+    for (let i = idx - 1; i >= 0; i--) if (XY.LEVELS[i].kind === 'main') return '需先通关 ' + XY.LEVELS[i].name;
+    return '';
+  }
+
+  UI.drawLevelSelect = function (ctx, game) {
+    const cleared = (game.persist && game.persist.cleared) || [];
+    UI.drawBackground(ctx, game.levelCursor || 0, game.uiTime);
+    ctx.fillStyle = 'rgba(6,9,15,0.68)'; ctx.fillRect(0, 0, W, H);
+
+    const L = UI.levelSelectLayout();
+    const order = L.order;
+
+    // —— 标题 + 进度 ——
+    ctx.textAlign = 'left';
+    ctx.save();
+    ctx.shadowColor = 'rgba(255,180,60,0.4)'; ctx.shadowBlur = 18;
+    ctx.fillStyle = '#ffd479'; ctx.font = 'bold 30px serif';
+    ctx.fillText('选择关卡', 40, 54);
+    ctx.restore();
+    let doneCount = 0;
+    for (const i of order) if (cleared.indexOf(i) >= 0) doneCount++;
+    ctx.fillStyle = '#8a93a6'; ctx.font = '13px "PingFang SC", sans-serif';
+    ctx.fillText('已通关 ' + doneCount + ' / ' + L.n + ' · 通关过的关随时可以重打刷材料', 40, 78);
+    // 右上角一条细进度
+    const pw2 = 200, px2 = W - 40 - pw2;
+    rrect(ctx, px2, 44, pw2, 6, 3);
+    ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.fill();
+    if (doneCount > 0) {
+      rrect(ctx, px2, 44, Math.max(6, pw2 * doneCount / L.n), 6, 3);
+      ctx.fillStyle = '#7cfc9b'; ctx.fill();
+    }
+
+    const mx = (XY.Input && XY.Input.mouse) ? XY.Input.mouse.x : -999;
+    const my = (XY.Input && XY.Input.mouse) ? XY.Input.mouse.y : -999;
+    const hoverPos = UI.levelCardAt(mx, my, L.n);
+
+    for (let p = 0; p < L.n; p++) {
+      const idx = order[p];
+      const lv = XY.LEVELS[idx];
+      if (!lv) continue;
+      const x = L.x0 + (p % L.cols) * (L.cardW + L.gapX);
+      const y = L.y0 + Math.floor(p / L.cols) * (L.cardH + L.gapY);
+      const seen = cleared.indexOf(idx) >= 0;
+      const open = seen || XY.levelUnlocked(idx, cleared);
+      const sel = idx === game.levelCursor;
+      const hov = p === hoverPos && !sel;
+      const tint = LV_TINT[((lv.theme | 0) % LV_TINT.length + LV_TINT.length) % LV_TINT.length];
+      const side = lv.kind === 'side';
+
+      // 卡面
+      rrect(ctx, x, y, L.cardW, L.cardH, 11);
+      ctx.fillStyle = open ? (sel ? 'rgba(38,47,68,0.97)' : (hov ? 'rgba(28,35,50,0.95)' : 'rgba(18,23,34,0.9)'))
+        : tint.dim;
+      ctx.fill();
+      ctx.strokeStyle = sel ? '#ffd479' : (hov ? '#7f8fb0' : (open ? '#2f3b55' : 'rgba(255,255,255,0.07)'));
+      ctx.lineWidth = sel ? 2.5 : (hov ? 1.8 : 1);
+      ctx.stroke();
+      if (sel) {
+        ctx.save();
+        ctx.shadowColor = 'rgba(255,212,121,0.5)'; ctx.shadowBlur = 16;
+        rrect(ctx, x, y, L.cardW, L.cardH, 11); ctx.stroke();
+        ctx.restore();
+      }
+      // 左侧色条（场景色，锁定时压暗）
+      ctx.save();
+      rrect(ctx, x, y, L.cardW, L.cardH, 11); ctx.clip();
+      ctx.fillStyle = tint.band;
+      ctx.globalAlpha = open ? 0.9 : 0.28;
+      ctx.fillRect(x, y, 4, L.cardH);
+      ctx.restore();
+
+      const bx = x + 16;
+      // 回目（或"支线"）
+      ctx.fillStyle = open ? (side ? '#c9a6ff' : '#8a93a6') : 'rgba(140,150,170,0.45)';
+      ctx.font = '11px "PingFang SC", sans-serif';
+      ctx.fillText(side ? (open ? '支线 · 可选' : '支线') : lvParts(lv).chapter, bx, y + 22);
+      // 地点
+      ctx.fillStyle = open ? '#f2f6fc' : 'rgba(190,198,214,0.4)';
+      ctx.font = 'bold 19px "PingFang SC", sans-serif';
+      ctx.fillText(lvParts(lv).title, bx, y + 48);
+      // 副题（多半是头目名）
+      ctx.fillStyle = open ? '#9fb0c8' : 'rgba(150,160,180,0.35)';
+      ctx.font = '11.5px "PingFang SC", sans-serif';
+      ctx.fillText(lv.sub || '', bx, y + 68);
+
+      // 右下：建议等级
+      let maxLv = 1;
+      for (const s of (lv.spawns || [])) maxLv = Math.max(maxLv, s.level || 1);
+      ctx.textAlign = 'right';
+      ctx.fillStyle = open ? '#5b6678' : 'rgba(120,130,150,0.3)';
+      ctx.font = '10.5px "PingFang SC", sans-serif';
+      ctx.fillText('敌 Lv' + maxLv, x + L.cardW - 14, y + L.cardH - 30);
+      ctx.textAlign = 'left';
+
+      // 底部状态行
+      const sy = y + L.cardH - 13;
+      if (seen) {
+        ctx.fillStyle = '#7cfc9b'; ctx.font = 'bold 12px "PingFang SC", sans-serif';
+        ctx.fillText('✓ 已通关', bx, sy);
+      } else if (open) {
+        const blink = 0.72 + Math.sin(game.uiTime / 260) * 0.28;
+        ctx.globalAlpha = blink;
+        ctx.fillStyle = '#ffd479'; ctx.font = 'bold 12px "PingFang SC", sans-serif';
+        ctx.fillText('▶ 可挑战', bx, sy);
+        ctx.globalAlpha = 1;
+      } else {
+        // 小锁
+        const lx = bx + 5, ly = sy - 9;
+        ctx.strokeStyle = 'rgba(150,160,180,0.5)'; ctx.lineWidth = 1.6;
+        ctx.beginPath(); ctx.arc(lx, ly + 1, 3.2, Math.PI, 0); ctx.stroke();
+        rrect(ctx, lx - 5, ly + 1, 10, 8, 2);
+        ctx.fillStyle = 'rgba(150,160,180,0.45)'; ctx.fill();
+        ctx.fillStyle = 'rgba(160,170,190,0.5)'; ctx.font = '11.5px "PingFang SC", sans-serif';
+        ctx.fillText('未解锁', bx + 16, sy);
+      }
+    }
+
+    // —— 底部：选中关卡的一句引子（剧情在选关页就能读到，不用开打才知道）——
+    const cur = XY.LEVELS[game.levelCursor];
+    if (cur) {
+      const intro = (cur.intro && cur.intro[0]) || '';
+      const open = cleared.indexOf(game.levelCursor) >= 0 || XY.levelUnlocked(game.levelCursor, cleared);
+      ctx.fillStyle = 'rgba(255,212,121,0.7)'; ctx.fillRect(40, 490, 2, 18);
+      ctx.fillStyle = '#cfd8e6'; ctx.font = '12.5px "PingFang SC", sans-serif';
+      const line = open ? intro : (intro ? intro + '（' + lvNeed(cur, game.levelCursor) + '）' : lvNeed(cur, game.levelCursor));
+      wrapText(ctx, line, 52, 504, 860, 16, 1);
+    }
+    center(ctx, 'WASD / 方向键 选关 · Enter 进入 · Esc 换角色', 526, '13px "PingFang SC", sans-serif', 'rgba(150,162,182,0.9)');
   };
 
   // ===== 过场 CG =====
@@ -695,32 +883,82 @@
     // 以「当前关卡序号」为准：从过关结算点下一关时，旧关卡的 level 还在，不能拿它当标题
     const data = XY.LEVELS[game.levelIndex] || (game.level && game.level.data) || XY.LEVELS[0];
     UI.drawBackground(ctx, game.levelIndex, game.uiTime);
-    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(0, 0, W, H);
-    center(ctx, data.name, 220, 'bold 38px serif', '#ffd479');
-    center(ctx, XY.STORY.levelIntros[data.id] || '', 280, '17px "PingFang SC", sans-serif', '#e6e6e6');
+    ctx.fillStyle = 'rgba(2,4,8,0.62)'; ctx.fillRect(0, 0, W, H);
+    // 上下两条渐隐压暗，把文字区托出来
+    let g = ctx.createLinearGradient(0, 0, 0, 200);
+    g.addColorStop(0, 'rgba(0,0,0,0.55)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, 200);
+    g = ctx.createLinearGradient(0, H - 190, 0, H);
+    g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,0.62)');
+    ctx.fillStyle = g; ctx.fillRect(0, H - 190, W, 190);
+
+    // 主线 / 支线 小标
+    const side = data.kind === 'side';
+    ctx.textAlign = 'center';
+    rrect(ctx, W / 2 - 30, 118, 60, 22, 6);
+    ctx.fillStyle = side ? 'rgba(140,90,200,0.28)' : 'rgba(255,212,121,0.18)'; ctx.fill();
+    ctx.strokeStyle = side ? '#9a6ae0' : '#c9a24a'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = side ? '#c9a6ff' : '#ffd479'; ctx.font = 'bold 11px "PingFang SC", sans-serif';
+    ctx.fillText(side ? '支 线' : '主 线', W / 2, 133);
+    ctx.textAlign = 'left';
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(255,180,60,0.42)'; ctx.shadowBlur = 26;
+    center(ctx, data.name, 178, 'bold 38px serif', '#ffd479');
+    ctx.restore();
+    if (data.sub) center(ctx, data.sub, 208, '15px "PingFang SC", sans-serif', '#9fb0c8');
+
+    const lg = ctx.createLinearGradient(W / 2 - 190, 0, W / 2 + 190, 0);
+    lg.addColorStop(0, 'rgba(255,212,121,0)'); lg.addColorStop(0.5, 'rgba(255,212,121,0.75)'); lg.addColorStop(1, 'rgba(255,212,121,0)');
+    ctx.fillStyle = lg; ctx.fillRect(W / 2 - 190, 226, 380, 1.5);
+
+    // 前情：一句一行，最多 4 行（剧情都写进关卡数据里了）
+    const lines = (data.intro && data.intro.length) ? data.intro : [XY.STORY.levelIntros[data.id] || ''];
+    let iy = 264;
+    for (const line of lines.slice(0, 4)) {
+      center(ctx, line, iy, '16.5px "PingFang SC", sans-serif', '#dbe4f0');
+      iy += 30;
+    }
+
+    // 首通奖励
+    const rw = data.reward || {};
+    const bits = [];
+    if (rw.jade) bits.push('仙玉 +' + rw.jade);
+    if (rw.gold) bits.push('金币 +' + rw.gold);
+    const seen = (game.persist && game.persist.cleared || []).indexOf(game.levelIndex) >= 0;
+    if (bits.length) {
+      center(ctx, (seen ? '重打可得：' : '首通奖励：') + bits.join(' · '), 404, '13px "PingFang SC", sans-serif', '#7cfc9b');
+    }
+    let boss = '';
+    for (const s of (data.spawns || [])) if (s.type === 'boss' && s.boss && XY.BOSSES && XY.BOSSES[s.boss]) boss = XY.BOSSES[s.boss].name;
+    // 副题已经写着首领名的就不用再重复一遍
+    if (boss && boss !== data.sub) center(ctx, '首领 · ' + boss, 428, '13px "PingFang SC", sans-serif', '#ff9a6a');
+
     const a = 0.6 + Math.sin(game.uiTime / 300) * 0.4;
     ctx.globalAlpha = a;
-    center(ctx, '按 Enter 进入', 366, '18px "PingFang SC", sans-serif', '#fff');
+    center(ctx, '按 Enter 进入', 480, '18px "PingFang SC", sans-serif', '#fff');
     ctx.globalAlpha = 1;
+    center(ctx, 'Esc 回关卡选择', 510, '12.5px "PingFang SC", sans-serif', 'rgba(150,162,182,0.85)');
   };
 
   UI.drawPause = function (ctx) {
     ctx.fillStyle = 'rgba(0,0,0,0.62)'; ctx.fillRect(0, 0, W, H);
     center(ctx, '暂停', 230, 'bold 44px serif', '#ffd479');
     center(ctx, 'P 继续', 296, '18px "PingFang SC", sans-serif', '#fff');
-    center(ctx, 'R 放弃本关回到标题', 332, '14px "PingFang SC", sans-serif', '#8a93a6');
+    center(ctx, 'R 放弃本关回到关卡选择', 332, '14px "PingFang SC", sans-serif', '#8a93a6');
     center(ctx, 'M 关掉 / 打开音乐与音效', 358, '14px "PingFang SC", sans-serif', '#8a93a6');
   };
 
   UI.drawGameOver = function (ctx) {
     ctx.fillStyle = 'rgba(40,0,0,0.72)'; ctx.fillRect(0, 0, W, H);
     center(ctx, '英雄落败', 230, 'bold 48px serif', '#e74c3c');
-    center(ctx, '按 Enter 回到标题', 300, '18px "PingFang SC", sans-serif', '#fff');
+    center(ctx, '按 Enter 回到关卡选择 · Esc 回主菜单', 300, '18px "PingFang SC", sans-serif', '#fff');
+    center(ctx, '战果与等级都已存档，换个关练级或重打这一关都行', 336, '13px "PingFang SC", sans-serif', '#8a93a6');
   };
 
   // ===== 过关结算：给玩家一条岔路（下一关 / 商店 / 锻造 / 参悟 / 主菜单）=====
   // 过关结算右侧选项的几何（绘制与鼠标命中共用）
-  UI.CLEAR_L = { x: 430, y: 150, w: 460, h: 58, gap: 12 };
+  UI.CLEAR_L = { x: 430, y: 126, w: 460, h: 50, gap: 8 };
   UI.levelClearOptionAt = function (px, py, n) {
     const L = UI.CLEAR_L;
     if (!(px >= L.x && px <= L.x + L.w)) return -1;
@@ -754,8 +992,16 @@
     ctx.fillStyle = '#ffd479'; ctx.font = 'bold 46px serif';
     ctx.fillText('通 关', 70, 96);
     ctx.shadowBlur = 0;
+    // 主线 / 支线 小标
+    const isSide = st.kind === 'side';
+    rrect(ctx, 232, 66, 52, 22, 6);
+    ctx.fillStyle = isSide ? 'rgba(140,90,200,0.22)' : 'rgba(255,212,121,0.16)'; ctx.fill();
+    ctx.strokeStyle = isSide ? '#9a6ae0' : '#c9a24a'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = isSide ? '#c9a6ff' : '#ffd479'; ctx.font = 'bold 11px "PingFang SC", sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(isSide ? '支线' : '主线', 258, 81);
+    ctx.textAlign = 'left';
     ctx.fillStyle = '#e8eef8'; ctx.font = 'bold 20px "PingFang SC", sans-serif';
-    ctx.fillText(st.name, 232, 92);
+    ctx.fillText(st.name, 296, 92);
     const lg = ctx.createLinearGradient(70, 0, 470, 0);
     lg.addColorStop(0, 'rgba(255,212,121,0.9)'); lg.addColorStop(1, 'rgba(255,212,121,0)');
     ctx.fillStyle = lg; ctx.fillRect(70, 112, 400, 2);
@@ -776,16 +1022,28 @@
       ['当前等级', 'Lv.' + st.level, '#ffd479'],
       ['用时', mm + ':' + (ss < 10 ? '0' : '') + ss, '#9fb0c8'],
     ];
-    let yy = py + 66;
+    let yy = py + 62;
     for (const r of rows) {
       ctx.fillStyle = '#8a93a6'; ctx.font = '13px "PingFang SC", sans-serif';
       ctx.fillText(r[0], px + 18, yy);
       ctx.fillStyle = r[2]; ctx.font = 'bold 16px "PingFang SC", sans-serif'; ctx.textAlign = 'right';
       ctx.fillText(r[1], px + pw - 18, yy); ctx.textAlign = 'left';
-      yy += 34;
+      yy += 28;
     }
-    ctx.fillStyle = '#5b6678'; ctx.font = '11px "PingFang SC", sans-serif';
-    wrapText(ctx, '战果已自动存档。从这里可以补装备、加点，再上路。', px + 18, py + 258, pw - 36, 15, 2);
+    // 过关后的一句后话：把剧情串起来，不然打完只剩数字
+    if (st.outro) {
+      ctx.fillStyle = 'rgba(255,212,121,0.16)'; ctx.fillRect(px + 18, py + 200, 2, 70);
+      ctx.fillStyle = '#cfd8e6'; ctx.font = '13px "PingFang SC", sans-serif';
+      wrapText(ctx, st.outro, px + 30, py + 214, pw - 48, 17, 3);
+    }
+    if (st.items) {
+      ctx.fillStyle = '#7CFC9B'; ctx.font = '11.5px "PingFang SC", sans-serif';
+      ctx.fillText('额外战利品：' + st.items, px + 18, py + ph - 14);
+    } else {
+      ctx.fillStyle = '#5b6678'; ctx.font = '11px "PingFang SC", sans-serif';
+      wrapText(ctx, st.firstTime === false ? '本关已通关过，随时可以再打一遍刷材料。' : '战果已自动存档。从这里可以补装备、加点，再上路。',
+        px + 18, py + ph - 32, pw - 36, 15, 2);
+    }
 
     // —— 右：选项 ——
     const opts = game.clearOptions ? game.clearOptions() : [];
@@ -817,10 +1075,10 @@
       ctx.lineTo(ox + 18, y + oh / 2 + 6);
       ctx.closePath(); ctx.fill();
 
-      ctx.fillStyle = sel ? '#fff' : '#dbe4f0'; ctx.font = 'bold 18px "PingFang SC", sans-serif';
-      ctx.fillText(o.name, ox + 42, y + 26);
+      ctx.fillStyle = sel ? '#fff' : '#dbe4f0'; ctx.font = 'bold 17px "PingFang SC", sans-serif';
+      ctx.fillText(o.name, ox + 42, y + 22);
       ctx.fillStyle = '#7d8798'; ctx.font = '11.5px "PingFang SC", sans-serif';
-      ctx.fillText(o.note || '', ox + 42, y + 45);
+      ctx.fillText(o.note || '', ox + 42, y + 39);
 
       // 快捷键角标
       const kw = 46;
@@ -833,15 +1091,36 @@
     }
 
     ctx.fillStyle = 'rgba(150,162,182,0.9)'; ctx.font = '12px "PingFang SC", sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('W/S 或点击 选择 · Enter 确认 · G 商店 · L 锻造 · H 技能 · Esc 回主菜单', W / 2, H - 14);
+    ctx.fillText('W/S 或点击 选择 · Enter 确认 · T 关卡选择 · G 商店 · L 锻造 · H 技能 · Esc 回主菜单', W / 2, H - 14);
     ctx.textAlign = 'left';
   };
 
-  UI.drawWin = function (ctx) {
-    ctx.fillStyle = 'rgba(14,36,10,0.72)'; ctx.fillRect(0, 0, W, H);
-    center(ctx, '通关！取经之路开启', 210, 'bold 44px serif', '#7CFC9B');
-    center(ctx, '你已扫平花果山、黑风洞、火焰山', 264, '18px "PingFang SC", sans-serif', '#e6e6e6');
-    center(ctx, '按 Enter 回到标题', 322, '18px "PingFang SC", sans-serif', '#fff');
+  UI.drawWin = function (ctx, game) {
+    const t = game ? game.uiTime : 0;
+    const lines = (XY.STORY && XY.STORY.ending) || [];
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, 'rgba(10,26,16,0.92)'); g.addColorStop(1, 'rgba(4,10,8,0.96)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    // 一点微光，别让黑屏太死
+    const gl = ctx.createRadialGradient(W / 2, 150, 10, W / 2, 150, 340);
+    gl.addColorStop(0, 'rgba(140,255,190,0.16)'); gl.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = gl; ctx.fillRect(0, 0, W, H);
+
+    center(ctx, '西行圆满', 96, 'bold 44px serif', '#7CFC9B');
+    const start = 190, step = 38;
+    for (let i = 0; i < lines.length; i++) {
+      const a = Math.max(0, Math.min(1, (t - i * 420) / 420));
+      if (a <= 0) continue;
+      ctx.globalAlpha = a;
+      const last = i === lines.length - 1;
+      center(ctx, lines[i], start + i * step, last ? 'bold 20px serif' : '17px "PingFang SC", sans-serif',
+        last ? '#ffd479' : '#dfe8e2');
+      ctx.globalAlpha = 1;
+    }
+    const pulse = 0.55 + Math.sin(t / 320) * 0.35;
+    ctx.globalAlpha = pulse;
+    center(ctx, '按 Enter 回到主菜单 · 打过的关卡随时可以重打', H - 46, '15px "PingFang SC", sans-serif', '#fff');
+    ctx.globalAlpha = 1;
   };
 
   // ===== 通用：货币标签 =====

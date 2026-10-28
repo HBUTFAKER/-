@@ -799,12 +799,17 @@
   }
 
   S.draw = function (ctx, levelIndex, t, camX) {
-    const idx = (((levelIndex | 0) % 3) + 3) % 3;
+    // 关卡数据里写明了 theme 就用它（12 关要对应场景，不能按 下标%3 硬轮换）
+    const lv = XY.LEVELS && XY.LEVELS[levelIndex];
+    const theme = lv && Number.isFinite(lv.theme) ? lv.theme : levelIndex;
+    const idx = (((theme | 0) % 3) + 3) % 3;
     camX = camX || 0;
     ctx.save();
     if (idx === 0) sceneMountain(ctx, t || 0, camX);
     else if (idx === 1) sceneCave(ctx, t || 0, camX);
     else sceneFire(ctx, t || 0, camX);
+    // 关卡自带的色调（血月 / 冰面 / 妖雾…）
+    if (lv && lv.tint) { ctx.fillStyle = lv.tint; ctx.fillRect(0, 0, W, H); }
     overlay(ctx);
     ctx.restore();
   };

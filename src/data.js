@@ -231,36 +231,289 @@
       { itemId: 'mat_soul', weight: 1, chance: 0.3, min: 1, max: 1 },
       { itemId: 'mat_herb', weight: 1, chance: 0.3, min: 1, max: 1 } ] },
   };
-  XY.BOSS_BASE = { name: '牛魔王', hp: 600, attack: 22, defense: 10, moveSpeed: 70, aggroRange: 9999, dropTable: [
-    { itemId: 'mat_soul', weight: 1, chance: 1, min: 3, max: 5 },
-    { itemId: 'mat_fire', weight: 1, chance: 0.8, min: 2, max: 3 },
-    { itemId: 'mat_stone', weight: 1, chance: 0.8, min: 2, max: 3 } ] };
+  // 三只首领：造型在 art.js 里按 variant 分支画，这里只管数值与人设
+  XY.BOSSES = {
+    bull: { name: '牛魔王', hp: 600, attack: 22, defense: 10, moveSpeed: 70, aggroRange: 9999,
+      dropTable: [
+        { itemId: 'mat_soul', weight: 1, chance: 1, min: 3, max: 5 },
+        { itemId: 'mat_fire', weight: 1, chance: 0.8, min: 2, max: 3 },
+        { itemId: 'mat_stone', weight: 1, chance: 0.8, min: 2, max: 3 } ] },
+    bear: { name: '黑熊精', hp: 520, attack: 20, defense: 14, moveSpeed: 64, aggroRange: 9999,
+      dropTable: [
+        { itemId: 'mat_soul', weight: 1, chance: 1, min: 2, max: 4 },
+        { itemId: 'mat_stone', weight: 1, chance: 0.9, min: 2, max: 4 },
+        { itemId: 'mat_herb', weight: 1, chance: 0.6, min: 1, max: 3 } ] },
+    bone: { name: '白骨精', hp: 480, attack: 24, defense: 7, moveSpeed: 96, aggroRange: 9999,
+      dropTable: [
+        { itemId: 'mat_soul', weight: 1, chance: 1, min: 3, max: 6 },
+        { itemId: 'mat_wood', weight: 1, chance: 0.7, min: 2, max: 3 },
+        { itemId: 'mat_fire', weight: 1, chance: 0.6, min: 1, max: 2 } ] },
+  };
+  XY.BOSS_BASE = XY.BOSSES.bull;
 
   // ===== 关卡（横版卷动）=====
+  // kind：main 主线 / side 支线（支线靠 require 解锁，可以不打）
+  // theme：程序化背景的底子（0 云海山峦 / 1 洞窟 / 2 火山），tint 是本关整体色调
+  // intro：关卡前情的三行字；outro：过关后的一句后话（结算页显示）
+  // require：支线的前置关卡下标（打完它才开）
   XY.LEVELS = [
-    { id: 1, name: '第一关 · 花果山', width: 2400, height: 540, platforms: [
+    // —— 主线 1 ——
+    { id: 'l1', kind: 'main', chapter: 1, theme: 0, tint: null,
+      name: '第一回 · 花果山', sub: '旧地重游',
+      width: 2400, height: 540, platforms: [
         [0, 500, 2400, 40], [360, 400, 160, 24], [680, 320, 180, 24], [1040, 420, 200, 24],
         [1500, 340, 220, 24], [1960, 300, 200, 24] ],
       spawns: [
         { type: 'imp', x: 520, y: 460, level: 1 }, { type: 'imp', x: 900, y: 460, level: 1 },
         { type: 'wolf', x: 1300, y: 460, level: 2 }, { type: 'imp', x: 1700, y: 460, level: 1 },
         { type: 'wolf', x: 2100, y: 460, level: 2 } ],
-      goal: { x: 2330, y: 440 } },
-    { id: 2, name: '第二关 · 黑风洞', width: 2600, height: 540, platforms: [
-        [0, 500, 2600, 40], [300, 380, 140, 24], [560, 300, 160, 24], [860, 410, 180, 24],
-        [1180, 330, 180, 24], [1520, 250, 200, 24], [1900, 380, 200, 24], [2240, 300, 200, 24] ],
+      goal: { x: 2330, y: 440 },
+      intro: ['五百年后，五行山崩，猴王重回花果山。',
+        '故地已荒，小妖占山为王，水帘洞前一片狼藉。',
+        '把这些杂碎清干净——这是取经路上的第一课。'],
+      outro: '山风穿过水帘，石桌上还留着当年的酒痕。',
+      reward: { jade: 10, gold: 150 } },
+
+    // —— 主线 2 ——
+    { id: 'l2', kind: 'main', chapter: 2, theme: 1, tint: 'rgba(60,120,150,0.16)',
+      name: '第二回 · 鹰愁涧', sub: '涧底有龙',
+      width: 2600, height: 540, platforms: [
+        [0, 500, 2600, 40], [300, 390, 150, 24], [560, 310, 170, 24], [900, 410, 190, 24],
+        [1230, 330, 180, 24], [1580, 260, 210, 24], [1950, 370, 200, 24], [2280, 300, 180, 24] ],
       spawns: [
-        { type: 'wolf', x: 480, y: 460, level: 2 }, { type: 'spider', x: 980, y: 460, level: 2 },
-        { type: 'wolf', x: 1400, y: 460, level: 3 }, { type: 'spider', x: 1760, y: 460, level: 3 },
-        { type: 'imp', x: 2050, y: 460, level: 2 }, { type: 'wolf', x: 2380, y: 460, level: 3 } ],
-      goal: { x: 2530, y: 440 } },
-    { id: 3, name: '第三关 · 火焰山 · 牛魔王', width: 2000, height: 540, platforms: [
-        [0, 500, 2000, 40], [320, 400, 180, 24], [700, 340, 200, 24], [1120, 400, 200, 24], [1520, 340, 220, 24] ],
+        { type: 'wolf', x: 420, y: 460, level: 2 }, { type: 'spider', x: 820, y: 460, level: 2 },
+        { type: 'wolf', x: 1180, y: 460, level: 3 }, { type: 'spider', x: 1520, y: 460, level: 3 },
+        { type: 'wolf', x: 1900, y: 460, level: 3 }, { type: 'imp', x: 2250, y: 460, level: 2 } ],
+      goal: { x: 2530, y: 440 },
+      intro: ['涧水森寒，白雾贴着水面走。',
+        '传说涧里藏着一条犯了天条的龙，吞过取经人的白马。',
+        '岸边的妖物，只是被龙气养肥的看门狗。'],
+      outro: '涧底传来一声低沉的龙吟，随即归于寂静。',
+      reward: { jade: 12, gold: 200 } },
+
+    // —— 主线 3（首领：黑熊精）——
+    { id: 'l3', kind: 'main', chapter: 3, theme: 1, tint: 'rgba(90,60,140,0.20)',
+      name: '第三回 · 黑风洞', sub: '黑熊精',
+      width: 2800, height: 540, platforms: [
+        [0, 500, 2800, 40], [380, 380, 160, 24], [720, 300, 180, 24], [1080, 400, 200, 24],
+        [1450, 320, 190, 24], [1820, 240, 210, 24], [2200, 360, 200, 24] ],
       spawns: [
-        { type: 'spider', x: 600, y: 460, level: 3 }, { type: 'wolf', x: 1000, y: 460, level: 3 },
-        { type: 'boss', x: 1650, y: 380, level: 5 } ],
-      goal: { x: 1900, y: 440 } },
+        { type: 'spider', x: 500, y: 460, level: 3 }, { type: 'wolf', x: 950, y: 460, level: 3 },
+        { type: 'imp', x: 1350, y: 460, level: 3 }, { type: 'spider', x: 1750, y: 460, level: 4 },
+        { type: 'boss', boss: 'bear', x: 2450, y: 380, level: 4 } ],
+      goal: { x: 2700, y: 440 },
+      intro: ['黑风洞的洞口挂着一件袈裟，风一吹，血味就散开。',
+        '黑熊精偷了佛宝，占了山洞，自封"黑风大王"。',
+        '它皮糙肉厚，正面硬冲只会被一屁股坐扁。'],
+      outro: '黑熊精跪在洞口，把袈裟一件件叠好，双手奉还。',
+      reward: { jade: 16, gold: 320, items: { mat_soul: 2 } } },
+
+    // —— 主线 4 ——
+    { id: 'l4', kind: 'main', chapter: 4, theme: 0, tint: 'rgba(150,90,40,0.16)',
+      name: '第四回 · 高老庄', sub: '女婿是头猪',
+      width: 2600, height: 540, platforms: [
+        [0, 500, 2600, 40], [240, 420, 200, 26], [620, 360, 180, 26], [980, 300, 200, 26],
+        [1360, 380, 220, 26], [1760, 320, 200, 26], [2140, 260, 200, 26] ],
+      spawns: [
+        { type: 'imp', x: 430, y: 460, level: 3 }, { type: 'wolf', x: 800, y: 460, level: 4 },
+        { type: 'imp', x: 1180, y: 460, level: 3 }, { type: 'wolf', x: 1600, y: 460, level: 4 },
+        { type: 'imp', x: 2000, y: 460, level: 4 } ],
+      goal: { x: 2530, y: 440 },
+      intro: ['高老庄的灯还亮着，庄丁却不敢出门。',
+        '三年前招了个女婿，能吃能喝，喝多了会现出猪相。',
+        '庄主说：不求降妖，只求把这门亲事退了。'],
+      outro: '那猪妖拍了拍肚子，说"走就走"，倒先一步往西去了。',
+      reward: { jade: 18, gold: 380 } },
+
+    // —— 支线 1（前置：高老庄）——
+    { id: 's1', kind: 'side', chapter: 0, theme: 1, tint: 'rgba(140,60,140,0.22)',
+      name: '支线 · 盘丝洞', sub: '七情丝',
+      width: 2400, height: 540, platforms: [
+        [0, 500, 2400, 40], [320, 390, 170, 24], [660, 310, 190, 24], [1020, 390, 180, 24],
+        [1380, 300, 200, 24], [1760, 380, 190, 24] ],
+      spawns: [
+        { type: 'spider', x: 460, y: 460, level: 4 }, { type: 'spider', x: 780, y: 460, level: 4 },
+        { type: 'spider', x: 1120, y: 460, level: 4 }, { type: 'spider', x: 1470, y: 460, level: 5 },
+        { type: 'spider', x: 1820, y: 460, level: 5 }, { type: 'spider', x: 2150, y: 460, level: 5 } ],
+      goal: { x: 2330, y: 440 },
+      require: 3,
+      intro: ['洞口垂着七色丝线，一根一根缠在骨头上。',
+        '盘丝洞的蜘蛛精不图财，只织网——织到人走不动为止。',
+        '这趟是私活，打不打随你，赏钱不薄。'],
+      outro: '蛛丝被火一燎，整座洞窟像退潮一样塌下去。',
+      reward: { jade: 20, gold: 300, items: { mat_fire: 2, mat_soul: 1 } } },
+
+    // —— 主线 5 ——
+    { id: 'l5', kind: 'main', chapter: 5, theme: 1, tint: 'rgba(30,90,110,0.22)',
+      name: '第五回 · 流沙河', sub: '河底有将',
+      width: 3000, height: 540, platforms: [
+        [0, 500, 3000, 40], [420, 400, 150, 24], [760, 330, 170, 24], [1120, 420, 180, 24],
+        [1500, 340, 190, 24], [1880, 270, 210, 24], [2260, 370, 190, 24], [2640, 310, 170, 24] ],
+      spawns: [
+        { type: 'wolf', x: 560, y: 460, level: 4 }, { type: 'spider', x: 950, y: 460, level: 4 },
+        { type: 'imp', x: 1300, y: 460, level: 5 }, { type: 'wolf', x: 1700, y: 460, level: 4 },
+        { type: 'spider', x: 2100, y: 460, level: 5 }, { type: 'wolf', x: 2500, y: 460, level: 5 } ],
+      goal: { x: 2930, y: 440 },
+      intro: ['八百里流沙，鹅毛飘不起，芦花定底沉。',
+        '河心立着一块界碑，碑后有人影，脖子上挂九个骷髅。',
+        '他不让路，只是问：你也是去西天的？'],
+      outro: '那大汉把骷髅串成一串，挂在颈上，默默跟在队伍最后。',
+      reward: { jade: 20, gold: 420 } },
+
+    // —— 支线 2（前置：流沙河）——
+    { id: 's2', kind: 'side', chapter: 0, theme: 1, tint: 'rgba(150,120,40,0.18)',
+      name: '支线 · 波月洞', sub: '黄袍客',
+      width: 2600, height: 540, platforms: [
+        [0, 500, 2600, 40], [340, 370, 180, 26], [720, 290, 190, 26], [1100, 380, 200, 26],
+        [1500, 300, 190, 26], [1900, 370, 200, 26], [2260, 290, 180, 26] ],
+      spawns: [
+        { type: 'imp', x: 480, y: 460, level: 5 }, { type: 'wolf', x: 900, y: 460, level: 5 },
+        { type: 'imp', x: 1330, y: 460, level: 5 }, { type: 'wolf', x: 1720, y: 460, level: 6 },
+        { type: 'imp', x: 2150, y: 460, level: 5 } ],
+      goal: { x: 2530, y: 440 },
+      require: 5,
+      intro: ['波月洞里有月亮，是人造的那种——一面铜镜吊在洞顶。',
+        '黄袍客掳了宝象国的公主，说要在洞里过一辈子。',
+        '顺手接的活，办完还有人情。'],
+      outro: '铜镜碎了，月光散了一地，公主终于看见洞外的天。',
+      reward: { jade: 22, gold: 360, items: { mat_stone: 2, mat_herb: 2 } } },
+
+    // —— 主线 6（首领：白骨精）——
+    { id: 'l6', kind: 'main', chapter: 6, theme: 0, tint: 'rgba(120,150,170,0.20)',
+      name: '第六回 · 白骨岭', sub: '白骨精',
+      width: 3000, height: 540, platforms: [
+        [0, 500, 3000, 40], [420, 390, 150, 24], [700, 300, 170, 24], [1060, 400, 190, 24],
+        [1400, 310, 190, 24], [1780, 240, 200, 24], [2140, 350, 190, 24] ],
+      spawns: [
+        { type: 'spider', x: 560, y: 460, level: 5 }, { type: 'wolf', x: 1000, y: 460, level: 5 },
+        { type: 'spider', x: 1450, y: 460, level: 5 }, { type: 'wolf', x: 1850, y: 460, level: 6 },
+        { type: 'boss', boss: 'bone', x: 2650, y: 380, level: 6 } ],
+      goal: { x: 2930, y: 440 },
+      intro: ['岭上白骨堆成山，风一过，骨头互相敲出声音。',
+        '她变过村姑、变过老妇、变过老翁，三次都被一眼看穿。',
+        '这一次她不装了——骨甲披身，白骨为刃。'],
+      outro: '骨头散落一地，骨堆里刻着一行小字：「白骨夫人，本是山中一缕怨气。」',
+      reward: { jade: 26, gold: 520, items: { mat_soul: 3 } } },
+
+    // —— 支线 3（前置：白骨岭）——
+    { id: 's3', kind: 'side', chapter: 0, theme: 2, tint: 'rgba(120,80,30,0.18)',
+      name: '支线 · 狮驼岭', sub: '三妖聚',
+      width: 3000, height: 540, platforms: [
+        [0, 500, 3000, 40], [380, 400, 160, 24], [740, 320, 180, 24], [1120, 410, 190, 24],
+        [1500, 330, 200, 24], [1880, 260, 190, 24], [2260, 370, 190, 24], [2600, 300, 170, 24] ],
+      spawns: [
+        { type: 'wolf', x: 520, y: 460, level: 6 }, { type: 'imp', x: 900, y: 460, level: 6 },
+        { type: 'wolf', x: 1280, y: 460, level: 6 }, { type: 'imp', x: 1680, y: 460, level: 6 },
+        { type: 'wolf', x: 2050, y: 460, level: 7 }, { type: 'imp', x: 2450, y: 460, level: 6 } ],
+      goal: { x: 2930, y: 440 },
+      require: 7,
+      intro: ['狮驼岭上四万八千小妖，旌旗遮天。',
+        '三个妖王结拜，放话要拿尽天下取经人。',
+        '硬闯是找死，但岭后有一条给活人走的小道——得先杀穿。'],
+      outro: '岭上的旗倒了大半，剩下的妖物四散进林子。',
+      reward: { jade: 26, gold: 480, items: { mat_fire: 2, mat_stone: 2 } } },
+
+    // —— 主线 7 ——
+    { id: 'l7', kind: 'main', chapter: 7, theme: 2, tint: 'rgba(180,60,30,0.20)',
+      name: '第七回 · 火云洞', sub: '圣婴大王',
+      width: 3200, height: 540, platforms: [
+        [0, 500, 3200, 40], [460, 390, 170, 24], [820, 300, 180, 24], [1180, 400, 200, 24],
+        [1560, 320, 190, 24], [1940, 260, 200, 24], [2320, 370, 190, 24], [2700, 300, 180, 24] ],
+      spawns: [
+        { type: 'spider', x: 600, y: 460, level: 6 }, { type: 'imp', x: 1000, y: 460, level: 6 },
+        { type: 'spider', x: 1400, y: 460, level: 6 }, { type: 'wolf', x: 1800, y: 460, level: 7 },
+        { type: 'imp', x: 2200, y: 460, level: 6 }, { type: 'spider', x: 2600, y: 460, level: 7 } ],
+      goal: { x: 3130, y: 440 },
+      intro: ['火云洞终年不熄，洞口的热浪能把人推回去。',
+        '红孩儿会三昧真火，一口火喷出来，连石头都烧成琉璃。',
+        '他不怕你打，他怕你不进洞。'],
+      outro: '火灭之后，洞里只剩一地琉璃，映着天光。',
+      reward: { jade: 30, gold: 580 } },
+
+    // —— 支线 4（前置：火云洞）——
+    { id: 's4', kind: 'side', chapter: 0, theme: 1, tint: 'rgba(40,110,150,0.24)',
+      name: '支线 · 通天河', sub: '冰下骨',
+      width: 2800, height: 540, platforms: [
+        [0, 500, 2800, 40], [400, 410, 170, 24], [760, 340, 180, 24], [1120, 420, 190, 24],
+        [1480, 330, 200, 24], [1860, 270, 200, 24], [2240, 380, 190, 24] ],
+      spawns: [
+        { type: 'spider', x: 550, y: 460, level: 7 }, { type: 'wolf', x: 950, y: 460, level: 7 },
+        { type: 'spider', x: 1350, y: 460, level: 7 }, { type: 'wolf', x: 1750, y: 460, level: 7 },
+        { type: 'spider', x: 2150, y: 460, level: 7 }, { type: 'wolf', x: 2550, y: 460, level: 7 } ],
+      goal: { x: 2730, y: 440 },
+      require: 9,
+      intro: ['通天河结了冰，冰下有东西在游，一路跟着你。',
+        '村里人说，每年要一对童男童女，冰才不裂。',
+        '今年没人肯交，冰面已经裂了三道。'],
+      outro: '冰化了，河面浮起一层碎骨，顺水下流。',
+      reward: { jade: 30, gold: 520, items: { mat_soul: 3, mat_herb: 2 } } },
+
+    // —— 主线 8（终局首领：牛魔王）——
+    { id: 'l8', kind: 'main', chapter: 8, theme: 2, tint: 'rgba(200,50,20,0.18)',
+      name: '第八回 · 火焰山', sub: '牛魔王',
+      width: 3400, height: 540, platforms: [
+        [0, 500, 3400, 40], [420, 400, 180, 24], [800, 320, 190, 24], [1180, 420, 200, 24],
+        [1560, 330, 200, 24], [1940, 250, 210, 24], [2320, 370, 200, 24], [2700, 300, 190, 24] ],
+      spawns: [
+        { type: 'spider', x: 600, y: 460, level: 7 }, { type: 'wolf', x: 1000, y: 460, level: 8 },
+        { type: 'spider', x: 1450, y: 460, level: 7 }, { type: 'wolf', x: 1900, y: 460, level: 8 },
+        { type: 'spider', x: 2350, y: 460, level: 8 },
+        { type: 'boss', boss: 'bull', x: 3050, y: 380, level: 8 } ],
+      goal: { x: 3330, y: 440 },
+      intro: ['火焰山八百里，火头一起，天都是红的。',
+        '牛魔王站在山脊上，扇子插在腰后，连头都不抬。',
+        '这一战打完，八百里火焰山才过得去。'],
+      outro: '芭蕉扇落在地上，山火一寸一寸退了下去。',
+      reward: { jade: 45, gold: 900, items: { mat_soul: 4, mat_fire: 3 } } },
   ];
+
+  // —— 关卡解锁（纯函数，测试里直接调）——
+  // 只有"打过的关卡"能选；另外把紧接着的那一关也开放（不然永远迈不出第一步）。
+  // 支线不看前后顺序，只看 require 那一关有没有通。
+  XY.levelUnlocked = function (idx, cleared) {
+    const list = XY.LEVELS || [];
+    const lv = list[idx];
+    if (!lv) return false;
+    const done = Array.isArray(cleared) ? cleared : [];
+    if (idx === 0) return true;
+    if (done.indexOf(idx) >= 0) return true;          // 通过一次 = 永久可重打
+    if (lv.kind === 'side') {
+      if (Number.isInteger(lv.require)) return done.indexOf(lv.require) >= 0;
+      return done.length > 0;
+    }
+    // 主线：上一"主线关"通了才开（支线夹在中间不挡路）
+    for (let i = idx - 1; i >= 0; i--) {
+      if (list[i].kind === 'main') return done.indexOf(i) >= 0;
+    }
+    return true;
+  };
+  // 下一关主线（跳过支线）；没有了返回 -1
+  XY.nextMainAfter = function (idx) {
+    const list = XY.LEVELS || [];
+    for (let i = idx + 1; i < list.length; i++) if (list[i].kind === 'main') return i;
+    return -1;
+  };
+  XY.mainLevels = function () { return (XY.LEVELS || []).filter((l) => l.kind === 'main'); };
+  // 选关界面的排列：主线先排满（8 个 = 两行），支线在后面一排
+  XY.levelGrid = function () {
+    const main = [], side = [];
+    (XY.LEVELS || []).forEach((l, i) => (l.kind === 'side' ? side : main).push(i));
+    return main.concat(side);
+  };
+  // 已解锁里最该去的那一关（选关界面默认光标停这儿）：优先主线，其次支线
+  XY.frontierLevel = function (cleared) {
+    const list = XY.LEVELS || [];
+    const done = Array.isArray(cleared) ? cleared : [];
+    let side = -1;
+    for (let i = 0; i < list.length; i++) {
+      if (done.indexOf(i) >= 0) continue;              // 打过的先跳过
+      if (!XY.levelUnlocked(i, done)) continue;
+      if (list[i].kind === 'main') return i;
+      if (side < 0) side = i;
+    }
+    if (side >= 0) return side;
+    return Math.max(0, done.length ? Math.max.apply(null, done) : 0);
+  };
 
   // ===== 剧情 / CG（大闹天宫开场）=====
   XY.STORY = {
@@ -270,11 +523,14 @@
       { bgTop: '#0e2a4d', bgBottom: '#103a5a', glyph: '🔥', title: '八卦炉中', lines: ['悟空被投入太上老君八卦炉。', '七七四十九日，炼出火眼金睛。'], duration: 2600 },
       { bgTop: '#10241a', bgBottom: '#15402a', glyph: '⛰', title: '五行山下', lines: ['如来翻掌化山，将悟空压于五行山下。', '五百年后，取经之路开启——你的降妖录，由此开始。'], duration: 3000 },
     ],
-    levelIntros: {
-      1: '花果山旧地，小妖作乱。悟空脱困后第一战，清扫故园。',
-      2: '黑风洞中黑熊精窃袈裟，妖风阵阵。',
-      3: '火焰山烈焰焚天，牛魔王据守，终局之战。',
-    },
+    // 通关后的结局字幕（逐行淡入，按 Enter 直接回主菜单）
+    ending: [
+      '八百里火焰山，火退成了灰。',
+      '师徒四人加一匹马，继续往西。',
+      '前面还有九万八千里，还有数不清的洞、数不清的妖。',
+      '但这一路，你已经知道该怎么走了。',
+      '——西游·降妖录 · 全篇终',
+    ],
   };
 
   // ===== 每位角色独立的开场 CG =====

@@ -125,7 +125,10 @@ test.it('严格 Canvas：标题→选角→CG→前情→战斗 全流程不产�
   assert.strictEqual(game.charIndex, 1, 'D 键应切到下一个角色');
   tap('KeyA'); step(game, 0.016);
   assert.strictEqual(game.charIndex, 0);
-  // 进入 CG
+  // 选角 → 选关（多关卡后中间多了这一步）
+  tap('Enter'); step(game, 0.016);
+  assert.strictEqual(game.state, 'levelselect', '选角确认应先进关卡选择');
+  // 进 CG
   tap('Enter'); step(game, 0.016);
   assert.strictEqual(game.state, 'cutscene');
   // 跳过 CG → 前情
@@ -638,7 +641,9 @@ test.it('选角后播放该角色自己的 CG，并能逐幕推进到关卡前�
     const g = fresh();
     tap('Enter'); step(g, 0.016);       // 标题 → 选角
     g.charIndex = i;
-    tap('Enter'); step(g, 0.016);       // 确认角色 → CG
+    tap('Enter'); step(g, 0.016);       // 确认角色 → 选关
+    assert.strictEqual(g.state, 'levelselect', '第 ' + i + ' 个角色确认后没进选关页');
+    tap('Enter'); step(g, 0.016);       // 选关 → CG
     assert.strictEqual(g.state, 'cutscene', '第 ' + i + ' 个角色没进入 CG');
     assert.strictEqual(g.cutBeats, XY.STORY.charCg[XY.CHARACTER_ORDER[i]], 'CG 没按角色切换');
     for (let n = 0; n < 12 && g.state === 'cutscene'; n++) step(g, 1.2);
@@ -666,6 +671,8 @@ test.it('选角：鼠标点哪张卡就出哪个角色，点空白不误触', ()
   tap('Mouse0'); step(game, 0.016);
   assert.strictEqual(game.charId, 'tangseng', '点唐僧卡片却出了 ' + game.charId);
   assert.strictEqual(game.player.char.id, 'tangseng', '玩家不是唐僧');
+  assert.strictEqual(game.state, 'levelselect', '点卡片出战应先进选关页，实际: ' + game.state);
+  tap('Enter'); step(game, 0.016);
   assert.strictEqual(game.state, 'cutscene');
   assert.strictEqual(game.cutBeats, XY.STORY.charCg.tangseng, 'CG 没跟着角色走');
 });

@@ -1137,29 +1137,156 @@
       circle(ctx, 15, -16.8, 1.5); ctx.fillStyle = '#ff6b6b'; ctx.fill();
       circle(ctx, 8.6, -20.4, 1.1); ctx.fillStyle = '#ff9b9b'; ctx.fill();
     } else if (e.kind === 'boss') {
-      // 牛魔王
-      ctx.fillStyle = body || '#8e2b2b';
-      rr(ctx, -22, -76, 44, 62, 12); shape(ctx, body || '#8e2b2b', 1.8);
-      // 牛角
-      ctx.strokeStyle = body || '#e8dcc8'; ctx.lineWidth = 5; ctx.lineCap = 'round';
-      for (const s of [-1, 1]) {
+      const variant = e.variant || 'bull';
+      if (variant === 'bear') {
+        // 黑熊精：又壮又圆，披了件偷来的袈裟，手里一杆黑缨枪
+        const fur = body || '#41301f', furDark = body || '#2a1d12';
+        // 腿
+        rr(ctx, -20, -22, 15, 22, 6); shape(ctx, furDark, 1.2);
+        rr(ctx, 4, -22, 15, 22, 6); shape(ctx, fur, 1.2);
+        // 身子
+        rr(ctx, -25, -66, 50, 50, 18); shape(ctx, fur, 1.8);
+        // 偷来的袈裟：斜披 + 腰带
+        ctx.save();
+        rr(ctx, -25, -66, 50, 50, 18); ctx.clip();
         ctx.beginPath();
-        ctx.moveTo(s * 14, -74);
-        ctx.quadraticCurveTo(s * 34, -86, s * 30, -66);
-        ctx.stroke();
+        ctx.moveTo(-26, -66); ctx.lineTo(-2, -66); ctx.lineTo(-14, -16); ctx.lineTo(-26, -20);
+        ctx.closePath(); shape(ctx, body || '#b8442c', 1.2);
+        rr(ctx, -26, -34, 52, 8, 2); shape(ctx, body || '#e0a03a', 1);
+        ctx.restore();
+        // 头 + 耳朵
+        circle(ctx, 4, -72, 19); shape(ctx, fur, 1.6);
+        circle(ctx, -8, -88, 7); shape(ctx, furDark, 1.2);
+        circle(ctx, 15, -89, 7); shape(ctx, furDark, 1.2);
+        // 口鼻
+        ctx.beginPath();
+        if (ctx.ellipse) ctx.ellipse(12, -66, 9, 7, 0, 0, Math.PI * 2); else ctx.arc(12, -66, 8, 0, Math.PI * 2);
+        shape(ctx, body || '#c8ab84', 1);
+        circle(ctx, 17, -69, 3.2); ctx.fillStyle = '#20140e'; ctx.fill();
+        // 眼睛：小、亮、狠
+        circle(ctx, 6, -78, 3.2); ctx.fillStyle = body || '#ffd479'; ctx.fill();
+        circle(ctx, 14, -77, 2.6); ctx.fillStyle = body || '#ffd479'; ctx.fill();
+        // 黑缨枪
+        ctx.save(); ctx.translate(28, -46); ctx.rotate(-0.16 + Math.sin(t / 520) * 0.06);
+        rr(ctx, -2.5, -44, 5, 92, 2.5); shape(ctx, '#4a3a26', 1.2);
+        ctx.beginPath();
+        ctx.moveTo(0, -56); ctx.lineTo(6, -42); ctx.lineTo(0, -46); ctx.lineTo(-6, -42);
+        ctx.closePath(); shape(ctx, '#c9cfd6', 1.2);
+        for (let i = 0; i < 5; i++) {
+          const a = -0.5 + i * 0.25;
+          line(ctx, 0, -40, Math.sin(a) * 12, -40 + Math.cos(a) * 12, 2, body || '#1c1a22');
+        }
+        ctx.restore();
+      } else if (variant === 'bone') {
+        // 白骨精：一副骨架披着破黑裙，双手两把骨刃
+        const boneCol = body || '#ece6d8', cloth = body || '#1a1622';
+        ctx.save();
+        ctx.scale(1.2, 1.2);   // 骨架瘦，放大一点才压得住首领的气场
+        // 裙摆
+        ctx.beginPath();
+        ctx.moveTo(-16, -40); ctx.lineTo(14, -40); ctx.lineTo(20, 0); ctx.lineTo(-20, 0);
+        ctx.closePath(); shape(ctx, cloth, 1.2);
+        for (let i = 0; i < 4; i++) {   // 破布条
+          ctx.beginPath();
+          ctx.moveTo(-18 + i * 10, -6); ctx.lineTo(-14 + i * 10, 4); ctx.lineTo(-10 + i * 10, -4);
+          ctx.closePath(); shape(ctx, cloth, 0.8);
+        }
+        // 肋骨
+        for (let i = 0; i < 3; i++) {
+          ctx.beginPath();
+          ctx.moveTo(-11, -40 + i * 7); ctx.quadraticCurveTo(0, -44 + i * 7, 11, -40 + i * 7);
+          ctx.strokeStyle = boneCol; ctx.lineWidth = 2.4; ctx.stroke();
+        }
+        // 脊椎
+        line(ctx, 0, -44, 0, -16, 3, boneCol);
+        // 头骨
+        circle(ctx, 2, -66, 16); shape(ctx, boneCol, 1.6);
+        ctx.beginPath();   // 下颌
+        rr(ctx, -7, -56, 18, 9, 4); shape(ctx, boneCol, 1.2);
+        for (let i = 0; i < 4; i++) line(ctx, -4 + i * 4.5, -56, -4 + i * 4.5, -49, 1.2, '#8d8578');
+        // 眼窝：空的两孔，里面一点幽绿
+        circle(ctx, -3, -70, 4.4); ctx.fillStyle = '#0b0f12'; ctx.fill();
+        circle(ctx, 9, -70, 4.4); ctx.fillStyle = '#0b0f12'; ctx.fill();
+        circle(ctx, -2.4, -69.6, 1.8); ctx.fillStyle = body || '#7ef0c0'; ctx.fill();
+        circle(ctx, 9.6, -69.6, 1.8); ctx.fillStyle = body || '#7ef0c0'; ctx.fill();
+        // 两只骨刃（一上一下）
+        ctx.save(); ctx.translate(20, -44); ctx.rotate(-0.55 + Math.sin(t / 380) * 0.08);
+        ctx.beginPath();
+        ctx.moveTo(0, 0); ctx.quadraticCurveTo(20, -6, 30, -22);
+        ctx.quadraticCurveTo(16, -14, 0, -6); ctx.closePath(); shape(ctx, boneCol, 1.2);
+        ctx.restore();
+        ctx.save(); ctx.translate(16, -30); ctx.rotate(0.5 - Math.sin(t / 380) * 0.08);
+        ctx.beginPath();
+        ctx.moveTo(0, 0); ctx.quadraticCurveTo(18, 4, 28, 16);
+        ctx.quadraticCurveTo(14, 10, 0, 4); ctx.closePath(); shape(ctx, boneCol, 1.2);
+        ctx.restore();
+        ctx.restore();
+      } else {
+        // 牛魔王：壮硕红牛妖，黑铁胸甲 + 金腰带，肩扛一柄巨斧
+        const hide = body || '#8e2b2b', hideDark = '#5e1a1a', iron = '#3b3f4a';
+        // 腿 + 蹄
+        rr(ctx, -21, -27, 16, 27, 5); shape(ctx, hideDark, 1.3);
+        rr(ctx, 5, -27, 16, 27, 5); shape(ctx, hide, 1.3);
+        rr(ctx, -24, -9, 21, 10, 3); shape(ctx, '#2a2028', 1.1);
+        rr(ctx, 3, -9, 21, 10, 3); shape(ctx, '#2a2028', 1.1);
+        // 后臂（甩在身后，画在躯干之前）
+        line(ctx, -20, -62, -34, -44, 9, hideDark);
+        circle(ctx, -35, -42, 6.5); shape(ctx, hideDark, 1.2);
+        // 躯干
+        rr(ctx, -24, -72, 48, 48, 14); shape(ctx, hide, 1.8);
+        // 胸甲 + 腰带
+        ctx.save();
+        rr(ctx, -24, -72, 48, 48, 14); ctx.clip();
+        rr(ctx, -25, -73, 50, 27, 11); shape(ctx, iron, 1.3);
+        for (let i = 0; i < 3; i++) { circle(ctx, -14 + i * 14, -59, 2.2); ctx.fillStyle = '#8a8f9c'; ctx.fill(); }
+        rr(ctx, -25, -45, 50, 7, 2); shape(ctx, '#c9a24a', 1);
+        ctx.restore();
+        // 头：宽口鼻 + 怒眉 + 粗角
+        rr(ctx, -18, -96, 36, 28, 11); shape(ctx, hide, 1.7);
+        ctx.beginPath();
+        if (ctx.ellipse) ctx.ellipse(9, -78, 14, 10, 0, 0, Math.PI * 2); else ctx.arc(9, -78, 11, 0, Math.PI * 2);
+        shape(ctx, '#c2685e', 1.2);
+        for (const s of [-1, 1]) {          // 鼻孔
+          circle(ctx, 9 + s * 5, -80, 2.1); ctx.fillStyle = '#4a1a1a'; ctx.fill();
+        }
+        // 眼睛 + 怒眉
+        for (const s of [-1, 1]) {
+          circle(ctx, s * 8 + 1, -86, 3.6); ctx.fillStyle = '#ffd479'; ctx.fill();
+          circle(ctx, s * 8 + 1, -86, 1.6); ctx.fillStyle = '#1a0d08'; ctx.fill();
+          line(ctx, s * 8 + 1 - 6, -92, s * 8 + 1 + 6, -89, 2.6, '#3d1210');
+        }
+        // 牛角：从头顶两侧往外再往上勾
+        ctx.strokeStyle = '#e8dcc8'; ctx.lineWidth = 6.5; ctx.lineCap = 'round';
+        for (const s of [-1, 1]) {
+          ctx.beginPath();
+          ctx.moveTo(s * 15, -94);
+          ctx.quadraticCurveTo(s * 38, -100, s * 34, -74);
+          ctx.stroke();
+        }
+        ctx.strokeStyle = '#f7f2e6'; ctx.lineWidth = 2.4;
+        for (const s of [-1, 1]) {
+          ctx.beginPath();
+          ctx.moveTo(s * 31, -80); ctx.lineTo(s * 35, -75);
+          ctx.stroke();
+        }
+        // 鼻环
+        ctx.strokeStyle = '#ffd479'; ctx.lineWidth = 2.2;
+        ctx.beginPath(); ctx.arc(9, -70, 5.5, 0.1, Math.PI - 0.1); ctx.stroke();
+        // 巨斧：握在身前，随呼吸轻晃
+        ctx.save();
+        ctx.translate(30, -50); ctx.rotate(0.06 + Math.sin(t / 400) * 0.09);
+        line(ctx, 0, -34, 0, 26, 5, '#5b4a32');       // 斧柄
+        ctx.beginPath();                               // 斧刃
+        ctx.moveTo(1, -36); ctx.quadraticCurveTo(24, -30, 18, -4); ctx.lineTo(1, -9);
+        ctx.closePath(); shape(ctx, '#c9cfd6', 1.5);
+        ctx.beginPath();
+        ctx.moveTo(-1, -34); ctx.quadraticCurveTo(-15, -28, -11, -8); ctx.lineTo(-1, -12);
+        ctx.closePath(); shape(ctx, '#a7aeb8', 1.2);
+        ctx.restore();
+        // 前臂：从肩膀压到斧柄上
+        line(ctx, 20, -62, 30, -50, 9, hide);
+        circle(ctx, 30, -50, 6.5); shape(ctx, hide, 1.2);
       }
-      // 眼睛
-      for (const s of [-1, 1]) { circle(ctx, s * 9, -58, 3.4); ctx.fillStyle = '#ffd479'; ctx.fill(); }
-      // 鼻环
-      ctx.strokeStyle = '#ffd479'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(0, -44, 6, 0, Math.PI); ctx.stroke();
-      // 斧
-      ctx.save(); ctx.translate(26, -50); ctx.rotate(Math.sin(t / 400) * 0.1);
-      rr(ctx, -2, -26, 4, 50, 2); shape(ctx, '#5b4a32', 1.2);
-      ctx.beginPath();
-      ctx.moveTo(0, -30); ctx.quadraticCurveTo(18, -24, 14, -6); ctx.lineTo(0, -10);
-      ctx.closePath(); shape(ctx, '#c9cfd6', 1.4);
-      ctx.restore();
     } else { // imp 小妖：短腿 + 圆身 + 角 + 獠牙，比纯色块好辨认
       const dark = body || '#8e2f26';
       // 腿

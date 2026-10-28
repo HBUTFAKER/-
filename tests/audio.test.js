@@ -63,7 +63,7 @@ test.it('走到终点即进入过关结算，五个选项齐全且发放仙玉',
   assert.ok(g.clearStats && g.clearStats.name === XY.LEVELS[0].name, '结算应记录关卡名');
   assert.ok(g.clearStats.total >= 1, '结算应记录本关妖物总数');
   const ids = g.clearOptions().map((o) => o.id);
-  assert.deepStrictEqual(ids, ['next', 'shop', 'craft', 'skillup', 'title'], '结算菜单选项应为 下一关/商店/锻造/参悟/主菜单');
+  assert.deepStrictEqual(ids, ['next', 'levels', 'shop', 'craft', 'skillup', 'title'], '结算菜单选项应为 下一关/关卡选择/商店/锻造/参悟/主菜单');
   assert.ok(g.jade > jade0, '过关应发放仙玉，实际 ' + jade0 + ' → ' + g.jade);
   g.render();   // 结算界面必须能画
 });
@@ -112,7 +112,7 @@ test.it('返回主菜单：结算里选主菜单会回到标题页', () => {
   const g = run(fresh());
   g.player.x = g.level.goal.x;
   step(g);
-  g.clearIndex = 4;
+  g.clearIndex = g.clearOptions().length - 1;
   g.render();
   tap('Enter'); step(g);
   assert.strictEqual(g.state, 'title');

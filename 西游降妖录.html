@@ -336,36 +336,289 @@
       { itemId: 'mat_soul', weight: 1, chance: 0.3, min: 1, max: 1 },
       { itemId: 'mat_herb', weight: 1, chance: 0.3, min: 1, max: 1 } ] },
   };
-  XY.BOSS_BASE = { name: '牛魔王', hp: 600, attack: 22, defense: 10, moveSpeed: 70, aggroRange: 9999, dropTable: [
-    { itemId: 'mat_soul', weight: 1, chance: 1, min: 3, max: 5 },
-    { itemId: 'mat_fire', weight: 1, chance: 0.8, min: 2, max: 3 },
-    { itemId: 'mat_stone', weight: 1, chance: 0.8, min: 2, max: 3 } ] };
+  // 三只首领：造型在 art.js 里按 variant 分支画，这里只管数值与人设
+  XY.BOSSES = {
+    bull: { name: '牛魔王', hp: 600, attack: 22, defense: 10, moveSpeed: 70, aggroRange: 9999,
+      dropTable: [
+        { itemId: 'mat_soul', weight: 1, chance: 1, min: 3, max: 5 },
+        { itemId: 'mat_fire', weight: 1, chance: 0.8, min: 2, max: 3 },
+        { itemId: 'mat_stone', weight: 1, chance: 0.8, min: 2, max: 3 } ] },
+    bear: { name: '黑熊精', hp: 520, attack: 20, defense: 14, moveSpeed: 64, aggroRange: 9999,
+      dropTable: [
+        { itemId: 'mat_soul', weight: 1, chance: 1, min: 2, max: 4 },
+        { itemId: 'mat_stone', weight: 1, chance: 0.9, min: 2, max: 4 },
+        { itemId: 'mat_herb', weight: 1, chance: 0.6, min: 1, max: 3 } ] },
+    bone: { name: '白骨精', hp: 480, attack: 24, defense: 7, moveSpeed: 96, aggroRange: 9999,
+      dropTable: [
+        { itemId: 'mat_soul', weight: 1, chance: 1, min: 3, max: 6 },
+        { itemId: 'mat_wood', weight: 1, chance: 0.7, min: 2, max: 3 },
+        { itemId: 'mat_fire', weight: 1, chance: 0.6, min: 1, max: 2 } ] },
+  };
+  XY.BOSS_BASE = XY.BOSSES.bull;
 
   // ===== 关卡（横版卷动）=====
+  // kind：main 主线 / side 支线（支线靠 require 解锁，可以不打）
+  // theme：程序化背景的底子（0 云海山峦 / 1 洞窟 / 2 火山），tint 是本关整体色调
+  // intro：关卡前情的三行字；outro：过关后的一句后话（结算页显示）
+  // require：支线的前置关卡下标（打完它才开）
   XY.LEVELS = [
-    { id: 1, name: '第一关 · 花果山', width: 2400, height: 540, platforms: [
+    // —— 主线 1 ——
+    { id: 'l1', kind: 'main', chapter: 1, theme: 0, tint: null,
+      name: '第一回 · 花果山', sub: '旧地重游',
+      width: 2400, height: 540, platforms: [
         [0, 500, 2400, 40], [360, 400, 160, 24], [680, 320, 180, 24], [1040, 420, 200, 24],
         [1500, 340, 220, 24], [1960, 300, 200, 24] ],
       spawns: [
         { type: 'imp', x: 520, y: 460, level: 1 }, { type: 'imp', x: 900, y: 460, level: 1 },
         { type: 'wolf', x: 1300, y: 460, level: 2 }, { type: 'imp', x: 1700, y: 460, level: 1 },
         { type: 'wolf', x: 2100, y: 460, level: 2 } ],
-      goal: { x: 2330, y: 440 } },
-    { id: 2, name: '第二关 · 黑风洞', width: 2600, height: 540, platforms: [
-        [0, 500, 2600, 40], [300, 380, 140, 24], [560, 300, 160, 24], [860, 410, 180, 24],
-        [1180, 330, 180, 24], [1520, 250, 200, 24], [1900, 380, 200, 24], [2240, 300, 200, 24] ],
+      goal: { x: 2330, y: 440 },
+      intro: ['五百年后，五行山崩，猴王重回花果山。',
+        '故地已荒，小妖占山为王，水帘洞前一片狼藉。',
+        '把这些杂碎清干净——这是取经路上的第一课。'],
+      outro: '山风穿过水帘，石桌上还留着当年的酒痕。',
+      reward: { jade: 10, gold: 150 } },
+
+    // —— 主线 2 ——
+    { id: 'l2', kind: 'main', chapter: 2, theme: 1, tint: 'rgba(60,120,150,0.16)',
+      name: '第二回 · 鹰愁涧', sub: '涧底有龙',
+      width: 2600, height: 540, platforms: [
+        [0, 500, 2600, 40], [300, 390, 150, 24], [560, 310, 170, 24], [900, 410, 190, 24],
+        [1230, 330, 180, 24], [1580, 260, 210, 24], [1950, 370, 200, 24], [2280, 300, 180, 24] ],
       spawns: [
-        { type: 'wolf', x: 480, y: 460, level: 2 }, { type: 'spider', x: 980, y: 460, level: 2 },
-        { type: 'wolf', x: 1400, y: 460, level: 3 }, { type: 'spider', x: 1760, y: 460, level: 3 },
-        { type: 'imp', x: 2050, y: 460, level: 2 }, { type: 'wolf', x: 2380, y: 460, level: 3 } ],
-      goal: { x: 2530, y: 440 } },
-    { id: 3, name: '第三关 · 火焰山 · 牛魔王', width: 2000, height: 540, platforms: [
-        [0, 500, 2000, 40], [320, 400, 180, 24], [700, 340, 200, 24], [1120, 400, 200, 24], [1520, 340, 220, 24] ],
+        { type: 'wolf', x: 420, y: 460, level: 2 }, { type: 'spider', x: 820, y: 460, level: 2 },
+        { type: 'wolf', x: 1180, y: 460, level: 3 }, { type: 'spider', x: 1520, y: 460, level: 3 },
+        { type: 'wolf', x: 1900, y: 460, level: 3 }, { type: 'imp', x: 2250, y: 460, level: 2 } ],
+      goal: { x: 2530, y: 440 },
+      intro: ['涧水森寒，白雾贴着水面走。',
+        '传说涧里藏着一条犯了天条的龙，吞过取经人的白马。',
+        '岸边的妖物，只是被龙气养肥的看门狗。'],
+      outro: '涧底传来一声低沉的龙吟，随即归于寂静。',
+      reward: { jade: 12, gold: 200 } },
+
+    // —— 主线 3（首领：黑熊精）——
+    { id: 'l3', kind: 'main', chapter: 3, theme: 1, tint: 'rgba(90,60,140,0.20)',
+      name: '第三回 · 黑风洞', sub: '黑熊精',
+      width: 2800, height: 540, platforms: [
+        [0, 500, 2800, 40], [380, 380, 160, 24], [720, 300, 180, 24], [1080, 400, 200, 24],
+        [1450, 320, 190, 24], [1820, 240, 210, 24], [2200, 360, 200, 24] ],
       spawns: [
-        { type: 'spider', x: 600, y: 460, level: 3 }, { type: 'wolf', x: 1000, y: 460, level: 3 },
-        { type: 'boss', x: 1650, y: 380, level: 5 } ],
-      goal: { x: 1900, y: 440 } },
+        { type: 'spider', x: 500, y: 460, level: 3 }, { type: 'wolf', x: 950, y: 460, level: 3 },
+        { type: 'imp', x: 1350, y: 460, level: 3 }, { type: 'spider', x: 1750, y: 460, level: 4 },
+        { type: 'boss', boss: 'bear', x: 2450, y: 380, level: 4 } ],
+      goal: { x: 2700, y: 440 },
+      intro: ['黑风洞的洞口挂着一件袈裟，风一吹，血味就散开。',
+        '黑熊精偷了佛宝，占了山洞，自封"黑风大王"。',
+        '它皮糙肉厚，正面硬冲只会被一屁股坐扁。'],
+      outro: '黑熊精跪在洞口，把袈裟一件件叠好，双手奉还。',
+      reward: { jade: 16, gold: 320, items: { mat_soul: 2 } } },
+
+    // —— 主线 4 ——
+    { id: 'l4', kind: 'main', chapter: 4, theme: 0, tint: 'rgba(150,90,40,0.16)',
+      name: '第四回 · 高老庄', sub: '女婿是头猪',
+      width: 2600, height: 540, platforms: [
+        [0, 500, 2600, 40], [240, 420, 200, 26], [620, 360, 180, 26], [980, 300, 200, 26],
+        [1360, 380, 220, 26], [1760, 320, 200, 26], [2140, 260, 200, 26] ],
+      spawns: [
+        { type: 'imp', x: 430, y: 460, level: 3 }, { type: 'wolf', x: 800, y: 460, level: 4 },
+        { type: 'imp', x: 1180, y: 460, level: 3 }, { type: 'wolf', x: 1600, y: 460, level: 4 },
+        { type: 'imp', x: 2000, y: 460, level: 4 } ],
+      goal: { x: 2530, y: 440 },
+      intro: ['高老庄的灯还亮着，庄丁却不敢出门。',
+        '三年前招了个女婿，能吃能喝，喝多了会现出猪相。',
+        '庄主说：不求降妖，只求把这门亲事退了。'],
+      outro: '那猪妖拍了拍肚子，说"走就走"，倒先一步往西去了。',
+      reward: { jade: 18, gold: 380 } },
+
+    // —— 支线 1（前置：高老庄）——
+    { id: 's1', kind: 'side', chapter: 0, theme: 1, tint: 'rgba(140,60,140,0.22)',
+      name: '支线 · 盘丝洞', sub: '七情丝',
+      width: 2400, height: 540, platforms: [
+        [0, 500, 2400, 40], [320, 390, 170, 24], [660, 310, 190, 24], [1020, 390, 180, 24],
+        [1380, 300, 200, 24], [1760, 380, 190, 24] ],
+      spawns: [
+        { type: 'spider', x: 460, y: 460, level: 4 }, { type: 'spider', x: 780, y: 460, level: 4 },
+        { type: 'spider', x: 1120, y: 460, level: 4 }, { type: 'spider', x: 1470, y: 460, level: 5 },
+        { type: 'spider', x: 1820, y: 460, level: 5 }, { type: 'spider', x: 2150, y: 460, level: 5 } ],
+      goal: { x: 2330, y: 440 },
+      require: 3,
+      intro: ['洞口垂着七色丝线，一根一根缠在骨头上。',
+        '盘丝洞的蜘蛛精不图财，只织网——织到人走不动为止。',
+        '这趟是私活，打不打随你，赏钱不薄。'],
+      outro: '蛛丝被火一燎，整座洞窟像退潮一样塌下去。',
+      reward: { jade: 20, gold: 300, items: { mat_fire: 2, mat_soul: 1 } } },
+
+    // —— 主线 5 ——
+    { id: 'l5', kind: 'main', chapter: 5, theme: 1, tint: 'rgba(30,90,110,0.22)',
+      name: '第五回 · 流沙河', sub: '河底有将',
+      width: 3000, height: 540, platforms: [
+        [0, 500, 3000, 40], [420, 400, 150, 24], [760, 330, 170, 24], [1120, 420, 180, 24],
+        [1500, 340, 190, 24], [1880, 270, 210, 24], [2260, 370, 190, 24], [2640, 310, 170, 24] ],
+      spawns: [
+        { type: 'wolf', x: 560, y: 460, level: 4 }, { type: 'spider', x: 950, y: 460, level: 4 },
+        { type: 'imp', x: 1300, y: 460, level: 5 }, { type: 'wolf', x: 1700, y: 460, level: 4 },
+        { type: 'spider', x: 2100, y: 460, level: 5 }, { type: 'wolf', x: 2500, y: 460, level: 5 } ],
+      goal: { x: 2930, y: 440 },
+      intro: ['八百里流沙，鹅毛飘不起，芦花定底沉。',
+        '河心立着一块界碑，碑后有人影，脖子上挂九个骷髅。',
+        '他不让路，只是问：你也是去西天的？'],
+      outro: '那大汉把骷髅串成一串，挂在颈上，默默跟在队伍最后。',
+      reward: { jade: 20, gold: 420 } },
+
+    // —— 支线 2（前置：流沙河）——
+    { id: 's2', kind: 'side', chapter: 0, theme: 1, tint: 'rgba(150,120,40,0.18)',
+      name: '支线 · 波月洞', sub: '黄袍客',
+      width: 2600, height: 540, platforms: [
+        [0, 500, 2600, 40], [340, 370, 180, 26], [720, 290, 190, 26], [1100, 380, 200, 26],
+        [1500, 300, 190, 26], [1900, 370, 200, 26], [2260, 290, 180, 26] ],
+      spawns: [
+        { type: 'imp', x: 480, y: 460, level: 5 }, { type: 'wolf', x: 900, y: 460, level: 5 },
+        { type: 'imp', x: 1330, y: 460, level: 5 }, { type: 'wolf', x: 1720, y: 460, level: 6 },
+        { type: 'imp', x: 2150, y: 460, level: 5 } ],
+      goal: { x: 2530, y: 440 },
+      require: 5,
+      intro: ['波月洞里有月亮，是人造的那种——一面铜镜吊在洞顶。',
+        '黄袍客掳了宝象国的公主，说要在洞里过一辈子。',
+        '顺手接的活，办完还有人情。'],
+      outro: '铜镜碎了，月光散了一地，公主终于看见洞外的天。',
+      reward: { jade: 22, gold: 360, items: { mat_stone: 2, mat_herb: 2 } } },
+
+    // —— 主线 6（首领：白骨精）——
+    { id: 'l6', kind: 'main', chapter: 6, theme: 0, tint: 'rgba(120,150,170,0.20)',
+      name: '第六回 · 白骨岭', sub: '白骨精',
+      width: 3000, height: 540, platforms: [
+        [0, 500, 3000, 40], [420, 390, 150, 24], [700, 300, 170, 24], [1060, 400, 190, 24],
+        [1400, 310, 190, 24], [1780, 240, 200, 24], [2140, 350, 190, 24] ],
+      spawns: [
+        { type: 'spider', x: 560, y: 460, level: 5 }, { type: 'wolf', x: 1000, y: 460, level: 5 },
+        { type: 'spider', x: 1450, y: 460, level: 5 }, { type: 'wolf', x: 1850, y: 460, level: 6 },
+        { type: 'boss', boss: 'bone', x: 2650, y: 380, level: 6 } ],
+      goal: { x: 2930, y: 440 },
+      intro: ['岭上白骨堆成山，风一过，骨头互相敲出声音。',
+        '她变过村姑、变过老妇、变过老翁，三次都被一眼看穿。',
+        '这一次她不装了——骨甲披身，白骨为刃。'],
+      outro: '骨头散落一地，骨堆里刻着一行小字：「白骨夫人，本是山中一缕怨气。」',
+      reward: { jade: 26, gold: 520, items: { mat_soul: 3 } } },
+
+    // —— 支线 3（前置：白骨岭）——
+    { id: 's3', kind: 'side', chapter: 0, theme: 2, tint: 'rgba(120,80,30,0.18)',
+      name: '支线 · 狮驼岭', sub: '三妖聚',
+      width: 3000, height: 540, platforms: [
+        [0, 500, 3000, 40], [380, 400, 160, 24], [740, 320, 180, 24], [1120, 410, 190, 24],
+        [1500, 330, 200, 24], [1880, 260, 190, 24], [2260, 370, 190, 24], [2600, 300, 170, 24] ],
+      spawns: [
+        { type: 'wolf', x: 520, y: 460, level: 6 }, { type: 'imp', x: 900, y: 460, level: 6 },
+        { type: 'wolf', x: 1280, y: 460, level: 6 }, { type: 'imp', x: 1680, y: 460, level: 6 },
+        { type: 'wolf', x: 2050, y: 460, level: 7 }, { type: 'imp', x: 2450, y: 460, level: 6 } ],
+      goal: { x: 2930, y: 440 },
+      require: 7,
+      intro: ['狮驼岭上四万八千小妖，旌旗遮天。',
+        '三个妖王结拜，放话要拿尽天下取经人。',
+        '硬闯是找死，但岭后有一条给活人走的小道——得先杀穿。'],
+      outro: '岭上的旗倒了大半，剩下的妖物四散进林子。',
+      reward: { jade: 26, gold: 480, items: { mat_fire: 2, mat_stone: 2 } } },
+
+    // —— 主线 7 ——
+    { id: 'l7', kind: 'main', chapter: 7, theme: 2, tint: 'rgba(180,60,30,0.20)',
+      name: '第七回 · 火云洞', sub: '圣婴大王',
+      width: 3200, height: 540, platforms: [
+        [0, 500, 3200, 40], [460, 390, 170, 24], [820, 300, 180, 24], [1180, 400, 200, 24],
+        [1560, 320, 190, 24], [1940, 260, 200, 24], [2320, 370, 190, 24], [2700, 300, 180, 24] ],
+      spawns: [
+        { type: 'spider', x: 600, y: 460, level: 6 }, { type: 'imp', x: 1000, y: 460, level: 6 },
+        { type: 'spider', x: 1400, y: 460, level: 6 }, { type: 'wolf', x: 1800, y: 460, level: 7 },
+        { type: 'imp', x: 2200, y: 460, level: 6 }, { type: 'spider', x: 2600, y: 460, level: 7 } ],
+      goal: { x: 3130, y: 440 },
+      intro: ['火云洞终年不熄，洞口的热浪能把人推回去。',
+        '红孩儿会三昧真火，一口火喷出来，连石头都烧成琉璃。',
+        '他不怕你打，他怕你不进洞。'],
+      outro: '火灭之后，洞里只剩一地琉璃，映着天光。',
+      reward: { jade: 30, gold: 580 } },
+
+    // —— 支线 4（前置：火云洞）——
+    { id: 's4', kind: 'side', chapter: 0, theme: 1, tint: 'rgba(40,110,150,0.24)',
+      name: '支线 · 通天河', sub: '冰下骨',
+      width: 2800, height: 540, platforms: [
+        [0, 500, 2800, 40], [400, 410, 170, 24], [760, 340, 180, 24], [1120, 420, 190, 24],
+        [1480, 330, 200, 24], [1860, 270, 200, 24], [2240, 380, 190, 24] ],
+      spawns: [
+        { type: 'spider', x: 550, y: 460, level: 7 }, { type: 'wolf', x: 950, y: 460, level: 7 },
+        { type: 'spider', x: 1350, y: 460, level: 7 }, { type: 'wolf', x: 1750, y: 460, level: 7 },
+        { type: 'spider', x: 2150, y: 460, level: 7 }, { type: 'wolf', x: 2550, y: 460, level: 7 } ],
+      goal: { x: 2730, y: 440 },
+      require: 9,
+      intro: ['通天河结了冰，冰下有东西在游，一路跟着你。',
+        '村里人说，每年要一对童男童女，冰才不裂。',
+        '今年没人肯交，冰面已经裂了三道。'],
+      outro: '冰化了，河面浮起一层碎骨，顺水下流。',
+      reward: { jade: 30, gold: 520, items: { mat_soul: 3, mat_herb: 2 } } },
+
+    // —— 主线 8（终局首领：牛魔王）——
+    { id: 'l8', kind: 'main', chapter: 8, theme: 2, tint: 'rgba(200,50,20,0.18)',
+      name: '第八回 · 火焰山', sub: '牛魔王',
+      width: 3400, height: 540, platforms: [
+        [0, 500, 3400, 40], [420, 400, 180, 24], [800, 320, 190, 24], [1180, 420, 200, 24],
+        [1560, 330, 200, 24], [1940, 250, 210, 24], [2320, 370, 200, 24], [2700, 300, 190, 24] ],
+      spawns: [
+        { type: 'spider', x: 600, y: 460, level: 7 }, { type: 'wolf', x: 1000, y: 460, level: 8 },
+        { type: 'spider', x: 1450, y: 460, level: 7 }, { type: 'wolf', x: 1900, y: 460, level: 8 },
+        { type: 'spider', x: 2350, y: 460, level: 8 },
+        { type: 'boss', boss: 'bull', x: 3050, y: 380, level: 8 } ],
+      goal: { x: 3330, y: 440 },
+      intro: ['火焰山八百里，火头一起，天都是红的。',
+        '牛魔王站在山脊上，扇子插在腰后，连头都不抬。',
+        '这一战打完，八百里火焰山才过得去。'],
+      outro: '芭蕉扇落在地上，山火一寸一寸退了下去。',
+      reward: { jade: 45, gold: 900, items: { mat_soul: 4, mat_fire: 3 } } },
   ];
+
+  // —— 关卡解锁（纯函数，测试里直接调）——
+  // 只有"打过的关卡"能选；另外把紧接着的那一关也开放（不然永远迈不出第一步）。
+  // 支线不看前后顺序，只看 require 那一关有没有通。
+  XY.levelUnlocked = function (idx, cleared) {
+    const list = XY.LEVELS || [];
+    const lv = list[idx];
+    if (!lv) return false;
+    const done = Array.isArray(cleared) ? cleared : [];
+    if (idx === 0) return true;
+    if (done.indexOf(idx) >= 0) return true;          // 通过一次 = 永久可重打
+    if (lv.kind === 'side') {
+      if (Number.isInteger(lv.require)) return done.indexOf(lv.require) >= 0;
+      return done.length > 0;
+    }
+    // 主线：上一"主线关"通了才开（支线夹在中间不挡路）
+    for (let i = idx - 1; i >= 0; i--) {
+      if (list[i].kind === 'main') return done.indexOf(i) >= 0;
+    }
+    return true;
+  };
+  // 下一关主线（跳过支线）；没有了返回 -1
+  XY.nextMainAfter = function (idx) {
+    const list = XY.LEVELS || [];
+    for (let i = idx + 1; i < list.length; i++) if (list[i].kind === 'main') return i;
+    return -1;
+  };
+  XY.mainLevels = function () { return (XY.LEVELS || []).filter((l) => l.kind === 'main'); };
+  // 选关界面的排列：主线先排满（8 个 = 两行），支线在后面一排
+  XY.levelGrid = function () {
+    const main = [], side = [];
+    (XY.LEVELS || []).forEach((l, i) => (l.kind === 'side' ? side : main).push(i));
+    return main.concat(side);
+  };
+  // 已解锁里最该去的那一关（选关界面默认光标停这儿）：优先主线，其次支线
+  XY.frontierLevel = function (cleared) {
+    const list = XY.LEVELS || [];
+    const done = Array.isArray(cleared) ? cleared : [];
+    let side = -1;
+    for (let i = 0; i < list.length; i++) {
+      if (done.indexOf(i) >= 0) continue;              // 打过的先跳过
+      if (!XY.levelUnlocked(i, done)) continue;
+      if (list[i].kind === 'main') return i;
+      if (side < 0) side = i;
+    }
+    if (side >= 0) return side;
+    return Math.max(0, done.length ? Math.max.apply(null, done) : 0);
+  };
 
   // ===== 剧情 / CG（大闹天宫开场）=====
   XY.STORY = {
@@ -375,11 +628,14 @@
       { bgTop: '#0e2a4d', bgBottom: '#103a5a', glyph: '🔥', title: '八卦炉中', lines: ['悟空被投入太上老君八卦炉。', '七七四十九日，炼出火眼金睛。'], duration: 2600 },
       { bgTop: '#10241a', bgBottom: '#15402a', glyph: '⛰', title: '五行山下', lines: ['如来翻掌化山，将悟空压于五行山下。', '五百年后，取经之路开启——你的降妖录，由此开始。'], duration: 3000 },
     ],
-    levelIntros: {
-      1: '花果山旧地，小妖作乱。悟空脱困后第一战，清扫故园。',
-      2: '黑风洞中黑熊精窃袈裟，妖风阵阵。',
-      3: '火焰山烈焰焚天，牛魔王据守，终局之战。',
-    },
+    // 通关后的结局字幕（逐行淡入，按 Enter 直接回主菜单）
+    ending: [
+      '八百里火焰山，火退成了灰。',
+      '师徒四人加一匹马，继续往西。',
+      '前面还有九万八千里，还有数不清的洞、数不清的妖。',
+      '但这一路，你已经知道该怎么走了。',
+      '——西游·降妖录 · 全篇终',
+    ],
   };
 
   // ===== 每位角色独立的开场 CG =====
@@ -2212,29 +2468,156 @@
       circle(ctx, 15, -16.8, 1.5); ctx.fillStyle = '#ff6b6b'; ctx.fill();
       circle(ctx, 8.6, -20.4, 1.1); ctx.fillStyle = '#ff9b9b'; ctx.fill();
     } else if (e.kind === 'boss') {
-      // 牛魔王
-      ctx.fillStyle = body || '#8e2b2b';
-      rr(ctx, -22, -76, 44, 62, 12); shape(ctx, body || '#8e2b2b', 1.8);
-      // 牛角
-      ctx.strokeStyle = body || '#e8dcc8'; ctx.lineWidth = 5; ctx.lineCap = 'round';
-      for (const s of [-1, 1]) {
+      const variant = e.variant || 'bull';
+      if (variant === 'bear') {
+        // 黑熊精：又壮又圆，披了件偷来的袈裟，手里一杆黑缨枪
+        const fur = body || '#41301f', furDark = body || '#2a1d12';
+        // 腿
+        rr(ctx, -20, -22, 15, 22, 6); shape(ctx, furDark, 1.2);
+        rr(ctx, 4, -22, 15, 22, 6); shape(ctx, fur, 1.2);
+        // 身子
+        rr(ctx, -25, -66, 50, 50, 18); shape(ctx, fur, 1.8);
+        // 偷来的袈裟：斜披 + 腰带
+        ctx.save();
+        rr(ctx, -25, -66, 50, 50, 18); ctx.clip();
         ctx.beginPath();
-        ctx.moveTo(s * 14, -74);
-        ctx.quadraticCurveTo(s * 34, -86, s * 30, -66);
-        ctx.stroke();
+        ctx.moveTo(-26, -66); ctx.lineTo(-2, -66); ctx.lineTo(-14, -16); ctx.lineTo(-26, -20);
+        ctx.closePath(); shape(ctx, body || '#b8442c', 1.2);
+        rr(ctx, -26, -34, 52, 8, 2); shape(ctx, body || '#e0a03a', 1);
+        ctx.restore();
+        // 头 + 耳朵
+        circle(ctx, 4, -72, 19); shape(ctx, fur, 1.6);
+        circle(ctx, -8, -88, 7); shape(ctx, furDark, 1.2);
+        circle(ctx, 15, -89, 7); shape(ctx, furDark, 1.2);
+        // 口鼻
+        ctx.beginPath();
+        if (ctx.ellipse) ctx.ellipse(12, -66, 9, 7, 0, 0, Math.PI * 2); else ctx.arc(12, -66, 8, 0, Math.PI * 2);
+        shape(ctx, body || '#c8ab84', 1);
+        circle(ctx, 17, -69, 3.2); ctx.fillStyle = '#20140e'; ctx.fill();
+        // 眼睛：小、亮、狠
+        circle(ctx, 6, -78, 3.2); ctx.fillStyle = body || '#ffd479'; ctx.fill();
+        circle(ctx, 14, -77, 2.6); ctx.fillStyle = body || '#ffd479'; ctx.fill();
+        // 黑缨枪
+        ctx.save(); ctx.translate(28, -46); ctx.rotate(-0.16 + Math.sin(t / 520) * 0.06);
+        rr(ctx, -2.5, -44, 5, 92, 2.5); shape(ctx, '#4a3a26', 1.2);
+        ctx.beginPath();
+        ctx.moveTo(0, -56); ctx.lineTo(6, -42); ctx.lineTo(0, -46); ctx.lineTo(-6, -42);
+        ctx.closePath(); shape(ctx, '#c9cfd6', 1.2);
+        for (let i = 0; i < 5; i++) {
+          const a = -0.5 + i * 0.25;
+          line(ctx, 0, -40, Math.sin(a) * 12, -40 + Math.cos(a) * 12, 2, body || '#1c1a22');
+        }
+        ctx.restore();
+      } else if (variant === 'bone') {
+        // 白骨精：一副骨架披着破黑裙，双手两把骨刃
+        const boneCol = body || '#ece6d8', cloth = body || '#1a1622';
+        ctx.save();
+        ctx.scale(1.2, 1.2);   // 骨架瘦，放大一点才压得住首领的气场
+        // 裙摆
+        ctx.beginPath();
+        ctx.moveTo(-16, -40); ctx.lineTo(14, -40); ctx.lineTo(20, 0); ctx.lineTo(-20, 0);
+        ctx.closePath(); shape(ctx, cloth, 1.2);
+        for (let i = 0; i < 4; i++) {   // 破布条
+          ctx.beginPath();
+          ctx.moveTo(-18 + i * 10, -6); ctx.lineTo(-14 + i * 10, 4); ctx.lineTo(-10 + i * 10, -4);
+          ctx.closePath(); shape(ctx, cloth, 0.8);
+        }
+        // 肋骨
+        for (let i = 0; i < 3; i++) {
+          ctx.beginPath();
+          ctx.moveTo(-11, -40 + i * 7); ctx.quadraticCurveTo(0, -44 + i * 7, 11, -40 + i * 7);
+          ctx.strokeStyle = boneCol; ctx.lineWidth = 2.4; ctx.stroke();
+        }
+        // 脊椎
+        line(ctx, 0, -44, 0, -16, 3, boneCol);
+        // 头骨
+        circle(ctx, 2, -66, 16); shape(ctx, boneCol, 1.6);
+        ctx.beginPath();   // 下颌
+        rr(ctx, -7, -56, 18, 9, 4); shape(ctx, boneCol, 1.2);
+        for (let i = 0; i < 4; i++) line(ctx, -4 + i * 4.5, -56, -4 + i * 4.5, -49, 1.2, '#8d8578');
+        // 眼窝：空的两孔，里面一点幽绿
+        circle(ctx, -3, -70, 4.4); ctx.fillStyle = '#0b0f12'; ctx.fill();
+        circle(ctx, 9, -70, 4.4); ctx.fillStyle = '#0b0f12'; ctx.fill();
+        circle(ctx, -2.4, -69.6, 1.8); ctx.fillStyle = body || '#7ef0c0'; ctx.fill();
+        circle(ctx, 9.6, -69.6, 1.8); ctx.fillStyle = body || '#7ef0c0'; ctx.fill();
+        // 两只骨刃（一上一下）
+        ctx.save(); ctx.translate(20, -44); ctx.rotate(-0.55 + Math.sin(t / 380) * 0.08);
+        ctx.beginPath();
+        ctx.moveTo(0, 0); ctx.quadraticCurveTo(20, -6, 30, -22);
+        ctx.quadraticCurveTo(16, -14, 0, -6); ctx.closePath(); shape(ctx, boneCol, 1.2);
+        ctx.restore();
+        ctx.save(); ctx.translate(16, -30); ctx.rotate(0.5 - Math.sin(t / 380) * 0.08);
+        ctx.beginPath();
+        ctx.moveTo(0, 0); ctx.quadraticCurveTo(18, 4, 28, 16);
+        ctx.quadraticCurveTo(14, 10, 0, 4); ctx.closePath(); shape(ctx, boneCol, 1.2);
+        ctx.restore();
+        ctx.restore();
+      } else {
+        // 牛魔王：壮硕红牛妖，黑铁胸甲 + 金腰带，肩扛一柄巨斧
+        const hide = body || '#8e2b2b', hideDark = '#5e1a1a', iron = '#3b3f4a';
+        // 腿 + 蹄
+        rr(ctx, -21, -27, 16, 27, 5); shape(ctx, hideDark, 1.3);
+        rr(ctx, 5, -27, 16, 27, 5); shape(ctx, hide, 1.3);
+        rr(ctx, -24, -9, 21, 10, 3); shape(ctx, '#2a2028', 1.1);
+        rr(ctx, 3, -9, 21, 10, 3); shape(ctx, '#2a2028', 1.1);
+        // 后臂（甩在身后，画在躯干之前）
+        line(ctx, -20, -62, -34, -44, 9, hideDark);
+        circle(ctx, -35, -42, 6.5); shape(ctx, hideDark, 1.2);
+        // 躯干
+        rr(ctx, -24, -72, 48, 48, 14); shape(ctx, hide, 1.8);
+        // 胸甲 + 腰带
+        ctx.save();
+        rr(ctx, -24, -72, 48, 48, 14); ctx.clip();
+        rr(ctx, -25, -73, 50, 27, 11); shape(ctx, iron, 1.3);
+        for (let i = 0; i < 3; i++) { circle(ctx, -14 + i * 14, -59, 2.2); ctx.fillStyle = '#8a8f9c'; ctx.fill(); }
+        rr(ctx, -25, -45, 50, 7, 2); shape(ctx, '#c9a24a', 1);
+        ctx.restore();
+        // 头：宽口鼻 + 怒眉 + 粗角
+        rr(ctx, -18, -96, 36, 28, 11); shape(ctx, hide, 1.7);
+        ctx.beginPath();
+        if (ctx.ellipse) ctx.ellipse(9, -78, 14, 10, 0, 0, Math.PI * 2); else ctx.arc(9, -78, 11, 0, Math.PI * 2);
+        shape(ctx, '#c2685e', 1.2);
+        for (const s of [-1, 1]) {          // 鼻孔
+          circle(ctx, 9 + s * 5, -80, 2.1); ctx.fillStyle = '#4a1a1a'; ctx.fill();
+        }
+        // 眼睛 + 怒眉
+        for (const s of [-1, 1]) {
+          circle(ctx, s * 8 + 1, -86, 3.6); ctx.fillStyle = '#ffd479'; ctx.fill();
+          circle(ctx, s * 8 + 1, -86, 1.6); ctx.fillStyle = '#1a0d08'; ctx.fill();
+          line(ctx, s * 8 + 1 - 6, -92, s * 8 + 1 + 6, -89, 2.6, '#3d1210');
+        }
+        // 牛角：从头顶两侧往外再往上勾
+        ctx.strokeStyle = '#e8dcc8'; ctx.lineWidth = 6.5; ctx.lineCap = 'round';
+        for (const s of [-1, 1]) {
+          ctx.beginPath();
+          ctx.moveTo(s * 15, -94);
+          ctx.quadraticCurveTo(s * 38, -100, s * 34, -74);
+          ctx.stroke();
+        }
+        ctx.strokeStyle = '#f7f2e6'; ctx.lineWidth = 2.4;
+        for (const s of [-1, 1]) {
+          ctx.beginPath();
+          ctx.moveTo(s * 31, -80); ctx.lineTo(s * 35, -75);
+          ctx.stroke();
+        }
+        // 鼻环
+        ctx.strokeStyle = '#ffd479'; ctx.lineWidth = 2.2;
+        ctx.beginPath(); ctx.arc(9, -70, 5.5, 0.1, Math.PI - 0.1); ctx.stroke();
+        // 巨斧：握在身前，随呼吸轻晃
+        ctx.save();
+        ctx.translate(30, -50); ctx.rotate(0.06 + Math.sin(t / 400) * 0.09);
+        line(ctx, 0, -34, 0, 26, 5, '#5b4a32');       // 斧柄
+        ctx.beginPath();                               // 斧刃
+        ctx.moveTo(1, -36); ctx.quadraticCurveTo(24, -30, 18, -4); ctx.lineTo(1, -9);
+        ctx.closePath(); shape(ctx, '#c9cfd6', 1.5);
+        ctx.beginPath();
+        ctx.moveTo(-1, -34); ctx.quadraticCurveTo(-15, -28, -11, -8); ctx.lineTo(-1, -12);
+        ctx.closePath(); shape(ctx, '#a7aeb8', 1.2);
+        ctx.restore();
+        // 前臂：从肩膀压到斧柄上
+        line(ctx, 20, -62, 30, -50, 9, hide);
+        circle(ctx, 30, -50, 6.5); shape(ctx, hide, 1.2);
       }
-      // 眼睛
-      for (const s of [-1, 1]) { circle(ctx, s * 9, -58, 3.4); ctx.fillStyle = '#ffd479'; ctx.fill(); }
-      // 鼻环
-      ctx.strokeStyle = '#ffd479'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(0, -44, 6, 0, Math.PI); ctx.stroke();
-      // 斧
-      ctx.save(); ctx.translate(26, -50); ctx.rotate(Math.sin(t / 400) * 0.1);
-      rr(ctx, -2, -26, 4, 50, 2); shape(ctx, '#5b4a32', 1.2);
-      ctx.beginPath();
-      ctx.moveTo(0, -30); ctx.quadraticCurveTo(18, -24, 14, -6); ctx.lineTo(0, -10);
-      ctx.closePath(); shape(ctx, '#c9cfd6', 1.4);
-      ctx.restore();
     } else { // imp 小妖：短腿 + 圆身 + 角 + 獠牙，比纯色块好辨认
       const dark = body || '#8e2f26';
       // 腿
@@ -3797,12 +4180,17 @@
   }
 
   S.draw = function (ctx, levelIndex, t, camX) {
-    const idx = (((levelIndex | 0) % 3) + 3) % 3;
+    // 关卡数据里写明了 theme 就用它（12 关要对应场景，不能按 下标%3 硬轮换）
+    const lv = XY.LEVELS && XY.LEVELS[levelIndex];
+    const theme = lv && Number.isFinite(lv.theme) ? lv.theme : levelIndex;
+    const idx = (((theme | 0) % 3) + 3) % 3;
     camX = camX || 0;
     ctx.save();
     if (idx === 0) sceneMountain(ctx, t || 0, camX);
     else if (idx === 1) sceneCave(ctx, t || 0, camX);
     else sceneFire(ctx, t || 0, camX);
+    // 关卡自带的色调（血月 / 冰面 / 妖雾…）
+    if (lv && lv.tint) { ctx.fillStyle = lv.tint; ctx.fillRect(0, 0, W, H); }
     overlay(ctx);
     ctx.restore();
   };
@@ -4217,10 +4605,11 @@
   };
 
   // ===== 敌人 =====
-  XY.makeEnemy = function (kind, x, y, levelNum) {
+  XY.makeEnemy = function (kind, x, y, levelNum, variant) {
     const lv = Number.isFinite(Number(levelNum)) && Number(levelNum) > 0 ? Number(levelNum) : 1;
     if (kind === 'boss') {
-      const b = XY.BOSS_BASE;
+      const key = (XY.BOSSES && XY.BOSSES[variant]) ? variant : 'bull';
+      const b = (XY.BOSSES && XY.BOSSES[key]) || XY.BOSS_BASE;
       const f = 1 + (lv - 1) * 0.18;
       const boss = new XY.Enemy('boss', {
         name: b.name, maxHp: Math.round(b.hp * f), hp: Math.round(b.hp * f),
@@ -4228,6 +4617,7 @@
         moveSpeed: b.moveSpeed, aggroRange: b.aggroRange, dropTable: b.dropTable,
       }, x, y, 116, 152);
       boss.level = lv;
+      boss.variant = key;
       return boss;
     }
     const base = XY.scaleEnemyStats(XY.ENEMY_BASE[kind], lv);
@@ -4317,7 +4707,7 @@
       this.goal = data.goal;
       this.hasBoss = data.spawns.some((s) => s.type === 'boss');
       this.enemies = data.spawns.map((s) => {
-        const e = XY.makeEnemy(s.type, s.x, s.y, s.level);
+        const e = XY.makeEnemy(s.type, s.x, s.y, s.level, s.boss);
         XY.liftOutOfPlatforms(e, this.platforms);
         return e;
       });
@@ -4687,7 +5077,14 @@
     const total = game.level.enemies.length;
     const killed = game.level.enemies.filter((e) => !e.alive).length;
     ctx.fillStyle = '#8a93a6'; ctx.font = '11px sans-serif';
-    ctx.fillText(game.level.hasBoss ? '击败牛魔王即可通关' : '妖物 ' + killed + '/' + total + ' · 抵达终点旗帜通关', W - 20, 48);
+    if (game.level.hasBoss) {
+      // 首领名从场上那只 boss 取，别写死"牛魔王"——12 关里三只首领各不同
+      let bossName = '';
+      for (const e of game.level.enemies) if (e.isBoss && e.name) bossName = e.name;
+      ctx.fillText(bossName ? '击败 ' + bossName + ' 即可通关' : '击败首领即可通关', W - 20, 48);
+    } else {
+      ctx.fillText('妖物 ' + killed + '/' + total + ' · 抵达终点旗帜通关', W - 20, 48);
+    }
     ctx.textAlign = 'left';
 
     // 货币：右上角常驻
@@ -4960,7 +5357,188 @@
     ctx.fillStyle = '#3a2a06'; ctx.font = 'bold 15px "PingFang SC", sans-serif';
     ctx.fillText('以 ' + cur.name + ' 出战 · Enter', b.x + b.w / 2, b.y + 22);
     ctx.textAlign = 'left';
-    center(ctx, 'A / D 或 ← → 选择 · 点卡片直接出战', 522, '14px "PingFang SC", sans-serif', '#9fb0c8');
+    center(ctx, 'A / D 或 ← → 选择 · 点卡片直接出战 · Esc 回主菜单', 522, '14px "PingFang SC", sans-serif', '#9fb0c8');
+  };
+
+  // ===== 关卡选择 =====
+  // 4 列 × 3 行的卡片墙：主线 8 关排在前面，支线 4 关接在后面（顺序由 XY.levelGrid 定）
+  UI.LEVEL_L = { cols: 4, cardW: 200, cardH: 114, gapX: 18, gapY: 14, y: 104 };
+  UI.levelSelectLayout = function () {
+    const L = UI.LEVEL_L;
+    const order = XY.levelGrid ? XY.levelGrid() : [];
+    const n = order.length;
+    const rows = Math.max(1, Math.ceil(n / L.cols));
+    const totalW = L.cols * L.cardW + (L.cols - 1) * L.gapX;
+    return {
+      n, rows, order, cols: L.cols, cardW: L.cardW, cardH: L.cardH,
+      gapX: L.gapX, gapY: L.gapY, x0: (W - totalW) / 2, y0: L.y,
+    };
+  };
+  // 鼠标命中：返回卡片在网格里的序号（不是关卡下标），跟 game.js 里 order[pos] 的换算一致
+  UI.levelCardAt = function (px, py, n) {
+    const L = UI.levelSelectLayout();
+    const count = Number.isFinite(n) ? Math.min(n | 0, L.n) : L.n;
+    if (!(py >= L.y0)) return -1;
+    const r = Math.floor((py - L.y0) / (L.cardH + L.gapY));
+    if (r < 0 || r >= L.rows) return -1;
+    if (py > L.y0 + r * (L.cardH + L.gapY) + L.cardH) return -1;
+    for (let c = 0; c < L.cols; c++) {
+      const x = L.x0 + c * (L.cardW + L.gapX);
+      if (px >= x && px <= x + L.cardW) {
+        const pos = r * L.cols + c;
+        return pos < count ? pos : -1;
+      }
+    }
+    return -1;
+  };
+
+  // 三种场景各一套色：卡片左侧色条 + 锁定时的底色
+  const LV_TINT = [
+    { band: '#5f9c6a', dim: 'rgba(17,27,20,0.95)' },   // 花果山：山林绿
+    { band: '#4b8fb5', dim: 'rgba(15,25,34,0.95)' },   // 涧 / 河：水蓝
+    { band: '#c4614a', dim: 'rgba(33,18,14,0.95)' },   // 火焰山：火红
+  ];
+  // 关卡名拆成「第几回」+「地点」，卡片里分两行放才不挤
+  function lvParts(lv) {
+    const s = String(lv.name || '');
+    const at = s.indexOf('·');
+    if (at < 0) return { chapter: lv.kind === 'side' ? '支线' : '主线', title: s };
+    return { chapter: s.slice(0, at).trim(), title: s.slice(at + 1).trim() };
+  }
+  // 未解锁时告诉玩家差哪一关
+  function lvNeed(lv, idx) {
+    if (lv.kind === 'side') {
+      const rq = XY.LEVELS[lv.require];
+      return rq ? '需先通关 ' + rq.name : '需先通关任意主线';
+    }
+    for (let i = idx - 1; i >= 0; i--) if (XY.LEVELS[i].kind === 'main') return '需先通关 ' + XY.LEVELS[i].name;
+    return '';
+  }
+
+  UI.drawLevelSelect = function (ctx, game) {
+    const cleared = (game.persist && game.persist.cleared) || [];
+    UI.drawBackground(ctx, game.levelCursor || 0, game.uiTime);
+    ctx.fillStyle = 'rgba(6,9,15,0.68)'; ctx.fillRect(0, 0, W, H);
+
+    const L = UI.levelSelectLayout();
+    const order = L.order;
+
+    // —— 标题 + 进度 ——
+    ctx.textAlign = 'left';
+    ctx.save();
+    ctx.shadowColor = 'rgba(255,180,60,0.4)'; ctx.shadowBlur = 18;
+    ctx.fillStyle = '#ffd479'; ctx.font = 'bold 30px serif';
+    ctx.fillText('选择关卡', 40, 54);
+    ctx.restore();
+    let doneCount = 0;
+    for (const i of order) if (cleared.indexOf(i) >= 0) doneCount++;
+    ctx.fillStyle = '#8a93a6'; ctx.font = '13px "PingFang SC", sans-serif';
+    ctx.fillText('已通关 ' + doneCount + ' / ' + L.n + ' · 通关过的关随时可以重打刷材料', 40, 78);
+    // 右上角一条细进度
+    const pw2 = 200, px2 = W - 40 - pw2;
+    rrect(ctx, px2, 44, pw2, 6, 3);
+    ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.fill();
+    if (doneCount > 0) {
+      rrect(ctx, px2, 44, Math.max(6, pw2 * doneCount / L.n), 6, 3);
+      ctx.fillStyle = '#7cfc9b'; ctx.fill();
+    }
+
+    const mx = (XY.Input && XY.Input.mouse) ? XY.Input.mouse.x : -999;
+    const my = (XY.Input && XY.Input.mouse) ? XY.Input.mouse.y : -999;
+    const hoverPos = UI.levelCardAt(mx, my, L.n);
+
+    for (let p = 0; p < L.n; p++) {
+      const idx = order[p];
+      const lv = XY.LEVELS[idx];
+      if (!lv) continue;
+      const x = L.x0 + (p % L.cols) * (L.cardW + L.gapX);
+      const y = L.y0 + Math.floor(p / L.cols) * (L.cardH + L.gapY);
+      const seen = cleared.indexOf(idx) >= 0;
+      const open = seen || XY.levelUnlocked(idx, cleared);
+      const sel = idx === game.levelCursor;
+      const hov = p === hoverPos && !sel;
+      const tint = LV_TINT[((lv.theme | 0) % LV_TINT.length + LV_TINT.length) % LV_TINT.length];
+      const side = lv.kind === 'side';
+
+      // 卡面
+      rrect(ctx, x, y, L.cardW, L.cardH, 11);
+      ctx.fillStyle = open ? (sel ? 'rgba(38,47,68,0.97)' : (hov ? 'rgba(28,35,50,0.95)' : 'rgba(18,23,34,0.9)'))
+        : tint.dim;
+      ctx.fill();
+      ctx.strokeStyle = sel ? '#ffd479' : (hov ? '#7f8fb0' : (open ? '#2f3b55' : 'rgba(255,255,255,0.07)'));
+      ctx.lineWidth = sel ? 2.5 : (hov ? 1.8 : 1);
+      ctx.stroke();
+      if (sel) {
+        ctx.save();
+        ctx.shadowColor = 'rgba(255,212,121,0.5)'; ctx.shadowBlur = 16;
+        rrect(ctx, x, y, L.cardW, L.cardH, 11); ctx.stroke();
+        ctx.restore();
+      }
+      // 左侧色条（场景色，锁定时压暗）
+      ctx.save();
+      rrect(ctx, x, y, L.cardW, L.cardH, 11); ctx.clip();
+      ctx.fillStyle = tint.band;
+      ctx.globalAlpha = open ? 0.9 : 0.28;
+      ctx.fillRect(x, y, 4, L.cardH);
+      ctx.restore();
+
+      const bx = x + 16;
+      // 回目（或"支线"）
+      ctx.fillStyle = open ? (side ? '#c9a6ff' : '#8a93a6') : 'rgba(140,150,170,0.45)';
+      ctx.font = '11px "PingFang SC", sans-serif';
+      ctx.fillText(side ? (open ? '支线 · 可选' : '支线') : lvParts(lv).chapter, bx, y + 22);
+      // 地点
+      ctx.fillStyle = open ? '#f2f6fc' : 'rgba(190,198,214,0.4)';
+      ctx.font = 'bold 19px "PingFang SC", sans-serif';
+      ctx.fillText(lvParts(lv).title, bx, y + 48);
+      // 副题（多半是头目名）
+      ctx.fillStyle = open ? '#9fb0c8' : 'rgba(150,160,180,0.35)';
+      ctx.font = '11.5px "PingFang SC", sans-serif';
+      ctx.fillText(lv.sub || '', bx, y + 68);
+
+      // 右下：建议等级
+      let maxLv = 1;
+      for (const s of (lv.spawns || [])) maxLv = Math.max(maxLv, s.level || 1);
+      ctx.textAlign = 'right';
+      ctx.fillStyle = open ? '#5b6678' : 'rgba(120,130,150,0.3)';
+      ctx.font = '10.5px "PingFang SC", sans-serif';
+      ctx.fillText('敌 Lv' + maxLv, x + L.cardW - 14, y + L.cardH - 30);
+      ctx.textAlign = 'left';
+
+      // 底部状态行
+      const sy = y + L.cardH - 13;
+      if (seen) {
+        ctx.fillStyle = '#7cfc9b'; ctx.font = 'bold 12px "PingFang SC", sans-serif';
+        ctx.fillText('✓ 已通关', bx, sy);
+      } else if (open) {
+        const blink = 0.72 + Math.sin(game.uiTime / 260) * 0.28;
+        ctx.globalAlpha = blink;
+        ctx.fillStyle = '#ffd479'; ctx.font = 'bold 12px "PingFang SC", sans-serif';
+        ctx.fillText('▶ 可挑战', bx, sy);
+        ctx.globalAlpha = 1;
+      } else {
+        // 小锁
+        const lx = bx + 5, ly = sy - 9;
+        ctx.strokeStyle = 'rgba(150,160,180,0.5)'; ctx.lineWidth = 1.6;
+        ctx.beginPath(); ctx.arc(lx, ly + 1, 3.2, Math.PI, 0); ctx.stroke();
+        rrect(ctx, lx - 5, ly + 1, 10, 8, 2);
+        ctx.fillStyle = 'rgba(150,160,180,0.45)'; ctx.fill();
+        ctx.fillStyle = 'rgba(160,170,190,0.5)'; ctx.font = '11.5px "PingFang SC", sans-serif';
+        ctx.fillText('未解锁', bx + 16, sy);
+      }
+    }
+
+    // —— 底部：选中关卡的一句引子（剧情在选关页就能读到，不用开打才知道）——
+    const cur = XY.LEVELS[game.levelCursor];
+    if (cur) {
+      const intro = (cur.intro && cur.intro[0]) || '';
+      const open = cleared.indexOf(game.levelCursor) >= 0 || XY.levelUnlocked(game.levelCursor, cleared);
+      ctx.fillStyle = 'rgba(255,212,121,0.7)'; ctx.fillRect(40, 490, 2, 18);
+      ctx.fillStyle = '#cfd8e6'; ctx.font = '12.5px "PingFang SC", sans-serif';
+      const line = open ? intro : (intro ? intro + '（' + lvNeed(cur, game.levelCursor) + '）' : lvNeed(cur, game.levelCursor));
+      wrapText(ctx, line, 52, 504, 860, 16, 1);
+    }
+    center(ctx, 'WASD / 方向键 选关 · Enter 进入 · Esc 换角色', 526, '13px "PingFang SC", sans-serif', 'rgba(150,162,182,0.9)');
   };
 
   // ===== 过场 CG =====
@@ -5027,32 +5605,82 @@
     // 以「当前关卡序号」为准：从过关结算点下一关时，旧关卡的 level 还在，不能拿它当标题
     const data = XY.LEVELS[game.levelIndex] || (game.level && game.level.data) || XY.LEVELS[0];
     UI.drawBackground(ctx, game.levelIndex, game.uiTime);
-    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(0, 0, W, H);
-    center(ctx, data.name, 220, 'bold 38px serif', '#ffd479');
-    center(ctx, XY.STORY.levelIntros[data.id] || '', 280, '17px "PingFang SC", sans-serif', '#e6e6e6');
+    ctx.fillStyle = 'rgba(2,4,8,0.62)'; ctx.fillRect(0, 0, W, H);
+    // 上下两条渐隐压暗，把文字区托出来
+    let g = ctx.createLinearGradient(0, 0, 0, 200);
+    g.addColorStop(0, 'rgba(0,0,0,0.55)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, 200);
+    g = ctx.createLinearGradient(0, H - 190, 0, H);
+    g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,0.62)');
+    ctx.fillStyle = g; ctx.fillRect(0, H - 190, W, 190);
+
+    // 主线 / 支线 小标
+    const side = data.kind === 'side';
+    ctx.textAlign = 'center';
+    rrect(ctx, W / 2 - 30, 118, 60, 22, 6);
+    ctx.fillStyle = side ? 'rgba(140,90,200,0.28)' : 'rgba(255,212,121,0.18)'; ctx.fill();
+    ctx.strokeStyle = side ? '#9a6ae0' : '#c9a24a'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = side ? '#c9a6ff' : '#ffd479'; ctx.font = 'bold 11px "PingFang SC", sans-serif';
+    ctx.fillText(side ? '支 线' : '主 线', W / 2, 133);
+    ctx.textAlign = 'left';
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(255,180,60,0.42)'; ctx.shadowBlur = 26;
+    center(ctx, data.name, 178, 'bold 38px serif', '#ffd479');
+    ctx.restore();
+    if (data.sub) center(ctx, data.sub, 208, '15px "PingFang SC", sans-serif', '#9fb0c8');
+
+    const lg = ctx.createLinearGradient(W / 2 - 190, 0, W / 2 + 190, 0);
+    lg.addColorStop(0, 'rgba(255,212,121,0)'); lg.addColorStop(0.5, 'rgba(255,212,121,0.75)'); lg.addColorStop(1, 'rgba(255,212,121,0)');
+    ctx.fillStyle = lg; ctx.fillRect(W / 2 - 190, 226, 380, 1.5);
+
+    // 前情：一句一行，最多 4 行（剧情都写进关卡数据里了）
+    const lines = (data.intro && data.intro.length) ? data.intro : [XY.STORY.levelIntros[data.id] || ''];
+    let iy = 264;
+    for (const line of lines.slice(0, 4)) {
+      center(ctx, line, iy, '16.5px "PingFang SC", sans-serif', '#dbe4f0');
+      iy += 30;
+    }
+
+    // 首通奖励
+    const rw = data.reward || {};
+    const bits = [];
+    if (rw.jade) bits.push('仙玉 +' + rw.jade);
+    if (rw.gold) bits.push('金币 +' + rw.gold);
+    const seen = (game.persist && game.persist.cleared || []).indexOf(game.levelIndex) >= 0;
+    if (bits.length) {
+      center(ctx, (seen ? '重打可得：' : '首通奖励：') + bits.join(' · '), 404, '13px "PingFang SC", sans-serif', '#7cfc9b');
+    }
+    let boss = '';
+    for (const s of (data.spawns || [])) if (s.type === 'boss' && s.boss && XY.BOSSES && XY.BOSSES[s.boss]) boss = XY.BOSSES[s.boss].name;
+    // 副题已经写着首领名的就不用再重复一遍
+    if (boss && boss !== data.sub) center(ctx, '首领 · ' + boss, 428, '13px "PingFang SC", sans-serif', '#ff9a6a');
+
     const a = 0.6 + Math.sin(game.uiTime / 300) * 0.4;
     ctx.globalAlpha = a;
-    center(ctx, '按 Enter 进入', 366, '18px "PingFang SC", sans-serif', '#fff');
+    center(ctx, '按 Enter 进入', 480, '18px "PingFang SC", sans-serif', '#fff');
     ctx.globalAlpha = 1;
+    center(ctx, 'Esc 回关卡选择', 510, '12.5px "PingFang SC", sans-serif', 'rgba(150,162,182,0.85)');
   };
 
   UI.drawPause = function (ctx) {
     ctx.fillStyle = 'rgba(0,0,0,0.62)'; ctx.fillRect(0, 0, W, H);
     center(ctx, '暂停', 230, 'bold 44px serif', '#ffd479');
     center(ctx, 'P 继续', 296, '18px "PingFang SC", sans-serif', '#fff');
-    center(ctx, 'R 放弃本关回到标题', 332, '14px "PingFang SC", sans-serif', '#8a93a6');
+    center(ctx, 'R 放弃本关回到关卡选择', 332, '14px "PingFang SC", sans-serif', '#8a93a6');
     center(ctx, 'M 关掉 / 打开音乐与音效', 358, '14px "PingFang SC", sans-serif', '#8a93a6');
   };
 
   UI.drawGameOver = function (ctx) {
     ctx.fillStyle = 'rgba(40,0,0,0.72)'; ctx.fillRect(0, 0, W, H);
     center(ctx, '英雄落败', 230, 'bold 48px serif', '#e74c3c');
-    center(ctx, '按 Enter 回到标题', 300, '18px "PingFang SC", sans-serif', '#fff');
+    center(ctx, '按 Enter 回到关卡选择 · Esc 回主菜单', 300, '18px "PingFang SC", sans-serif', '#fff');
+    center(ctx, '战果与等级都已存档，换个关练级或重打这一关都行', 336, '13px "PingFang SC", sans-serif', '#8a93a6');
   };
 
   // ===== 过关结算：给玩家一条岔路（下一关 / 商店 / 锻造 / 参悟 / 主菜单）=====
   // 过关结算右侧选项的几何（绘制与鼠标命中共用）
-  UI.CLEAR_L = { x: 430, y: 150, w: 460, h: 58, gap: 12 };
+  UI.CLEAR_L = { x: 430, y: 126, w: 460, h: 50, gap: 8 };
   UI.levelClearOptionAt = function (px, py, n) {
     const L = UI.CLEAR_L;
     if (!(px >= L.x && px <= L.x + L.w)) return -1;
@@ -5086,8 +5714,16 @@
     ctx.fillStyle = '#ffd479'; ctx.font = 'bold 46px serif';
     ctx.fillText('通 关', 70, 96);
     ctx.shadowBlur = 0;
+    // 主线 / 支线 小标
+    const isSide = st.kind === 'side';
+    rrect(ctx, 232, 66, 52, 22, 6);
+    ctx.fillStyle = isSide ? 'rgba(140,90,200,0.22)' : 'rgba(255,212,121,0.16)'; ctx.fill();
+    ctx.strokeStyle = isSide ? '#9a6ae0' : '#c9a24a'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = isSide ? '#c9a6ff' : '#ffd479'; ctx.font = 'bold 11px "PingFang SC", sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(isSide ? '支线' : '主线', 258, 81);
+    ctx.textAlign = 'left';
     ctx.fillStyle = '#e8eef8'; ctx.font = 'bold 20px "PingFang SC", sans-serif';
-    ctx.fillText(st.name, 232, 92);
+    ctx.fillText(st.name, 296, 92);
     const lg = ctx.createLinearGradient(70, 0, 470, 0);
     lg.addColorStop(0, 'rgba(255,212,121,0.9)'); lg.addColorStop(1, 'rgba(255,212,121,0)');
     ctx.fillStyle = lg; ctx.fillRect(70, 112, 400, 2);
@@ -5108,16 +5744,28 @@
       ['当前等级', 'Lv.' + st.level, '#ffd479'],
       ['用时', mm + ':' + (ss < 10 ? '0' : '') + ss, '#9fb0c8'],
     ];
-    let yy = py + 66;
+    let yy = py + 62;
     for (const r of rows) {
       ctx.fillStyle = '#8a93a6'; ctx.font = '13px "PingFang SC", sans-serif';
       ctx.fillText(r[0], px + 18, yy);
       ctx.fillStyle = r[2]; ctx.font = 'bold 16px "PingFang SC", sans-serif'; ctx.textAlign = 'right';
       ctx.fillText(r[1], px + pw - 18, yy); ctx.textAlign = 'left';
-      yy += 34;
+      yy += 28;
     }
-    ctx.fillStyle = '#5b6678'; ctx.font = '11px "PingFang SC", sans-serif';
-    wrapText(ctx, '战果已自动存档。从这里可以补装备、加点，再上路。', px + 18, py + 258, pw - 36, 15, 2);
+    // 过关后的一句后话：把剧情串起来，不然打完只剩数字
+    if (st.outro) {
+      ctx.fillStyle = 'rgba(255,212,121,0.16)'; ctx.fillRect(px + 18, py + 200, 2, 70);
+      ctx.fillStyle = '#cfd8e6'; ctx.font = '13px "PingFang SC", sans-serif';
+      wrapText(ctx, st.outro, px + 30, py + 214, pw - 48, 17, 3);
+    }
+    if (st.items) {
+      ctx.fillStyle = '#7CFC9B'; ctx.font = '11.5px "PingFang SC", sans-serif';
+      ctx.fillText('额外战利品：' + st.items, px + 18, py + ph - 14);
+    } else {
+      ctx.fillStyle = '#5b6678'; ctx.font = '11px "PingFang SC", sans-serif';
+      wrapText(ctx, st.firstTime === false ? '本关已通关过，随时可以再打一遍刷材料。' : '战果已自动存档。从这里可以补装备、加点，再上路。',
+        px + 18, py + ph - 32, pw - 36, 15, 2);
+    }
 
     // —— 右：选项 ——
     const opts = game.clearOptions ? game.clearOptions() : [];
@@ -5149,10 +5797,10 @@
       ctx.lineTo(ox + 18, y + oh / 2 + 6);
       ctx.closePath(); ctx.fill();
 
-      ctx.fillStyle = sel ? '#fff' : '#dbe4f0'; ctx.font = 'bold 18px "PingFang SC", sans-serif';
-      ctx.fillText(o.name, ox + 42, y + 26);
+      ctx.fillStyle = sel ? '#fff' : '#dbe4f0'; ctx.font = 'bold 17px "PingFang SC", sans-serif';
+      ctx.fillText(o.name, ox + 42, y + 22);
       ctx.fillStyle = '#7d8798'; ctx.font = '11.5px "PingFang SC", sans-serif';
-      ctx.fillText(o.note || '', ox + 42, y + 45);
+      ctx.fillText(o.note || '', ox + 42, y + 39);
 
       // 快捷键角标
       const kw = 46;
@@ -5165,15 +5813,36 @@
     }
 
     ctx.fillStyle = 'rgba(150,162,182,0.9)'; ctx.font = '12px "PingFang SC", sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('W/S 或点击 选择 · Enter 确认 · G 商店 · L 锻造 · H 技能 · Esc 回主菜单', W / 2, H - 14);
+    ctx.fillText('W/S 或点击 选择 · Enter 确认 · T 关卡选择 · G 商店 · L 锻造 · H 技能 · Esc 回主菜单', W / 2, H - 14);
     ctx.textAlign = 'left';
   };
 
-  UI.drawWin = function (ctx) {
-    ctx.fillStyle = 'rgba(14,36,10,0.72)'; ctx.fillRect(0, 0, W, H);
-    center(ctx, '通关！取经之路开启', 210, 'bold 44px serif', '#7CFC9B');
-    center(ctx, '你已扫平花果山、黑风洞、火焰山', 264, '18px "PingFang SC", sans-serif', '#e6e6e6');
-    center(ctx, '按 Enter 回到标题', 322, '18px "PingFang SC", sans-serif', '#fff');
+  UI.drawWin = function (ctx, game) {
+    const t = game ? game.uiTime : 0;
+    const lines = (XY.STORY && XY.STORY.ending) || [];
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, 'rgba(10,26,16,0.92)'); g.addColorStop(1, 'rgba(4,10,8,0.96)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    // 一点微光，别让黑屏太死
+    const gl = ctx.createRadialGradient(W / 2, 150, 10, W / 2, 150, 340);
+    gl.addColorStop(0, 'rgba(140,255,190,0.16)'); gl.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = gl; ctx.fillRect(0, 0, W, H);
+
+    center(ctx, '西行圆满', 96, 'bold 44px serif', '#7CFC9B');
+    const start = 190, step = 38;
+    for (let i = 0; i < lines.length; i++) {
+      const a = Math.max(0, Math.min(1, (t - i * 420) / 420));
+      if (a <= 0) continue;
+      ctx.globalAlpha = a;
+      const last = i === lines.length - 1;
+      center(ctx, lines[i], start + i * step, last ? 'bold 20px serif' : '17px "PingFang SC", sans-serif',
+        last ? '#ffd479' : '#dfe8e2');
+      ctx.globalAlpha = 1;
+    }
+    const pulse = 0.55 + Math.sin(t / 320) * 0.35;
+    ctx.globalAlpha = pulse;
+    center(ctx, '按 Enter 回到主菜单 · 打过的关卡随时可以重打', H - 46, '15px "PingFang SC", sans-serif', '#fff');
+    ctx.globalAlpha = 1;
   };
 
   // ===== 通用：货币标签 =====
@@ -5602,6 +6271,8 @@
       this.charIndex = 0; this.craftIndex = 0;
       this.shopIndex = 0; this.skillIndex = 0;
       this.levelIndex = 0;
+      this.levelCursor = 0;      // 选关页的光标（存的是关卡下标）
+      this.pendingLevel = 0;     // 看过场 CG 时，等会儿要进的那一关
       this.projectiles = [];
       this.specials = [];       // 掷出的兵器等"有自己生命周期的招式"
       this.pending = [];        // 延迟结算（重劈的落点判定）
@@ -5654,8 +6325,28 @@
     load() {
       const fresh = {
         inventory: {}, equipped: {}, treasures: [], treasureSlots: [null, null, null],
-        charId: 'wukong', levelReached: 0,
+        charId: 'wukong', levelReached: 0, cleared: [], cgSeen: [],
         gold: 0, jade: 0, level: 1, exp: 0, attr: {}, skillLv: {},
+      };
+      // 通关记录：只留合法下标，去重排序
+      const cleanCleared = (raw, legacyReached) => {
+        const set = [];
+        if (Array.isArray(raw)) {
+          for (const v of raw) {
+            const n = Math.floor(Number(v));
+            if (Number.isInteger(n) && n >= 0 && n < XY.LEVELS.length && set.indexOf(n) < 0) set.push(n);
+          }
+        }
+        // 旧档只有 levelReached（"打到了第几关"）：把它前面的都当作已通关
+        const reached = Math.floor(Number(legacyReached));
+        if (Array.isArray(raw) === false && Number.isFinite(reached) && reached > 0) {
+          for (let i = 0; i < Math.min(reached, XY.LEVELS.length); i++) if (set.indexOf(i) < 0) set.push(i);
+        }
+        return set.sort((a, b) => a - b);
+      };
+      const cleanCg = (raw) => {
+        if (!Array.isArray(raw)) return [];
+        return raw.filter((id) => XY.CHARACTERS[id]).filter((id, i, a) => a.indexOf(id) === i);
       };
       const cleanAttr = (raw) => {
         const out = {};
@@ -5695,6 +6386,8 @@
           treasureSlots: slots,
           charId: XY.CHARACTERS[d.charId] ? d.charId : 'wukong',
           levelReached: Number.isInteger(d.levelReached) ? d.levelReached : 0,
+          cleared: cleanCleared(d.cleared, d.levelReached),
+          cgSeen: cleanCg(d.cgSeen),
           gold: Math.max(0, Math.floor(Number(d.gold) || 0)),
           jade: Math.max(0, Math.floor(Number(d.jade) || 0)),
           level: Math.max(1, Math.floor(Number(d.level) || 1)),
@@ -5788,13 +6481,46 @@
       return true;
     }
 
-    // 从选角页正式出战：建人、取该角色的前史 CG、进过场
+    // 从选角页进关卡选择：先定人，再挑关（打过的才能选）
     pickCharacter() {
       this.initRun();
+      this.levelCursor = XY.frontierLevel(this.persist.cleared);
+      this.state = 'levelselect';
+      if (XY.Audio) XY.Audio.sfx('confirm');
+    }
+
+    // 选关页确认：该角色这段前史没看过就先播 CG，否则直接进关卡前情
+    chooseLevel(idx) {
+      if (!XY.levelUnlocked(idx, this.persist.cleared)) {
+        if (XY.Audio) XY.Audio.sfx('deny');
+        this.toast('这一关还没解锁 · 先打过前一关');
+        return false;
+      }
+      this.levelIndex = idx;
+      this.pendingLevel = idx;
+      const seen = (this.persist.cgSeen || []).indexOf(this.charId) >= 0;
       this.cutBeats = (XY.STORY.charCg && XY.STORY.charCg[this.charId]) || XY.STORY.prologue;
       this.cutIndex = 0; this.cutTimer = 0;
-      this.state = (this.levelIndex === 0) ? 'cutscene' : 'levelIntro';
+      if (!seen) {
+        this.state = 'cutscene';
+      } else {
+        if (this.persist.levelReached < idx) this.persist.levelReached = idx;
+        this.state = 'levelIntro';
+      }
+      this.save();
       if (XY.Audio) XY.Audio.sfx('confirm');
+      return true;
+    }
+
+    // CG 看完 → 记下这段前史看过了，进关卡前情
+    finishCutscene() {
+      const seen = this.persist.cgSeen || (this.persist.cgSeen = []);
+      if (seen.indexOf(this.charId) < 0) seen.push(this.charId);
+      const idx = Number.isInteger(this.pendingLevel) ? this.pendingLevel : this.levelIndex;
+      this.levelIndex = idx;
+      if (this.persist.levelReached < idx) this.persist.levelReached = idx;
+      this.state = 'levelIntro';
+      this.save();
     }
 
     initRun() {
@@ -5882,7 +6608,7 @@
     // 每个界面一首曲子：主菜单 / 战斗 / 商店 / 锻造 / 参悟 / 通关 / 落败
     musicScene() {
       switch (this.state) {
-        case 'title': case 'charselect': case 'cutscene': case 'levelIntro': return 'title';
+        case 'title': case 'charselect': case 'levelselect': case 'cutscene': case 'levelIntro': return 'title';
         case 'playing': case 'pause': return 'battle';
         case 'bag': case 'shop': return 'shop';
         case 'craft': return 'craft';
@@ -5926,6 +6652,8 @@
           if (this.confirmPressed(I)) this.state = 'charselect';
           break;
         case 'charselect': {
+          // 从选关页 Esc 退回来的，这里再按 Esc 就回主菜单，别把人关在选人页
+          if (I.pressed('Escape')) { this.state = 'title'; if (XY.Audio) XY.Audio.sfx('ui'); break; }
           if (I.pressed('KeyA') || I.pressed('ArrowLeft')) {
             this.charIndex = (this.charIndex + XY.CHARACTER_ORDER.length - 1) % XY.CHARACTER_ORDER.length;
             if (XY.Audio) XY.Audio.sfx('ui');
@@ -5949,16 +6677,18 @@
         }
         case 'cutscene': {
           const beats = this.cutBeats || XY.STORY.prologue;
-          if (this.confirmPressed(I)) { this.state = 'levelIntro'; break; }
+          if (this.confirmPressed(I)) { this.finishCutscene(); break; }
           this.cutTimer += dt * 1000;
           const cur = beats[this.cutIndex];
           if (!cur || this.cutTimer > cur.duration) {
             this.cutIndex++; this.cutTimer = 0;
-            if (this.cutIndex >= beats.length) this.state = 'levelIntro';
+            if (this.cutIndex >= beats.length) this.finishCutscene();
           }
           break;
         }
+        case 'levelselect': this.updateLevelSelect(); break;
         case 'levelIntro':
+          if (I.pressed('Escape')) { this.levelCursor = this.levelIndex; this.state = 'levelselect'; break; }
           if (this.confirmPressed(I)) this.startLevel(this.levelIndex);
           break;
         case 'playing': this.updatePlaying(dt); break;
@@ -5969,10 +6699,15 @@
         case 'skillup': this.updateSkillUp(); break;
         case 'pause':
           if (I.pressed('KeyP') || I.pressed('Escape')) this.state = 'playing';
-          if (I.pressed('KeyR')) this.state = 'title';
+          if (I.pressed('KeyR')) { this.levelCursor = this.levelIndex; this.state = 'levelselect'; }
           break;
         case 'gameover':
-          if (this.confirmPressed(I)) this.state = 'title';
+          // 死了回选关页重来（12 关节奏长，别再把人踢回标题从头走流程）
+          if (I.pressed('Escape')) { this.state = 'title'; break; }
+          if (this.confirmPressed(I)) {
+            this.levelCursor = this.levelIndex;
+            this.state = 'levelselect';
+          }
           break;
         case 'win':
           if (this.confirmPressed(I)) this.state = 'title';
@@ -6178,37 +6913,59 @@
       if (cleared) this.finishLevel();
     }
 
-    // —— 过关结算：给出「下一关 / 商店 / 锻造 / 参悟 / 主菜单」的岔路 ——
+    // —— 过关结算：给出「下一关 / 关卡选择 / 商店 / 锻造 / 参悟 / 主菜单」的岔路 ——
     finishLevel() {
       if (this._clearHandled) return;
       this._clearHandled = true;
-      const jadeReward = 8 + this.levelIndex * 6;
+      const data = XY.LEVELS[this.levelIndex] || XY.LEVELS[0];
+      const rw = data.reward || {};
+      const jadeReward = Number.isFinite(rw.jade) ? rw.jade : 8 + this.levelIndex * 6;
+      const goldReward = Number.isFinite(rw.gold) ? rw.gold : 0;
       this.addJade(jadeReward);
-      this.toast('过关 · 获得仙玉 ' + jadeReward);
+      this.addGold(goldReward);
+      let itemText = '';
+      if (rw.items && XY.mergeInventory) {
+        this.inventory = XY.mergeInventory(this.inventory, rw.items);
+        itemText = Object.keys(rw.items).map((id) => (XY.ITEMS[id] ? XY.ITEMS[id].name : id) + '×' + rw.items[id]).join(' ');
+      }
+      this.toast('过关 · 仙玉 +' + jadeReward + (goldReward ? ' · 金币 +' + goldReward : ''));
       const start = this.runStart || { gold: this.gold, jade: this.jade, at: this.now };
+      // 记通关：这是"能不能选这一关"的唯一依据
+      const cleared = this.persist.cleared || (this.persist.cleared = []);
+      const firstTime = cleared.indexOf(this.levelIndex) < 0;
+      if (firstTime) cleared.push(this.levelIndex);
+      cleared.sort((a, b) => a - b);
       this.clearStats = {
         levelIndex: this.levelIndex,
-        name: XY.LEVELS[this.levelIndex].name,
+        name: data.name,
+        kind: data.kind || 'main',
+        sub: data.sub || '',
+        outro: data.outro || '',
+        items: itemText,
+        firstTime,
         kills: this.runKills || 0,
         total: this.level ? this.level.enemies.length : 0,
-        jade: Math.max(0, this.jade - start.jade),
+        jade: jadeReward,
         gold: Math.max(0, this.gold - start.gold),
         level: this.player ? this.player.level : 1,
         seconds: Math.max(0, Math.round((this.now - start.at) / 1000)),
-        last: this.levelIndex + 1 >= XY.LEVELS.length,
+        last: XY.nextMainAfter(this.levelIndex) < 0,
       };
       this.clearIndex = 0;
       this.menuFrom = 'levelClear';
       this.state = 'levelClear';
       if (XY.Audio) XY.Audio.sfx('clear');
-      // 这一关已经打通：进度记到下一关，回主菜单再来也能接着走
-      this.save(Math.min(this.levelIndex + 1, XY.LEVELS.length - 1));
+      // 进度只往前推，不因为重打旧关而倒退
+      const nextMain = XY.nextMainAfter(this.levelIndex);
+      this.save(nextMain >= 0 ? Math.min(this.levelIndex, XY.LEVELS.length - 1) : this.levelIndex);
     }
 
     clearOptions() {
-      const last = this.levelIndex + 1 >= XY.LEVELS.length;
+      const nextMain = XY.nextMainAfter(this.levelIndex);
+      const last = nextMain < 0;
       return [
-        { id: 'next', name: last ? '完成取经' : '下一关', note: last ? '西行圆满 · 看过结局再回主菜单' : ('前往 ' + XY.LEVELS[this.levelIndex + 1].name), key: 'Enter' },
+        { id: 'next', name: last ? '完成取经' : '下一关', note: last ? '西行圆满 · 看过结局再回主菜单' : ('前往 ' + XY.LEVELS[nextMain].name), key: 'Enter' },
+        { id: 'levels', name: '关卡选择', note: '回头补支线，或重打老关卡', key: 'T' },
         { id: 'shop', name: '属性商店', note: '用金币额外加点，越买越贵', key: 'G' },
         { id: 'craft', name: '锻造坊', note: '用材料锻造兵器与护甲', key: 'L' },
         { id: 'skillup', name: '技能参悟', note: '用仙玉提升技能重数', key: 'H' },
@@ -6223,6 +6980,7 @@
       if (I.pressed('KeyW') || I.pressed('ArrowUp')) { this.clearIndex = (this.clearIndex + n - 1) % n; if (XY.Audio) XY.Audio.sfx('ui'); }
       if (I.pressed('KeyS') || I.pressed('ArrowDown')) { this.clearIndex = (this.clearIndex + 1) % n; if (XY.Audio) XY.Audio.sfx('ui'); }
       if (I.pressed('KeyG')) { this.chooseClear('shop'); return; }
+      if (I.pressed('KeyT')) { this.chooseClear('levels'); return; }
       if (I.pressed('KeyL') || I.pressed('KeyC')) { this.chooseClear('craft'); return; }
       if (I.pressed('KeyH')) { this.chooseClear('skillup'); return; }
       if (I.pressed('Escape')) { this.chooseClear('title'); return; }
@@ -6239,24 +6997,73 @@
     chooseClear(id) {
       if (XY.Audio) XY.Audio.sfx('confirm');
       if (id === 'next') {
-        if (this.levelIndex + 1 >= XY.LEVELS.length) {
-          this.levelIndex = 0;
-          this.persist.levelReached = 0;
-          this.save();
+        const nextMain = XY.nextMainAfter(this.levelIndex);
+        if (nextMain < 0) {
+          // 主线走到头了：进结局，进度保留（回头还能重打任何已通关卡）
           this.state = 'win';
+          this.save();
           if (XY.Audio) XY.Audio.sfx('clear');
         } else {
-          this.levelIndex++;
-          this.persist.levelReached = this.levelIndex;
+          this.levelIndex = nextMain;
+          this.pendingLevel = nextMain;
+          if (this.persist.levelReached < nextMain) this.persist.levelReached = nextMain;
           this.save();
           this.state = 'levelIntro';
         }
+      } else if (id === 'levels') {
+        this.levelCursor = XY.frontierLevel(this.persist.cleared);
+        this.state = 'levelselect';
       } else if (id === 'shop' || id === 'craft' || id === 'skillup') {
         this.openMenu(id, 'levelClear');
       } else if (id === 'title') {
         this.save();
         this.state = 'title';
       }
+    }
+
+    // —— 关卡选择：只让选"打过的"和紧接着的那一关 ——
+    updateLevelSelect() {
+      const I = XY.Input;
+      const order = XY.levelGrid();
+      const cleared = this.persist.cleared || [];
+      const cols = 4;
+      const posOf = (idx) => Math.max(0, order.indexOf(idx));
+      const move = (dx, dy) => {
+        let p = posOf(this.levelCursor);
+        let r = Math.floor(p / cols), c = p % cols;
+        for (let step = 0; step < order.length; step++) {
+          c += dx; r += dy;
+          if (c < 0 || c >= cols || r < 0) return false;
+          const np = r * cols + c;
+          if (np >= order.length) return false;
+          if (XY.levelUnlocked(order[np], cleared)) {
+            this.levelCursor = order[np];
+            if (XY.Audio) XY.Audio.sfx('ui');
+            return true;
+          }
+        }
+        return false;
+      };
+      if (I.pressed('KeyA') || I.pressed('ArrowLeft')) move(-1, 0);
+      if (I.pressed('KeyD') || I.pressed('ArrowRight')) move(1, 0);
+      if (I.pressed('KeyW') || I.pressed('ArrowUp')) move(0, -1);
+      if (I.pressed('KeyS') || I.pressed('ArrowDown')) move(0, 1);
+      if (I.pressed('Escape')) { this.state = 'charselect'; if (XY.Audio) XY.Audio.sfx('ui'); return; }
+      if (I.pressed('Mouse0')) {
+        const mp = I.mouse || { x: -999, y: -999 };
+        const pos = XY.UI.levelCardAt ? XY.UI.levelCardAt(mp.x, mp.y, order.length) : -1;
+        if (pos >= 0) {
+          const idx = order[pos];
+          this.levelCursor = idx;
+          if (XY.levelUnlocked(idx, cleared)) this.chooseLevel(idx);
+          else {
+            if (XY.Audio) XY.Audio.sfx('deny');
+            this.toast('还没解锁 · 先把前一关打完');
+          }
+        }
+        return;
+      }
+      if (this.confirmPressed(I)) this.chooseLevel(this.levelCursor);
     }
 
     // —— 动作执行 + 特效 ——
@@ -6715,6 +7522,11 @@
       const ci = parseInt(params.get('char') || '0', 10);
       const lv = parseInt(params.get('lv') || '0', 10);
       this.charIndex = isFinite(ci) ? clamp(ci, 0, XY.CHARACTER_ORDER.length - 1) : 0;
+      // ?cleared=0,1,2,3 预置通关记录，方便直接看选关页的解锁/锁定状态
+      if (params.get('cleared') != null) {
+        const raw = String(params.get('cleared') || '').split(',').map((s) => parseInt(s, 10)).filter((n) => Number.isInteger(n));
+        this.persist.cleared = raw;
+      }
       this.initRun();
       this.startLevel(isFinite(lv) ? clamp(lv, 0, XY.LEVELS.length - 1) : 0);
       // 预置一些战利品，方便看背包/图标
@@ -6748,11 +7560,16 @@
         this._dbgSlashAt = -9999;
       }
       const map = {
-        title: 'title', charselect: 'charselect', cutscene: 'cutscene', intro: 'levelIntro',
+        title: 'title', charselect: 'charselect', levelselect: 'levelselect', cutscene: 'cutscene', intro: 'levelIntro',
         play: 'playing', bag: 'bag', craft: 'craft', pause: 'pause', gameover: 'gameover', win: 'win',
         shop: 'shop', skillup: 'skillup', levelclear: 'levelClear',
       };
       this.state = map[scene] || 'playing';
+      if (this.state === 'levelselect') {
+        this.levelCursor = params.get('lv') != null
+          ? clamp(lv, 0, XY.LEVELS.length - 1)
+          : XY.frontierLevel(this.persist.cleared);
+      }
       if (this.state === 'levelClear' && !this.clearStats) {
         this.clearStats = {
           levelIndex: this.levelIndex, name: XY.LEVELS[this.levelIndex].name,
@@ -6810,6 +7627,7 @@
       switch (this.state) {
         case 'title': XY.UI.drawTitle(ctx, this.uiTime); break;
         case 'charselect': XY.UI.drawCharSelect(ctx, this); break;
+        case 'levelselect': XY.UI.drawLevelSelect(ctx, this); break;
         case 'cutscene': {
           const beats = this.cutBeats || (XY.STORY.charCg && XY.STORY.charCg[this.charId]) || XY.STORY.prologue;
           const beat = beats[this.cutIndex] || beats[0];

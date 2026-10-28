@@ -402,10 +402,11 @@
   };
 
   // ===== 敌人 =====
-  XY.makeEnemy = function (kind, x, y, levelNum) {
+  XY.makeEnemy = function (kind, x, y, levelNum, variant) {
     const lv = Number.isFinite(Number(levelNum)) && Number(levelNum) > 0 ? Number(levelNum) : 1;
     if (kind === 'boss') {
-      const b = XY.BOSS_BASE;
+      const key = (XY.BOSSES && XY.BOSSES[variant]) ? variant : 'bull';
+      const b = (XY.BOSSES && XY.BOSSES[key]) || XY.BOSS_BASE;
       const f = 1 + (lv - 1) * 0.18;
       const boss = new XY.Enemy('boss', {
         name: b.name, maxHp: Math.round(b.hp * f), hp: Math.round(b.hp * f),
@@ -413,6 +414,7 @@
         moveSpeed: b.moveSpeed, aggroRange: b.aggroRange, dropTable: b.dropTable,
       }, x, y, 116, 152);
       boss.level = lv;
+      boss.variant = key;
       return boss;
     }
     const base = XY.scaleEnemyStats(XY.ENEMY_BASE[kind], lv);
@@ -502,7 +504,7 @@
       this.goal = data.goal;
       this.hasBoss = data.spawns.some((s) => s.type === 'boss');
       this.enemies = data.spawns.map((s) => {
-        const e = XY.makeEnemy(s.type, s.x, s.y, s.level);
+        const e = XY.makeEnemy(s.type, s.x, s.y, s.level, s.boss);
         XY.liftOutOfPlatforms(e, this.platforms);
         return e;
       });

@@ -69,8 +69,13 @@ test.it('按 Enter 能从标题页进入选角页，再按进入剧情', () => {
   game.update(0.016);
   XY.Input.endFrame();
   fire('keyup', 'Enter');
-  assert.notEqual(game.state, 'charselect', '选角页按 Enter 应离开选角页');
-  assert.ok(['cutscene', 'levelIntro'].includes(game.state), '应进入剧情或关卡前情，实际: ' + game.state);
+  assert.equal(game.state, 'levelselect', '选角页按 Enter 应先进入关卡选择，实际: ' + game.state);
+
+  fire('keydown', 'Enter');
+  game.update(0.016);
+  XY.Input.endFrame();
+  fire('keyup', 'Enter');
+  assert.ok(['cutscene', 'levelIntro'].includes(game.state), '选关页确认应进入剧情或关卡前情，实际: ' + game.state);
 });
 
 test.it('鼠标点击canvas也能确认（键盘失灵兜底）', () => {
@@ -93,7 +98,7 @@ test.it('回归：关卡前情界面在关卡还没创建时不崩（曾导致�
   }
 });
 
-test.it('完整流程：标题 → 选角 → CG → 关卡前情 → 实战', () => {
+test.it('完整流程：标题 → 选角 → 选关 → CG → 关卡前情 → 实战', () => {
   const game = new XY.Game(canvas);
   const step = (code) => {
     fire('keydown', code);
@@ -104,7 +109,8 @@ test.it('完整流程：标题 → 选角 → CG → 关卡前情 → 实战', (
   };
   assert.equal(game.state, 'title');
   step('Enter'); assert.equal(game.state, 'charselect', '标题页 Enter 未进入选角');
-  step('Enter'); assert.equal(game.state, 'cutscene', '选角页 Enter 未进入 CG');
+  step('Enter'); assert.equal(game.state, 'levelselect', '选角页 Enter 未进入选关页');
+  step('Enter'); assert.equal(game.state, 'cutscene', '选关页 Enter 未进入 CG');
   step('Enter'); assert.equal(game.state, 'levelIntro', 'CG 按 Enter 未进入关卡前情');
   step('Enter'); assert.equal(game.state, 'playing', '关卡前情按 Enter 未开始战斗');
   assert.ok(game.player && game.level, '进入实战后 player / level 应存在');

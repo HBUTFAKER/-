@@ -18,6 +18,8 @@
       this.charIndex = 0; this.craftIndex = 0;
       this.shopIndex = 0; this.skillIndex = 0;
       this.levelIndex = 0;
+      this.levelCursor = 0;      // 选关页的光标（存的是关卡下标）
+      this.pendingLevel = 0;     // 看过场 CG 时，等会儿要进的那一关
       this.projectiles = [];
       this.specials = [];       // 掷出的兵器等"有自己生命周期的招式"
       this.pending = [];        // 延迟结算（重劈的落点判定）
@@ -70,8 +72,28 @@
     load() {
       const fresh = {
         inventory: {}, equipped: {}, treasures: [], treasureSlots: [null, null, null],
-        charId: 'wukong', levelReached: 0,
+        charId: 'wukong', levelReached: 0, cleared: [], cgSeen: [],
         gold: 0, jade: 0, level: 1, exp: 0, attr: {}, skillLv: {},
+      };
+      // 通关记录：只留合法下标，去重排序
+      const cleanCleared = (raw, legacyReached) => {
+        const set = [];
+        if (Array.isArray(raw)) {
+          for (const v of raw) {
+            const n = Math.floor(Number(v));
+            if (Number.isInteger(n) && n >= 0 && n < XY.LEVELS.length && set.indexOf(n) < 0) set.push(n);
+          }
+        }
+        // 旧档只有 levelReached（"打到了第几关"）：把它前面的都当作已通关
+        const reached = Math.floor(Number(legacyReached));
+        if (Array.isArray(raw) === false && Number.isFinite(reached) && reached > 0) {
+          for (let i = 0; i < Math.min(reached, XY.LEVELS.length); i++) if (set.indexOf(i) < 0) set.push(i);
+        }
+        return set.sort((a, b) => a - b);
+      };
+      const cleanCg = (raw) => {
+        if (!Array.isArray(raw)) return [];
+        return raw.filter((id) => XY.CHARACTERS[id]).filter((id, i, a) => a.indexOf(id) === i);
       };
       const cleanAttr = (raw) => {
         const out = {};
@@ -111,6 +133,8 @@
           treasureSlots: slots,
           charId: XY.CHARACTERS[d.charId] ? d.charId : 'wukong',
           levelReached: Number.isInteger(d.levelReached) ? d.levelReached : 0,
+          cleared: cleanCleared(d.cleared, d.levelReached),
+          cgSeen: cleanCg(d.cgSeen),
           gold: Math.max(0, Math.floor(Number(d.gold) || 0)),
           jade: Math.max(0, Math.floor(Number(d.jade) || 0)),
           level: Math.max(1, Math.floor(Number(d.level) || 1)),
@@ -204,13 +228,46 @@
       return true;
     }
 
-    // 从选角页正式出战：建人、取该角色的前史 CG、进过场
+    // 从选角页进关卡选择：先定人，再挑关（打过的才能选）
     pickCharacter() {
       this.initRun();
+      this.levelCursor = XY.frontierLevel(this.persist.cleared);
+      this.state = 'levelselect';
+      if (XY.Audio) XY.Audio.sfx('confirm');
+    }
+
+    // 选关页确认：该角色这段前史没看过就先播 CG，否则直接进关卡前情
+    chooseLevel(idx) {
+      if (!XY.levelUnlocked(idx, this.persist.cleared)) {
+        if (XY.Audio) XY.Audio.sfx('deny');
+        this.toast('这一关还没解锁 · 先打过前一关');
+        return false;
+      }
+      this.levelIndex = idx;
+      this.pendingLevel = idx;
+      const seen = (this.persist.cgSeen || []).indexOf(this.charId) >= 0;
       this.cutBeats = (XY.STORY.charCg && XY.STORY.charCg[this.charId]) || XY.STORY.prologue;
       this.cutIndex = 0; this.cutTimer = 0;
-      this.state = (this.levelIndex === 0) ? 'cutscene' : 'levelIntro';
+      if (!seen) {
+        this.state = 'cutscene';
+      } else {
+        if (this.persist.levelReached < idx) this.persist.levelReached = idx;
+        this.state = 'levelIntro';
+      }
+      this.save();
       if (XY.Audio) XY.Audio.sfx('confirm');
+      return true;
+    }
+
+    // CG 看完 → 记下这段前史看过了，进关卡前情
+    finishCutscene() {
+      const seen = this.persist.cgSeen || (this.persist.cgSeen = []);
+      if (seen.indexOf(this.charId) < 0) seen.push(this.charId);
+      const idx = Number.isInteger(this.pendingLevel) ? this.pendingLevel : this.levelIndex;
+      this.levelIndex = idx;
+      if (this.persist.levelReached < idx) this.persist.levelReached = idx;
+      this.state = 'levelIntro';
+      this.save();
     }
 
     initRun() {
@@ -298,7 +355,7 @@
     // 每个界面一首曲子：主菜单 / 战斗 / 商店 / 锻造 / 参悟 / 通关 / 落败
     musicScene() {
       switch (this.state) {
-        case 'title': case 'charselect': case 'cutscene': case 'levelIntro': return 'title';
+        case 'title': case 'charselect': case 'levelselect': case 'cutscene': case 'levelIntro': return 'title';
         case 'playing': case 'pause': return 'battle';
         case 'bag': case 'shop': return 'shop';
         case 'craft': return 'craft';
@@ -342,6 +399,8 @@
           if (this.confirmPressed(I)) this.state = 'charselect';
           break;
         case 'charselect': {
+          // 从选关页 Esc 退回来的，这里再按 Esc 就回主菜单，别把人关在选人页
+          if (I.pressed('Escape')) { this.state = 'title'; if (XY.Audio) XY.Audio.sfx('ui'); break; }
           if (I.pressed('KeyA') || I.pressed('ArrowLeft')) {
             this.charIndex = (this.charIndex + XY.CHARACTER_ORDER.length - 1) % XY.CHARACTER_ORDER.length;
             if (XY.Audio) XY.Audio.sfx('ui');
@@ -365,16 +424,18 @@
         }
         case 'cutscene': {
           const beats = this.cutBeats || XY.STORY.prologue;
-          if (this.confirmPressed(I)) { this.state = 'levelIntro'; break; }
+          if (this.confirmPressed(I)) { this.finishCutscene(); break; }
           this.cutTimer += dt * 1000;
           const cur = beats[this.cutIndex];
           if (!cur || this.cutTimer > cur.duration) {
             this.cutIndex++; this.cutTimer = 0;
-            if (this.cutIndex >= beats.length) this.state = 'levelIntro';
+            if (this.cutIndex >= beats.length) this.finishCutscene();
           }
           break;
         }
+        case 'levelselect': this.updateLevelSelect(); break;
         case 'levelIntro':
+          if (I.pressed('Escape')) { this.levelCursor = this.levelIndex; this.state = 'levelselect'; break; }
           if (this.confirmPressed(I)) this.startLevel(this.levelIndex);
           break;
         case 'playing': this.updatePlaying(dt); break;
@@ -385,10 +446,15 @@
         case 'skillup': this.updateSkillUp(); break;
         case 'pause':
           if (I.pressed('KeyP') || I.pressed('Escape')) this.state = 'playing';
-          if (I.pressed('KeyR')) this.state = 'title';
+          if (I.pressed('KeyR')) { this.levelCursor = this.levelIndex; this.state = 'levelselect'; }
           break;
         case 'gameover':
-          if (this.confirmPressed(I)) this.state = 'title';
+          // 死了回选关页重来（12 关节奏长，别再把人踢回标题从头走流程）
+          if (I.pressed('Escape')) { this.state = 'title'; break; }
+          if (this.confirmPressed(I)) {
+            this.levelCursor = this.levelIndex;
+            this.state = 'levelselect';
+          }
           break;
         case 'win':
           if (this.confirmPressed(I)) this.state = 'title';
@@ -594,37 +660,59 @@
       if (cleared) this.finishLevel();
     }
 
-    // —— 过关结算：给出「下一关 / 商店 / 锻造 / 参悟 / 主菜单」的岔路 ——
+    // —— 过关结算：给出「下一关 / 关卡选择 / 商店 / 锻造 / 参悟 / 主菜单」的岔路 ——
     finishLevel() {
       if (this._clearHandled) return;
       this._clearHandled = true;
-      const jadeReward = 8 + this.levelIndex * 6;
+      const data = XY.LEVELS[this.levelIndex] || XY.LEVELS[0];
+      const rw = data.reward || {};
+      const jadeReward = Number.isFinite(rw.jade) ? rw.jade : 8 + this.levelIndex * 6;
+      const goldReward = Number.isFinite(rw.gold) ? rw.gold : 0;
       this.addJade(jadeReward);
-      this.toast('过关 · 获得仙玉 ' + jadeReward);
+      this.addGold(goldReward);
+      let itemText = '';
+      if (rw.items && XY.mergeInventory) {
+        this.inventory = XY.mergeInventory(this.inventory, rw.items);
+        itemText = Object.keys(rw.items).map((id) => (XY.ITEMS[id] ? XY.ITEMS[id].name : id) + '×' + rw.items[id]).join(' ');
+      }
+      this.toast('过关 · 仙玉 +' + jadeReward + (goldReward ? ' · 金币 +' + goldReward : ''));
       const start = this.runStart || { gold: this.gold, jade: this.jade, at: this.now };
+      // 记通关：这是"能不能选这一关"的唯一依据
+      const cleared = this.persist.cleared || (this.persist.cleared = []);
+      const firstTime = cleared.indexOf(this.levelIndex) < 0;
+      if (firstTime) cleared.push(this.levelIndex);
+      cleared.sort((a, b) => a - b);
       this.clearStats = {
         levelIndex: this.levelIndex,
-        name: XY.LEVELS[this.levelIndex].name,
+        name: data.name,
+        kind: data.kind || 'main',
+        sub: data.sub || '',
+        outro: data.outro || '',
+        items: itemText,
+        firstTime,
         kills: this.runKills || 0,
         total: this.level ? this.level.enemies.length : 0,
-        jade: Math.max(0, this.jade - start.jade),
+        jade: jadeReward,
         gold: Math.max(0, this.gold - start.gold),
         level: this.player ? this.player.level : 1,
         seconds: Math.max(0, Math.round((this.now - start.at) / 1000)),
-        last: this.levelIndex + 1 >= XY.LEVELS.length,
+        last: XY.nextMainAfter(this.levelIndex) < 0,
       };
       this.clearIndex = 0;
       this.menuFrom = 'levelClear';
       this.state = 'levelClear';
       if (XY.Audio) XY.Audio.sfx('clear');
-      // 这一关已经打通：进度记到下一关，回主菜单再来也能接着走
-      this.save(Math.min(this.levelIndex + 1, XY.LEVELS.length - 1));
+      // 进度只往前推，不因为重打旧关而倒退
+      const nextMain = XY.nextMainAfter(this.levelIndex);
+      this.save(nextMain >= 0 ? Math.min(this.levelIndex, XY.LEVELS.length - 1) : this.levelIndex);
     }
 
     clearOptions() {
-      const last = this.levelIndex + 1 >= XY.LEVELS.length;
+      const nextMain = XY.nextMainAfter(this.levelIndex);
+      const last = nextMain < 0;
       return [
-        { id: 'next', name: last ? '完成取经' : '下一关', note: last ? '西行圆满 · 看过结局再回主菜单' : ('前往 ' + XY.LEVELS[this.levelIndex + 1].name), key: 'Enter' },
+        { id: 'next', name: last ? '完成取经' : '下一关', note: last ? '西行圆满 · 看过结局再回主菜单' : ('前往 ' + XY.LEVELS[nextMain].name), key: 'Enter' },
+        { id: 'levels', name: '关卡选择', note: '回头补支线，或重打老关卡', key: 'T' },
         { id: 'shop', name: '属性商店', note: '用金币额外加点，越买越贵', key: 'G' },
         { id: 'craft', name: '锻造坊', note: '用材料锻造兵器与护甲', key: 'L' },
         { id: 'skillup', name: '技能参悟', note: '用仙玉提升技能重数', key: 'H' },
@@ -639,6 +727,7 @@
       if (I.pressed('KeyW') || I.pressed('ArrowUp')) { this.clearIndex = (this.clearIndex + n - 1) % n; if (XY.Audio) XY.Audio.sfx('ui'); }
       if (I.pressed('KeyS') || I.pressed('ArrowDown')) { this.clearIndex = (this.clearIndex + 1) % n; if (XY.Audio) XY.Audio.sfx('ui'); }
       if (I.pressed('KeyG')) { this.chooseClear('shop'); return; }
+      if (I.pressed('KeyT')) { this.chooseClear('levels'); return; }
       if (I.pressed('KeyL') || I.pressed('KeyC')) { this.chooseClear('craft'); return; }
       if (I.pressed('KeyH')) { this.chooseClear('skillup'); return; }
       if (I.pressed('Escape')) { this.chooseClear('title'); return; }
@@ -655,24 +744,73 @@
     chooseClear(id) {
       if (XY.Audio) XY.Audio.sfx('confirm');
       if (id === 'next') {
-        if (this.levelIndex + 1 >= XY.LEVELS.length) {
-          this.levelIndex = 0;
-          this.persist.levelReached = 0;
-          this.save();
+        const nextMain = XY.nextMainAfter(this.levelIndex);
+        if (nextMain < 0) {
+          // 主线走到头了：进结局，进度保留（回头还能重打任何已通关卡）
           this.state = 'win';
+          this.save();
           if (XY.Audio) XY.Audio.sfx('clear');
         } else {
-          this.levelIndex++;
-          this.persist.levelReached = this.levelIndex;
+          this.levelIndex = nextMain;
+          this.pendingLevel = nextMain;
+          if (this.persist.levelReached < nextMain) this.persist.levelReached = nextMain;
           this.save();
           this.state = 'levelIntro';
         }
+      } else if (id === 'levels') {
+        this.levelCursor = XY.frontierLevel(this.persist.cleared);
+        this.state = 'levelselect';
       } else if (id === 'shop' || id === 'craft' || id === 'skillup') {
         this.openMenu(id, 'levelClear');
       } else if (id === 'title') {
         this.save();
         this.state = 'title';
       }
+    }
+
+    // —— 关卡选择：只让选"打过的"和紧接着的那一关 ——
+    updateLevelSelect() {
+      const I = XY.Input;
+      const order = XY.levelGrid();
+      const cleared = this.persist.cleared || [];
+      const cols = 4;
+      const posOf = (idx) => Math.max(0, order.indexOf(idx));
+      const move = (dx, dy) => {
+        let p = posOf(this.levelCursor);
+        let r = Math.floor(p / cols), c = p % cols;
+        for (let step = 0; step < order.length; step++) {
+          c += dx; r += dy;
+          if (c < 0 || c >= cols || r < 0) return false;
+          const np = r * cols + c;
+          if (np >= order.length) return false;
+          if (XY.levelUnlocked(order[np], cleared)) {
+            this.levelCursor = order[np];
+            if (XY.Audio) XY.Audio.sfx('ui');
+            return true;
+          }
+        }
+        return false;
+      };
+      if (I.pressed('KeyA') || I.pressed('ArrowLeft')) move(-1, 0);
+      if (I.pressed('KeyD') || I.pressed('ArrowRight')) move(1, 0);
+      if (I.pressed('KeyW') || I.pressed('ArrowUp')) move(0, -1);
+      if (I.pressed('KeyS') || I.pressed('ArrowDown')) move(0, 1);
+      if (I.pressed('Escape')) { this.state = 'charselect'; if (XY.Audio) XY.Audio.sfx('ui'); return; }
+      if (I.pressed('Mouse0')) {
+        const mp = I.mouse || { x: -999, y: -999 };
+        const pos = XY.UI.levelCardAt ? XY.UI.levelCardAt(mp.x, mp.y, order.length) : -1;
+        if (pos >= 0) {
+          const idx = order[pos];
+          this.levelCursor = idx;
+          if (XY.levelUnlocked(idx, cleared)) this.chooseLevel(idx);
+          else {
+            if (XY.Audio) XY.Audio.sfx('deny');
+            this.toast('还没解锁 · 先把前一关打完');
+          }
+        }
+        return;
+      }
+      if (this.confirmPressed(I)) this.chooseLevel(this.levelCursor);
     }
 
     // —— 动作执行 + 特效 ——
@@ -1131,6 +1269,11 @@
       const ci = parseInt(params.get('char') || '0', 10);
       const lv = parseInt(params.get('lv') || '0', 10);
       this.charIndex = isFinite(ci) ? clamp(ci, 0, XY.CHARACTER_ORDER.length - 1) : 0;
+      // ?cleared=0,1,2,3 预置通关记录，方便直接看选关页的解锁/锁定状态
+      if (params.get('cleared') != null) {
+        const raw = String(params.get('cleared') || '').split(',').map((s) => parseInt(s, 10)).filter((n) => Number.isInteger(n));
+        this.persist.cleared = raw;
+      }
       this.initRun();
       this.startLevel(isFinite(lv) ? clamp(lv, 0, XY.LEVELS.length - 1) : 0);
       // 预置一些战利品，方便看背包/图标
@@ -1164,11 +1307,16 @@
         this._dbgSlashAt = -9999;
       }
       const map = {
-        title: 'title', charselect: 'charselect', cutscene: 'cutscene', intro: 'levelIntro',
+        title: 'title', charselect: 'charselect', levelselect: 'levelselect', cutscene: 'cutscene', intro: 'levelIntro',
         play: 'playing', bag: 'bag', craft: 'craft', pause: 'pause', gameover: 'gameover', win: 'win',
         shop: 'shop', skillup: 'skillup', levelclear: 'levelClear',
       };
       this.state = map[scene] || 'playing';
+      if (this.state === 'levelselect') {
+        this.levelCursor = params.get('lv') != null
+          ? clamp(lv, 0, XY.LEVELS.length - 1)
+          : XY.frontierLevel(this.persist.cleared);
+      }
       if (this.state === 'levelClear' && !this.clearStats) {
         this.clearStats = {
           levelIndex: this.levelIndex, name: XY.LEVELS[this.levelIndex].name,
@@ -1226,6 +1374,7 @@
       switch (this.state) {
         case 'title': XY.UI.drawTitle(ctx, this.uiTime); break;
         case 'charselect': XY.UI.drawCharSelect(ctx, this); break;
+        case 'levelselect': XY.UI.drawLevelSelect(ctx, this); break;
         case 'cutscene': {
           const beats = this.cutBeats || (XY.STORY.charCg && XY.STORY.charCg[this.charId]) || XY.STORY.prologue;
           const beat = beats[this.cutIndex] || beats[0];
