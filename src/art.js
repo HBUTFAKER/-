@@ -1045,6 +1045,332 @@
 
   // ===== 怪物 =====
   // scale：按碰撞盒高度自动缩放（Boss 的碰撞盒比小怪大得多）
+  // ===== 首领骨架（按 art.kind 分派）=====
+  // 局部坐标：脚在 (0,0)，头在 -90 ~ -105，整体高度对齐牛魔王
+  function bossDemon(ctx, art, body, t) {
+    const skin = body || art.skin || '#5d6b52';
+    const cloth = body || art.cloth || '#3b2f24';
+    const trim = body || art.plume || '#c0392b';
+    const s = art.small ? 0.9 : 1;       // 红孩儿是个孩子，矮一头
+    ctx.save();
+    ctx.scale(s, s);
+    const breath = Math.sin(t / 460) * 1.2;
+    // 腿 + 战靴
+    rr(ctx, -16, -40, 13, 40, 5); shape(ctx, cloth, 1.3);
+    rr(ctx, 4, -40, 13, 40, 5); shape(ctx, cloth, 1.3);
+    rr(ctx, -19, -11, 18, 12, 3); shape(ctx, body || '#22181a', 1.1);
+    rr(ctx, 2, -11, 18, 12, 3); shape(ctx, body || '#22181a', 1.1);
+    // 后臂
+    line(ctx, -16, -78, -30, -56, 8, cloth);
+    circle(ctx, -31, -54, 5.5); shape(ctx, skin, 1.1);
+    // 躯干：腰甲 + 肩甲
+    rr(ctx, -18, -86 + breath, 36, 50, 11); shape(ctx, cloth, 1.6);
+    rr(ctx, -19, -66 + breath, 38, 9, 3); shape(ctx, body || '#c9a24a', 1.1);
+    for (const sx2 of [-1, 1]) {
+      circle(ctx, sx2 * 18, -84 + breath, 9.5); shape(ctx, body || '#4a4038', 1.4);
+      circle(ctx, sx2 * 18, -84 + breath, 4.2); shape(ctx, body || '#8a7f70', 0.9);
+    }
+    // 头
+    circle(ctx, 4, -102 + breath, 15); shape(ctx, skin, 1.6);
+    // 眉骨 + 眼
+    line(ctx, -7, -108 + breath, 15, -106 + breath, 3.4, body || '#2a1e18');
+    for (const ex of [-4, 11]) {
+      circle(ctx, ex, -101 + breath, 3.1); ctx.fillStyle = body || '#ffd479'; ctx.fill();
+      circle(ctx, ex + 0.6, -101.4 + breath, 1.3); ctx.fillStyle = '#1a0d08'; ctx.fill();
+    }
+    // 獠牙
+    ctx.fillStyle = body || '#fff6e2';
+    for (const sx2 of [-2, 8]) {
+      ctx.beginPath(); ctx.moveTo(sx2, -92 + breath); ctx.lineTo(sx2 + 3, -86 + breath); ctx.lineTo(sx2 + 5, -92 + breath);
+      ctx.closePath(); ctx.fill();
+    }
+    // 角
+    if (art.horn) {
+      ctx.strokeStyle = body || '#e8dcc8'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+      for (const sx2 of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(4 + sx2 * 12, -112 + breath);
+        ctx.quadraticCurveTo(4 + sx2 * 26, -124 + breath, 4 + sx2 * 22, -104 + breath);
+        ctx.stroke();
+      }
+    }
+    // 火焰头发（红孩儿）
+    if (art.flame) {
+      for (let i = 0; i < 5; i++) {
+        const bx = -6 + i * 5, ph = Math.sin(t / 120 + i * 1.3) * 4;
+        ctx.beginPath();
+        ctx.moveTo(bx, -112 + breath);
+        ctx.quadraticCurveTo(bx - 3, -126 + ph, bx + 1, -136 - ph);
+        ctx.quadraticCurveTo(bx + 4, -124, bx + 5, -112 + breath);
+        ctx.closePath();
+        shape(ctx, i % 2 ? '#ffb03a' : '#ff6a1e', 0.8);
+      }
+    } else {
+      // 头巾 / 冠
+      ctx.beginPath();
+      ctx.moveTo(-11, -110 + breath); ctx.quadraticCurveTo(4, -122 + breath, 19, -110 + breath);
+      ctx.lineTo(17, -105 + breath); ctx.quadraticCurveTo(4, -114 + breath, -9, -105 + breath);
+      ctx.closePath(); shape(ctx, trim, 1);
+    }
+    // 武器
+    const wAng = -0.12 + Math.sin(t / 520) * 0.06;
+    ctx.save();
+    ctx.translate(26, -66 + breath); ctx.rotate(wAng);
+    if (art.weapon === 'spear') {
+      line(ctx, 0, -40, 0, 44, 4, '#5b4a32');
+      ctx.beginPath();                                  // 火尖枪头
+      ctx.moveTo(0, -52); ctx.quadraticCurveTo(7, -40, 0, -34); ctx.quadraticCurveTo(-7, -40, 0, -52);
+      ctx.closePath(); shape(ctx, art.flame ? '#ffb03a' : '#cfd6de', 1.2);
+    } else {
+      line(ctx, 0, -34, 0, 34, 5, '#5b4a32');
+      // 大刀：窄长的刀身 + 深色刀脊，别做成一面白旗
+      ctx.beginPath();
+      ctx.moveTo(3, -36);
+      ctx.quadraticCurveTo(22, -28, 17, 2);
+      ctx.quadraticCurveTo(12, -12, 3, -18);
+      ctx.closePath(); shape(ctx, '#cfd6de', 1.3);
+      ctx.beginPath();
+      ctx.moveTo(3, -36); ctx.quadraticCurveTo(10, -26, 8, -8);
+      ctx.lineTo(3, -12); ctx.closePath(); shape(ctx, '#7d858f', 1);
+      // 护手
+      rr(ctx, -6, -8, 14, 5, 2); shape(ctx, '#c9a24a', 0.9);
+    }
+    ctx.restore();
+    // 前臂压到武器上
+    line(ctx, 15, -82 + breath, 26, -66 + breath, 8, skin);
+    circle(ctx, 26, -66 + breath, 5.6); shape(ctx, skin, 1.1);
+    ctx.restore();
+  }
+
+  function bossBeast(ctx, art, body, t) {
+    const fur = body || art.fur || '#6b5442';
+    const dark = body || art.furDark || '#493729';
+    const g = Math.sin(t / 130) * 2.2;
+    const snout = art.snout || 'pig';
+    // 后腿
+    line(ctx, -22, -26, -30, -6, 7, dark);
+    line(ctx, 16, -26, 24, -6, 7, dark);
+    // 近腿
+    line(ctx, -16, -26, -12 + g, -2, 8, fur);
+    line(ctx, 12, -26, 16 - g, -2, 8, fur);
+    // 身体
+    ctx.beginPath();
+    ctx.moveTo(-30, -30);
+    ctx.quadraticCurveTo(-34, -62, -6, -66);
+    ctx.quadraticCurveTo(22, -70, 30, -52);
+    ctx.quadraticCurveTo(34, -34, 18, -28);
+    ctx.quadraticCurveTo(-8, -24, -30, -30);
+    ctx.closePath();
+    shape(ctx, fur, 1.8);
+    // 肚皮浅色
+    ctx.beginPath();
+    ctx.moveTo(-14, -30); ctx.quadraticCurveTo(0, -26, 16, -32);
+    ctx.quadraticCurveTo(6, -46, -12, -44); ctx.closePath();
+    shape(ctx, 'rgba(255,235,205,0.22)', 0);
+    // 鬃毛（狮 / 猪）
+    if (art.mane) {
+      for (let i = 0; i < 9; i++) {
+        const a = -2.5 + i * 0.36;
+        const bx = 26 + Math.cos(a) * 16, by = -62 + Math.sin(a) * 16;
+        circle(ctx, bx, by, 8.5); shape(ctx, body || art.mane, 1.2);
+      }
+    }
+    // 头
+    if (snout === 'fish') {
+      // 鱼妖：圆头、巨眼、厚唇、鳃线、背鳍、尾鳍——靠"鱼"的特征，别做成老鼠
+      ctx.beginPath();
+      if (ctx.ellipse) ctx.ellipse(40, -54, 18, 15, -0.12, 0, Math.PI * 2); else ctx.arc(40, -54, 16, 0, Math.PI * 2);
+      shape(ctx, fur, 1.6);
+      // 宽扁的鱼嘴：一条往下的弧，不再往前凸成尖嘴
+      ctx.beginPath();
+      ctx.moveTo(50, -62); ctx.quadraticCurveTo(58, -54, 50, -46);
+      ctx.strokeStyle = '#3a1a12'; ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.stroke();
+      // 鳃
+      for (let i = 0; i < 2; i++) {
+        ctx.beginPath();
+        ctx.moveTo(30, -62 + i * 8);
+        ctx.quadraticCurveTo(26, -56 + i * 8, 30, -50 + i * 8);
+        ctx.strokeStyle = dark; ctx.lineWidth = 1.6; ctx.stroke();
+      }
+      // 巨眼
+      circle(ctx, 38, -60, 7.2); ctx.fillStyle = body || '#fff8e6'; ctx.fill();
+      circle(ctx, 40.5, -60, 3.4); ctx.fillStyle = '#161018'; ctx.fill();
+      circle(ctx, 41.6, -61.4, 1.2); ctx.fillStyle = '#fff'; ctx.fill();
+      // 背鳍 + 侧鳍 + 尾鳍
+      ctx.beginPath();
+      ctx.moveTo(12, -66); ctx.quadraticCurveTo(22, -88, 34, -66); ctx.closePath();
+      shape(ctx, body || art.fin || '#e8b48a', 1.2);
+      ctx.beginPath();
+      ctx.moveTo(12, -44); ctx.quadraticCurveTo(4, -30, 24, -32); ctx.closePath();
+      shape(ctx, body || art.fin || '#e8b48a', 1.1);
+      ctx.beginPath();
+      ctx.moveTo(-30, -46); ctx.quadraticCurveTo(-52, -58, -48, -40);
+      ctx.quadraticCurveTo(-52, -24, -30, -34); ctx.closePath();
+      shape(ctx, body || art.fin || '#e8b48a', 1.2);
+      // 鳞片
+      for (let i = 0; i < 4; i++) {
+        ctx.beginPath();
+        ctx.arc(-14 + i * 11, -50 + (i % 2) * 5, 5.5, 0.2, Math.PI - 0.2);
+        ctx.strokeStyle = 'rgba(0,0,0,0.22)'; ctx.lineWidth = 1.2; ctx.stroke();
+      }
+    } else {
+      ctx.beginPath();
+      ctx.moveTo(18, -64); ctx.quadraticCurveTo(42, -76, 52, -58);
+      ctx.quadraticCurveTo(56, -44, 40, -40);
+      ctx.quadraticCurveTo(24, -38, 18, -48);
+      ctx.closePath();
+      shape(ctx, fur, 1.6);
+      if (snout === 'pig') {
+        // 猪鼻：椭圆 + 两孔 + 獠牙
+        ctx.beginPath();
+        if (ctx.ellipse) ctx.ellipse(50, -54, 8, 6.5, 0, 0, Math.PI * 2); else ctx.arc(50, -54, 7, 0, Math.PI * 2);
+        shape(ctx, body || '#c98a8a', 1.1);
+        circle(ctx, 48, -55, 1.7); ctx.fillStyle = '#5a2a2a'; ctx.fill();
+        circle(ctx, 53, -55, 1.7); ctx.fillStyle = '#5a2a2a'; ctx.fill();
+      } else if (snout === 'lion') {
+        // 方吻 + 鼻 + 大獠牙
+        rr(ctx, 42, -60, 16, 16, 5); shape(ctx, body || '#d8bc8a', 1.2);
+        circle(ctx, 50, -54, 2.4); ctx.fillStyle = '#2a1a1a'; ctx.fill();
+      } else {
+        // 猿：短吻 + 大眉骨
+        ctx.beginPath();
+        if (ctx.ellipse) ctx.ellipse(47, -52, 8, 7, 0, 0, Math.PI * 2); else ctx.arc(47, -52, 7, 0, Math.PI * 2);
+        shape(ctx, body || '#c9ab84', 1.1);
+        line(ctx, 24, -68, 46, -64, 4, dark);
+      }
+      if (art.tusk) {
+        ctx.fillStyle = body || '#fff6e2';
+        for (const s2 of [1, -1]) {
+          ctx.beginPath();
+          ctx.moveTo(46 + s2 * 2, -46); ctx.quadraticCurveTo(50 + s2 * 3, -34, 44 + s2 * 2, -40);
+          ctx.closePath(); ctx.fill();
+        }
+      }
+      // 眼
+      circle(ctx, 38, -62, 4.2); ctx.fillStyle = body || '#ffce4a'; ctx.fill();
+      circle(ctx, 39, -62, 1.8); ctx.fillStyle = '#1a1008'; ctx.fill();
+    }
+    // 尾
+    ctx.beginPath();
+    ctx.moveTo(-30, -44);
+    ctx.quadraticCurveTo(-44, -50 + Math.sin(t / 240) * 6, -40, -30);
+    ctx.strokeStyle = dark; ctx.lineWidth = 4.5; ctx.lineCap = 'round'; ctx.stroke();
+    // 猿：长臂垂到地上 + 深色面罩，别和猪/狮混成一团
+    if (snout === 'ape') {
+      line(ctx, -10, -56, 4, -10, 9, dark);
+      circle(ctx, 5, -7, 7); shape(ctx, dark, 1.2);
+      line(ctx, 14, -60, 30, -14, 9.5, fur);
+      circle(ctx, 31, -9, 7.5); shape(ctx, body || '#c9ab84', 1.2);
+      ctx.beginPath();
+      if (ctx.ellipse) ctx.ellipse(45, -54, 9.5, 8.5, 0, 0, Math.PI * 2); else ctx.arc(45, -54, 8.5, 0, Math.PI * 2);
+      shape(ctx, 'rgba(26,36,32,0.5)', 0);
+      line(ctx, 38, -60, 44, -58, 2.2, '#0f1614');
+    }
+  }
+
+  function bossDragon(ctx, art, body, t) {
+    const sc = body || art.scale || '#2f7d6b';
+    const belly = body || art.belly || '#d9e8a8';
+    const sway = Math.sin(t / 420) * 5;
+    // 尾 + 身躯：一条粗线顺着身体爬上去（蛇形，不用方块）
+    ctx.beginPath();
+    ctx.moveTo(-46, -6);
+    ctx.quadraticCurveTo(-22, -10, -12, -30);
+    ctx.quadraticCurveTo(-4, -54, 10, -62);
+    ctx.strokeStyle = sc; ctx.lineWidth = 16; ctx.lineCap = 'round'; ctx.stroke();
+    ctx.strokeStyle = belly; ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.stroke();
+    // 背鳍
+    for (let i = 0; i < 5; i++) {
+      const bx = -34 + i * 10, by = -12 - i * 10;
+      ctx.beginPath();
+      ctx.moveTo(bx, by); ctx.lineTo(bx + 3, by - 9); ctx.lineTo(bx + 7, by - 1);
+      ctx.closePath(); shape(ctx, body || '#7fd8b8', 0.9);
+    }
+    // 前爪
+    line(ctx, 4, -56, 12, -36, 6, sc);
+    for (let i = 0; i < 3; i++) line(ctx, 12, -36, 20 + i * 3, -30 - i * 2, 2.4, body || '#f2f7e8');
+    line(ctx, -2, -48, -6, -28, 5.5, sc);
+    // 脖子
+    ctx.beginPath();
+    ctx.moveTo(6, -58); ctx.quadraticCurveTo(16 + sway * 0.2, -84, 26 + sway * 0.4, -92);
+    ctx.strokeStyle = sc; ctx.lineWidth = 12; ctx.lineCap = 'round'; ctx.stroke();
+    // 头：长吻 + 角 + 须 + 红眼
+    const hx = 28 + sway * 0.4, hy = -94;
+    ctx.save();
+    ctx.translate(hx, hy); ctx.rotate(0.1 + Math.sin(t / 700) * 0.05);
+    ctx.beginPath();
+    ctx.moveTo(-6, 4); ctx.quadraticCurveTo(14, -6, 26, -2);
+    ctx.quadraticCurveTo(30, 2, 22, 6); ctx.quadraticCurveTo(8, 10, -6, 4);
+    ctx.closePath(); shape(ctx, sc, 1.4);
+    // 嘴线 + 牙
+    line(ctx, 8, 3, 24, 1, 1.6, '#1a2b24');
+    ctx.fillStyle = body || '#fff6e2';
+    ctx.beginPath(); ctx.moveTo(16, 2); ctx.lineTo(19, 7); ctx.lineTo(21, 1); ctx.closePath(); ctx.fill();
+    // 角
+    ctx.strokeStyle = body || art.horn || '#e6dcc4'; ctx.lineWidth = 3.4; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(0, -2); ctx.quadraticCurveTo(-2, -16, 8, -14); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-6, 0); ctx.quadraticCurveTo(-12, -12, -2, -12); ctx.stroke();
+    // 须
+    ctx.strokeStyle = body || '#ffd479'; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.moveTo(24, 4); ctx.quadraticCurveTo(34, 8, 30, 16); ctx.stroke();
+    // 眼
+    circle(ctx, 12, -2, 3.4); ctx.fillStyle = body || art.eye || '#ffd479'; ctx.fill();
+    circle(ctx, 13, -2, 1.4); ctx.fillStyle = '#141a16'; ctx.fill();
+    ctx.restore();
+  }
+
+  function bossQueen(ctx, art, body, t) {
+    const skin = body || art.skin || '#8a4bb0';
+    const cloth = body || art.cloth || '#3a1746';
+    const g = Math.sin(t / 110) * 1.4;
+    // 八条蜘蛛腿（从腰后撑开）
+    for (let i = 0; i < 8; i++) {
+      const left = i < 4, k = i % 4;
+      const sgn = left ? -1 : 1;
+      const fx = sgn * (26 + k * 11);
+      const ph = Math.sin(t / 95 + i * 0.8) * 1.6;
+      ctx.beginPath();
+      ctx.moveTo(sgn * 4, -52 + k * 3);
+      ctx.quadraticCurveTo(sgn * (24 + k * 7), -68 + ph, fx, -2 + ph * 0.5);
+      ctx.strokeStyle = body || '#4a1f5e'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.stroke();
+    }
+    // 蛛腹
+    ctx.beginPath();
+    if (ctx.ellipse) ctx.ellipse(-10, -40, 22, 18, 0.2, 0, Math.PI * 2); else ctx.arc(-10, -40, 19, 0, Math.PI * 2);
+    shape(ctx, cloth, 1.5);
+    for (let i = 0; i < 3; i++) { circle(ctx, -16 + i * 6, -44 + i * 2, 3.4); shape(ctx, body || '#c9a6ff', 0.8); }
+    // 人形上身
+    ctx.beginPath();
+    ctx.moveTo(-6, -50); ctx.quadraticCurveTo(0, -76, 6, -80);
+    ctx.quadraticCurveTo(14, -72, 12, -50);
+    ctx.closePath(); shape(ctx, skin, 1.4);
+    // 裙褶
+    ctx.beginPath();
+    ctx.moveTo(-8, -50); ctx.lineTo(14, -50); ctx.lineTo(18, -34); ctx.lineTo(-12, -34);
+    ctx.closePath(); shape(ctx, cloth, 1.1);
+    // 手臂 + 垂丝
+    line(ctx, 4, -74, 20, -62, 4.5, skin);
+    line(ctx, 2, -72, -12, -60, 4.5, skin);
+    ctx.strokeStyle = body || 'rgba(230,220,255,0.75)'; ctx.lineWidth = 1.2;
+    for (const s2 of [20, -12]) {
+      ctx.beginPath(); ctx.moveTo(s2, -60); ctx.quadraticCurveTo(s2 + 4, -40, s2 - 2, -24 + g); ctx.stroke();
+    }
+    // 头 + 发髻 + 六眼
+    circle(ctx, 5, -92, 13); shape(ctx, skin, 1.5);
+    circle(ctx, 5, -104, 6.5); shape(ctx, body || '#22162a', 1);
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath();                        // 头冠尖
+      ctx.moveTo(-4 + i * 7, -104); ctx.lineTo(-2 + i * 7, -114); ctx.lineTo(2 + i * 7, -104);
+      ctx.closePath(); shape(ctx, body || '#c9a24a', 0.8);
+    }
+    for (let i = 0; i < 3; i++) {
+      circle(ctx, -1 + i * 6, -94, 2.1); ctx.fillStyle = '#ff5e8a'; ctx.fill();
+      circle(ctx, -1 + i * 6, -88, 1.5); ctx.fillStyle = '#ff9bb5'; ctx.fill();
+    }
+    ctx.fillStyle = '#2a1020';
+    ctx.beginPath(); ctx.moveTo(-2, -83); ctx.lineTo(12, -83); ctx.lineTo(5, -79); ctx.closePath(); ctx.fill();
+  }
+
   Art.drawEnemy = function (ctx, e, t, scale) {
     const flash = e.hitFlash > 0;
     const k = scale || 1;
@@ -1060,6 +1386,9 @@
     const hurtLeft = (e.hurtUntil || 0) - t;
     const hurtK = hurtLeft > 0 ? Math.sin(Math.min(1, hurtLeft / 200) * Math.PI) : 0;
     if (hurtK) { ctx.translate(-4.5 * hurtK, 0); ctx.rotate(-0.11 * hurtK); }
+    // 起手：往后一沉 + 微微下蹲，让玩家看得出"要打了"
+    const wind = e.state === 'windup' ? (e.tele || 0) : 0;
+    if (wind > 0) { ctx.translate(-5.5 * wind, 1.6 * wind); ctx.rotate(-0.055 * wind); }
     const body = flash ? '#ffffff' : null;
 
     if (e.kind === 'wolf') {
@@ -1137,8 +1466,9 @@
       circle(ctx, 15, -16.8, 1.5); ctx.fillStyle = '#ff6b6b'; ctx.fill();
       circle(ctx, 8.6, -20.4, 1.1); ctx.fillStyle = '#ff9b9b'; ctx.fill();
     } else if (e.kind === 'boss') {
-      const variant = e.variant || 'bull';
-      if (variant === 'bear') {
+      const art = e.art || { kind: e.variant || 'bull' };
+      const ak = art.kind || e.variant || 'bull';
+      if (ak === 'bear') {
         // 黑熊精：又壮又圆，披了件偷来的袈裟，手里一杆黑缨枪
         const fur = body || '#41301f', furDark = body || '#2a1d12';
         // 腿
@@ -1177,7 +1507,7 @@
           line(ctx, 0, -40, Math.sin(a) * 12, -40 + Math.cos(a) * 12, 2, body || '#1c1a22');
         }
         ctx.restore();
-      } else if (variant === 'bone') {
+      } else if (ak === 'bone') {
         // 白骨精：一副骨架披着破黑裙，双手两把骨刃
         const boneCol = body || '#ece6d8', cloth = body || '#1a1622';
         ctx.save();
@@ -1221,7 +1551,7 @@
         ctx.quadraticCurveTo(14, 10, 0, 4); ctx.closePath(); shape(ctx, boneCol, 1.2);
         ctx.restore();
         ctx.restore();
-      } else {
+      } else if (ak === 'bull') {
         // 牛魔王：壮硕红牛妖，黑铁胸甲 + 金腰带，肩扛一柄巨斧
         const hide = body || '#8e2b2b', hideDark = '#5e1a1a', iron = '#3b3f4a';
         // 腿 + 蹄
@@ -1286,6 +1616,14 @@
         // 前臂：从肩膀压到斧柄上
         line(ctx, 20, -62, 30, -50, 9, hide);
         circle(ctx, 30, -50, 6.5); shape(ctx, hide, 1.2);
+      } else if (ak === 'dragon') {
+        ctx.save(); ctx.scale(1.26, 1.26); bossDragon(ctx, art, body, t); ctx.restore();
+      } else if (ak === 'queen') {
+        ctx.save(); ctx.scale(1.06, 1.06); bossQueen(ctx, art, body, t); ctx.restore();
+      } else if (ak === 'beast') {
+        ctx.save(); ctx.scale(1.08, 1.08); bossBeast(ctx, art, body, t); ctx.restore();
+      } else {
+        ctx.save(); ctx.scale(1.08, 1.08); bossDemon(ctx, art, body, t); ctx.restore();
       }
     } else { // imp 小妖：短腿 + 圆身 + 角 + 獠牙，比纯色块好辨认
       const dark = body || '#8e2f26';

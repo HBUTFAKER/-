@@ -181,6 +181,7 @@
       this.noWeaponUntil = 0;        // 掷出兵器后，手上暂时是空的
       this.dashHits = null;
       this.buffAtkUntil = 0; this.buffSpdUntil = 0; this.buffDefUntil = 0; this.shieldUntil = 0;
+      this.slowUntil = 0;            // 中毒/缠丝：移速下降
       this.level = 1; this.exp = 0;
       // —— 动画状态 ——
       this.animT = 0;
@@ -207,7 +208,11 @@
       if (this.fxQueue.length < 60) this.fxQueue.push({ type: type, data: data || null });
     }
     get sprinting() { return this.runDir !== 0; }
-    get speedMul() { return (this.now < this.buffSpdUntil) ? 1.5 : 1; }
+    get speedMul() {
+      let m = (this.now < this.buffSpdUntil) ? 1.5 : 1;
+      if (this.now < this.slowUntil) m *= 0.55;
+      return m;
+    }
     get atkMul() { return (this.now < this.buffAtkUntil) ? 1.4 : 1; }
     get defMul() { return (this.now < this.buffDefUntil) ? 2 : 1; }
 
@@ -408,25 +413,34 @@
       const key = (XY.BOSSES && XY.BOSSES[variant]) ? variant : 'bull';
       const b = (XY.BOSSES && XY.BOSSES[key]) || XY.BOSS_BASE;
       const f = 1 + (lv - 1) * 0.18;
+      const moves = XY.bossMoves ? XY.bossMoves(b.moves) : [];
       const boss = new XY.Enemy('boss', {
         name: b.name, maxHp: Math.round(b.hp * f), hp: Math.round(b.hp * f),
         attack: Math.round(b.attack * f), defense: Math.round(b.defense * f),
         moveSpeed: b.moveSpeed, aggroRange: b.aggroRange, dropTable: b.dropTable,
-      }, x, y, 116, 152);
+      }, x, y, 116, 152, moves);
       boss.level = lv;
       boss.variant = key;
+      boss.title = b.title || '';
+      boss.art = b.art || { kind: key };
       return boss;
     }
     const base = XY.scaleEnemyStats(XY.ENEMY_BASE[kind], lv);
     const sizes = { imp: [44, 54], wolf: [66, 46], spider: [56, 40] };
     const [w, h] = sizes[kind];
-    const e = new XY.Enemy(kind, base, x, y, w, h);
+    const e = new XY.Enemy(kind, base, x, y, w, h, XY.movesFor ? XY.movesFor(kind) : []);
     e.level = lv;
     return e;
   };
 
+  const randBetween = (r, fallbackA, fallbackB) => {
+    const a = Array.isArray(r) ? r[0] : (fallbackA === undefined ? 1000 : fallbackA);
+    const b = Array.isArray(r) ? r[1] : (fallbackB === undefined ? a : fallbackB);
+    return a + Math.random() * Math.max(0, b - a);
+  };
+
   XY.Enemy = class {
-    constructor(kind, stats, x, y, w, h) {
+    constructor(kind, stats, x, y, w, h, moves) {
       this.kind = kind;
       this.stats = stats;
       this.name = stats.name;
@@ -443,20 +457,145 @@
       this.atkUntil = 0;
       this.hurtUntil = 0;     // 被打后的短暂僵直（造型层做后仰/抖动）
       this.isBoss = kind === 'boss';
+      // —— 招式与状态机 ——
+      this.moves = moves || [];
+      this.state = 'idle';    // idle/chase → windup → active → recover
+      this.stateUntil = 0;
+      this.cur = null;        // 当前招式
+      this.moveDir = -1;      // 起手时锁定的方向
+      this.tele = 0;          // 起手进度 0..1（美术层画预警用）
+      this.actK = 0;          // 出手进度 0..1
+      this.cds = {};          // 每招独立冷却
+      this.gapUntil = 0;      // 两招之间的最小间隔
+      this.strike = null;     // 一次性交给 game 结算的攻击
+      this.charge = null;     // 冲撞的持续判定
+      this.keepDist = Math.max(34, Math.round(w * 0.78));   // 停在兵器够得着的距离，别骑到人身上
     }
+
+    // 首领半血狂暴：起手更短、冷却更短
+    get enraged() { return this.isBoss && this.hp <= this.maxHp * 0.5; }
+
+    moveReady(m, dist, now) {
+      if ((this.cds[m.key] || 0) > now) return false;
+      const r = m.range;
+      if (Array.isArray(r)) return dist >= r[0] && dist <= r[1];
+      return dist <= r;
+    }
+
+    pickMove(dist, now) {
+      const pool = [];
+      for (const m of this.moves) if (this.moveReady(m, dist, now)) pool.push(m);
+      if (!pool.length) return null;
+      return pool[Math.floor(Math.random() * pool.length)];
+    }
+
+    beginWindup(m, now, player) {
+      this.state = 'windup';
+      this.cur = m;
+      this.tele = 0;
+      this.moveDir = (player.x + player.w / 2) >= (this.x + this.w / 2) ? 1 : -1;
+      this.facing = this.moveDir;
+      const scale = this.enraged ? 0.78 : 1;
+      this.stateUntil = now + Math.max(120, Math.round((m.windup || 400) * scale));
+    }
+
+    beginActive(now, player) {
+      const m = this.cur;
+      if (!m) { this.state = 'chase'; return; }
+      this.state = 'active';
+      this.actK = 0;
+      this.stateUntil = now + Math.max(60, m.active || 110);
+      this.atkUntil = this.stateUntil;               // 造型层据此做前冲
+      const dir = this.moveDir || this.facing || 1;
+      const cx = this.x + this.w / 2;
+      if (m.type === 'melee') {
+        const reach = m.range || 60;
+        const box = {
+          x: dir > 0 ? cx + this.w * 0.1 : cx - this.w * 0.1 - reach,
+          y: this.y + this.h * 0.06, w: reach, h: this.h * 0.88,
+        };
+        this.strike = { type: 'melee', move: m, box, mult: m.mult, dir };
+      } else if (m.type === 'dash') {
+        this.charge = { until: this.stateUntil, dir, mult: m.mult, move: m, hit: false };
+        this.strike = { type: 'dash', move: m, dir, mult: m.mult };
+      } else if (m.type === 'aoe') {
+        this.strike = {
+          type: 'aoe', move: m, mult: m.mult, dir,
+          radius: m.radius || 180, x: cx, y: this.y + this.h,
+        };
+      } else if (m.type === 'shot') {
+        this.strike = {
+          type: 'shot', move: m, mult: m.mult, dir,
+          x: cx + dir * this.w * 0.42, y: this.y + this.h * 0.44,
+          aimY: player.y + player.h * 0.45,
+        };
+      } else if (m.type === 'summon') {
+        this.strike = { type: 'summon', move: m, count: m.count || 2, kind: m.summonKind || 'imp' };
+      }
+    }
+
+    endMove(now) {
+      const m = this.cur;
+      this.state = 'recover';
+      this.stateUntil = now + ((m && m.recover) || 400) * (this.enraged ? 0.85 : 1);
+      this.gapUntil = now + 200;
+      if (m) this.cds[m.key] = now + randBetween(m.cd, 1400, 2200) * (this.enraged ? 0.72 : 1);
+      this.cur = null;
+      this.charge = null;
+    }
+
     update(dt, player, level, now) {
       this.now = now;
       if (this.hitFlash > 0) this.hitFlash -= dt;
-      // 击退/眩晕：不动
-      if (now < this.stunUntil) { this.vx = 0; this.vy += GRAVITY * dt; XY.moveAndCollide(this, level.platforms, dt); return; }
+      // 眩晕 / 被打断：只受重力，不出招
+      if (now < this.stunUntil) {
+        this.vx = 0; this.vy += GRAVITY * dt;
+        XY.moveAndCollide(this, level.platforms, dt);
+        this.tele = 0;
+        return;
+      }
       const dx = (player.x + player.w / 2) - (this.x + this.w / 2);
       const dist = Math.abs(dx);
-      if (dist < this.stats.aggroRange) {
-        this.facing = dx >= 0 ? 1 : -1;
-        this.vx = approach(this.vx, this.facing * this.stats.moveSpeed, this.stats.moveSpeed * 8 * dt);
+      const dir = dx >= 0 ? 1 : -1;
+      const aggro = dist < this.stats.aggroRange;
+      const alive = player.hp > 0;
+      const speed = this.stats.moveSpeed * (this.enraged ? 1.12 : 1);
+      const steer = (target, rate) => { this.vx = approach(this.vx, target, rate); };
+
+      if (this.state === 'windup') {
+        // 起手进度：0 刚抬手、1 就要打下来了（美术层拿它画预警）
+        const wu = this.cur ? Math.max(1, (this.cur.windup || 400) * (this.enraged ? 0.78 : 1)) : 400;
+        this.tele = Math.min(1, Math.max(0, 1 - (this.stateUntil - now) / wu));
+        steer(0, 1400 * dt);
+        if (now >= this.stateUntil) this.beginActive(now, player);
+      } else if (this.state === 'active') {
+        const m = this.cur;
+        this.actK = m ? Math.min(1, 1 - (this.stateUntil - now) / Math.max(1, m.active || 110)) : 1;
+        if (m && m.type === 'dash') steer((this.moveDir || 1) * (m.speed || 480), 6000 * dt);
+        else steer(0, 1200 * dt);
+        if (now >= this.stateUntil) this.endMove(now);
+      } else if (this.state === 'recover') {
+        this.tele = 0;
+        steer(0, 900 * dt);
+        if (now >= this.stateUntil) this.state = 'chase';
+      } else if (aggro && alive) {
+        this.state = 'chase';
+        this.facing = dir;
+        this.tele = 0;
+        if (dist > this.keepDist) steer(this.facing * speed, speed * 8 * dt);
+        else steer(0, speed * 10 * dt);
+        if (now >= this.gapUntil) {
+          const m = this.pickMove(dist, now);
+          if (m) this.beginWindup(m, now, player);
+        }
       } else {
-        this.vx = approach(this.vx, 0, this.stats.moveSpeed * 8 * dt);
+        this.state = 'idle';
+        this.tele = 0;
+        steer(0, speed * 6 * dt);
       }
+      // 被击退期间不主动走，只留惯性
+      if (now < this.knockUntil) this.vx *= 0.9;
+
       this.vy += GRAVITY * dt;
       if (this.vy > 1200) this.vy = 1200;
       XY.moveAndCollide(this, level.platforms, dt);
@@ -484,6 +623,7 @@
       this.life = life || 1.6; this.alive = true;
     }
     update(dt, level) {
+      if (this.gravity) this.vy += this.gravity * dt;
       this.x += this.vx * dt; this.y += this.vy * dt;
       this.life -= dt;
       if (this.life <= 0) this.alive = false;

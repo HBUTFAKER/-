@@ -336,24 +336,123 @@
       { itemId: 'mat_soul', weight: 1, chance: 0.3, min: 1, max: 1 },
       { itemId: 'mat_herb', weight: 1, chance: 0.3, min: 1, max: 1 } ] },
   };
-  // 三只首领：造型在 art.js 里按 variant 分支画，这里只管数值与人设
-  XY.BOSSES = {
-    bull: { name: '牛魔王', hp: 600, attack: 22, defense: 10, moveSpeed: 70, aggroRange: 9999,
-      dropTable: [
-        { itemId: 'mat_soul', weight: 1, chance: 1, min: 3, max: 5 },
-        { itemId: 'mat_fire', weight: 1, chance: 0.8, min: 2, max: 3 },
-        { itemId: 'mat_stone', weight: 1, chance: 0.8, min: 2, max: 3 } ] },
-    bear: { name: '黑熊精', hp: 520, attack: 20, defense: 14, moveSpeed: 64, aggroRange: 9999,
-      dropTable: [
-        { itemId: 'mat_soul', weight: 1, chance: 1, min: 2, max: 4 },
-        { itemId: 'mat_stone', weight: 1, chance: 0.9, min: 2, max: 4 },
-        { itemId: 'mat_herb', weight: 1, chance: 0.6, min: 1, max: 3 } ] },
-    bone: { name: '白骨精', hp: 480, attack: 24, defense: 7, moveSpeed: 96, aggroRange: 9999,
-      dropTable: [
-        { itemId: 'mat_soul', weight: 1, chance: 1, min: 3, max: 6 },
-        { itemId: 'mat_wood', weight: 1, chance: 0.7, min: 2, max: 3 },
-        { itemId: 'mat_fire', weight: 1, chance: 0.6, min: 1, max: 2 } ] },
+  // ===== 敌人招式表 =====
+  // 每只怪都有「普攻 + 技能」，不再是站着贴人扣血。
+  //   type：melee 近身 / shot 远程 / dash 冲撞 / aoe 震地 / summon 召唤
+  //   windup 起手（这段时间有红圈提示，玩家能躲）/ active 出手 / recover 收招
+  //   range：近身是够得着的长度；远程/冲撞是 [最近, 最远]，超出就不放
+  //   cd：两段之间的随机冷却区间（毫秒）
+  //   tell：起手提示色
+  XY.ENEMY_MOVES = {
+    imp: [
+      { key: 'claw', name: '抓挠', type: 'melee', range: 52, mult: 1,
+        windup: 320, active: 110, recover: 300, cd: [820, 1300], tell: '#ffb35c' },
+      { key: 'rock', name: '掷石', type: 'shot', range: [140, 360], mult: 0.85,
+        windup: 520, active: 90, recover: 430, cd: [2200, 3200], tell: '#e08a4a',
+        proj: { speed: 330, vy: -170, gravity: 620, r: 7, color: '#b08a5c', life: 2.6 } },
+    ],
+    wolf: [
+      { key: 'bite', name: '撕咬', type: 'melee', range: 64, mult: 1.05,
+        windup: 280, active: 110, recover: 250, cd: [700, 1150], tell: '#ff8a5e' },
+      { key: 'pounce', name: '扑击', type: 'dash', range: [86, 240], mult: 1.35, speed: 520,
+        windup: 430, active: 240, recover: 430, cd: [2500, 3500], tell: '#ff5e5e' },
+    ],
+    spider: [
+      { key: 'fangs', name: '毒牙', type: 'melee', range: 50, mult: 0.95, dot: true,
+        windup: 300, active: 100, recover: 300, cd: [880, 1320], tell: '#b06bff' },
+      { key: 'web', name: '吐丝', type: 'shot', range: [110, 320], mult: 0.7, slow: true,
+        windup: 470, active: 80, recover: 400, cd: [2300, 3300], tell: '#c9a6ff',
+        proj: { speed: 300, vy: 0, gravity: 0, r: 6, color: '#c9a6ff', life: 2.2 } },
+    ],
   };
+  // 首领招式的公共库：每只首领从里面挑 3~4 个，配出自己的节奏
+  XY.BOSS_MOVES = {
+    slam: { key: 'slam', name: '重击', type: 'melee', range: 98, mult: 1.25,
+      windup: 560, active: 120, recover: 520, cd: [1500, 2300], tell: '#ff7a4a', shake: 5 },
+    sweep: { key: 'sweep', name: '横扫', type: 'melee', range: 134, mult: 1.1,
+      windup: 470, active: 140, recover: 470, cd: [1700, 2500], tell: '#ffa94a', shake: 4 },
+    charge: { key: 'charge', name: '冲撞', type: 'dash', range: [140, 430], mult: 1.4, speed: 560,
+      windup: 620, active: 420, recover: 560, cd: [2600, 3600], tell: '#ff5e5e', shake: 6 },
+    quake: { key: 'quake', name: '震地', type: 'aoe', range: [0, 200], radius: 200, mult: 1.2,
+      windup: 700, active: 170, recover: 620, cd: [3000, 4200], tell: '#ffd479', shake: 10 },
+    volley: { key: 'volley', name: '妖火', type: 'shot', range: [130, 540], mult: 1.0,
+      windup: 640, active: 110, recover: 520, cd: [2200, 3000], tell: '#ff9a5e', shake: 3,
+      proj: { speed: 340, vy: -90, gravity: 340, r: 9, color: '#ff9a5e', life: 3, count: 2, gap: 140 } },
+    summon: { key: 'summon', name: '召妖', type: 'summon', range: [40, 620], mult: 0,
+      windup: 760, active: 110, recover: 620, cd: [6200, 8200], tell: '#9ad0ff',
+      count: 2, summonKind: 'imp' },
+  };
+  XY.movesFor = function (kind) {
+    const list = (XY.ENEMY_MOVES && XY.ENEMY_MOVES[kind]) || [];
+    return list.map((m) => Object.assign({}, m));
+  };
+  XY.bossMoves = function (keys) {
+    const out = [];
+    for (const k of (keys || [])) {
+      const def = XY.BOSS_MOVES[k];
+      if (def) out.push(Object.assign({}, def));
+    }
+    return out;
+  };
+
+  // ===== 首领：12 关各一只 =====
+  // art.kind 决定 art.js 用哪套骨架画：bull/bear/bone/demon/beast/dragon/queen
+  // art 里其余字段是同骨架的参数（颜色、披风、角、武器、口鼻）
+  const bossDrop = (soul, a, b) => [
+    { itemId: 'mat_soul', weight: 1, chance: 1, min: soul[0], max: soul[1] },
+    { itemId: a[0], weight: 1, chance: a[2] === undefined ? 0.8 : a[2], min: a[1], max: a[1] + 1 },
+    { itemId: b[0], weight: 1, chance: b[2] === undefined ? 0.7 : b[2], min: b[1], max: b[1] + 1 } ];
+  XY.BOSSES = {
+    mowang: { name: '混世魔王', title: '占山为王', hp: 430, attack: 15, defense: 8, moveSpeed: 84, aggroRange: 640,
+      moves: ['slam', 'quake', 'summon'],
+      art: { kind: 'demon', skin: '#5d6b52', cloth: '#3b2f24', horn: true, weapon: 'blade', plume: '#c0392b' },
+      dropTable: bossDrop([2, 3], ['mat_stone', 2, 0.9], ['mat_wood', 2]) },
+    dragon: { name: '毒龙', title: '涧底沉鳞', hp: 520, attack: 18, defense: 9, moveSpeed: 92, aggroRange: 640,
+      moves: ['charge', 'volley', 'sweep'],
+      art: { kind: 'dragon', scale: '#2f7d6b', belly: '#d9e8a8', horn: '#e6dcc4', eye: '#ffd479' },
+      dropTable: bossDrop([2, 4], ['mat_herb', 2], ['mat_fire', 1]) },
+    bear: { name: '黑熊精', title: '黑风大王', hp: 560, attack: 20, defense: 14, moveSpeed: 66, aggroRange: 640,
+      moves: ['slam', 'charge', 'quake'],
+      art: { kind: 'bear' },
+      dropTable: bossDrop([2, 4], ['mat_stone', 2, 0.9], ['mat_herb', 1, 0.6]) },
+    pig: { name: '猪妖王', title: '高老庄女婿', hp: 560, attack: 20, defense: 12, moveSpeed: 96, aggroRange: 640,
+      moves: ['slam', 'charge', 'summon'],
+      art: { kind: 'beast', fur: '#6b5442', furDark: '#493729', snout: 'pig', tusk: true, mane: '#c9a24a', scale: 1.05 },
+      dropTable: bossDrop([2, 4], ['mat_wood', 3], ['mat_herb', 2]) },
+    queen: { name: '蜘蛛精', title: '七情丝主', hp: 500, attack: 19, defense: 8, moveSpeed: 88, aggroRange: 640,
+      moves: ['volley', 'summon', 'slam'],
+      art: { kind: 'queen', skin: '#8a4bb0', cloth: '#3a1746' },
+      dropTable: bossDrop([2, 4], ['mat_fire', 2], ['mat_soul', 1, 0.5]) },
+    ape: { name: '河妖', title: '八百里流沙', hp: 590, attack: 21, defense: 13, moveSpeed: 78, aggroRange: 640,
+      moves: ['sweep', 'charge', 'quake'],
+      art: { kind: 'beast', fur: '#3f6b52', furDark: '#2a4a38', snout: 'ape', mane: null, scale: 1.12 },
+      dropTable: bossDrop([2, 4], ['mat_herb', 3], ['mat_stone', 2]) },
+    yellow: { name: '黄袍怪', title: '波月洞主', hp: 620, attack: 22, defense: 11, moveSpeed: 92, aggroRange: 640,
+      moves: ['slam', 'charge', 'volley'],
+      art: { kind: 'demon', skin: '#c9b48a', cloth: '#c9a03a', horn: false, weapon: 'spear', plume: '#e8e0c0' },
+      dropTable: bossDrop([3, 5], ['mat_stone', 3], ['mat_herb', 2]) },
+    bone: { name: '白骨精', title: '白骨夫人', hp: 540, attack: 24, defense: 7, moveSpeed: 104, aggroRange: 640,
+      moves: ['sweep', 'volley', 'summon'],
+      art: { kind: 'bone' },
+      dropTable: bossDrop([3, 6], ['mat_wood', 2], ['mat_fire', 1, 0.6]) },
+    lion: { name: '青狮', title: '狮驼岭大魔王', hp: 700, attack: 24, defense: 15, moveSpeed: 96, aggroRange: 640,
+      moves: ['charge', 'slam', 'quake'],
+      art: { kind: 'beast', fur: '#3f7f6a', furDark: '#2a5a4a', snout: 'lion', tusk: true, mane: '#1f4a3a', scale: 1.16 },
+      dropTable: bossDrop([3, 5], ['mat_fire', 2], ['mat_stone', 3]) },
+    redboy: { name: '红孩儿', title: '圣婴大王', hp: 640, attack: 26, defense: 9, moveSpeed: 104, aggroRange: 640,
+      moves: ['slam', 'volley', 'quake'],
+      art: { kind: 'demon', skin: '#e8b48a', cloth: '#c0392b', horn: false, weapon: 'spear', flame: true, small: true, plume: '#ff8a3a' },
+      dropTable: bossDrop([3, 5], ['mat_fire', 3], ['mat_soul', 1, 0.5]) },
+    fish: { name: '灵感大王', title: '通天河神', hp: 660, attack: 23, defense: 12, moveSpeed: 90, aggroRange: 640,
+      moves: ['volley', 'charge', 'sweep'],
+      art: { kind: 'beast', fur: '#c9762f', furDark: '#8a4a1a', snout: 'fish', mane: null, scale: 1.1, fin: '#e8b48a' },
+      dropTable: bossDrop([3, 5], ['mat_herb', 3], ['mat_soul', 1, 0.5]) },
+    bull: { name: '牛魔王', title: '平天大圣', hp: 760, attack: 26, defense: 16, moveSpeed: 76, aggroRange: 640,
+      moves: ['slam', 'charge', 'quake', 'volley'],
+      art: { kind: 'bull' },
+      dropTable: bossDrop([3, 5], ['mat_fire', 2], ['mat_stone', 2]) },
+  };
+  XY.BOSS_ORDER = ['mowang', 'dragon', 'bear', 'pig', 'queen', 'ape', 'yellow', 'bone', 'lion', 'redboy', 'fish', 'bull'];
   XY.BOSS_BASE = XY.BOSSES.bull;
 
   // ===== 关卡（横版卷动）=====
@@ -371,7 +470,8 @@
       spawns: [
         { type: 'imp', x: 520, y: 460, level: 1 }, { type: 'imp', x: 900, y: 460, level: 1 },
         { type: 'wolf', x: 1300, y: 460, level: 2 }, { type: 'imp', x: 1700, y: 460, level: 1 },
-        { type: 'wolf', x: 2100, y: 460, level: 2 } ],
+        { type: 'wolf', x: 1880, y: 460, level: 2 },
+        { type: 'boss', boss: 'mowang', x: 2120, y: 380, level: 1 } ],
       goal: { x: 2330, y: 440 },
       intro: ['五百年后，五行山崩，猴王重回花果山。',
         '故地已荒，小妖占山为王，水帘洞前一片狼藉。',
@@ -388,7 +488,8 @@
       spawns: [
         { type: 'wolf', x: 420, y: 460, level: 2 }, { type: 'spider', x: 820, y: 460, level: 2 },
         { type: 'wolf', x: 1180, y: 460, level: 3 }, { type: 'spider', x: 1520, y: 460, level: 3 },
-        { type: 'wolf', x: 1900, y: 460, level: 3 }, { type: 'imp', x: 2250, y: 460, level: 2 } ],
+        { type: 'wolf', x: 1900, y: 460, level: 3 }, { type: 'imp', x: 2150, y: 460, level: 2 },
+        { type: 'boss', boss: 'dragon', x: 2330, y: 380, level: 2 } ],
       goal: { x: 2530, y: 440 },
       intro: ['涧水森寒，白雾贴着水面走。',
         '传说涧里藏着一条犯了天条的龙，吞过取经人的白马。',
@@ -422,7 +523,8 @@
       spawns: [
         { type: 'imp', x: 430, y: 460, level: 3 }, { type: 'wolf', x: 800, y: 460, level: 4 },
         { type: 'imp', x: 1180, y: 460, level: 3 }, { type: 'wolf', x: 1600, y: 460, level: 4 },
-        { type: 'imp', x: 2000, y: 460, level: 4 } ],
+        { type: 'imp', x: 2000, y: 460, level: 4 },
+        { type: 'boss', boss: 'pig', x: 2320, y: 380, level: 4 } ],
       goal: { x: 2530, y: 440 },
       intro: ['高老庄的灯还亮着，庄丁却不敢出门。',
         '三年前招了个女婿，能吃能喝，喝多了会现出猪相。',
@@ -439,7 +541,8 @@
       spawns: [
         { type: 'spider', x: 460, y: 460, level: 4 }, { type: 'spider', x: 780, y: 460, level: 4 },
         { type: 'spider', x: 1120, y: 460, level: 4 }, { type: 'spider', x: 1470, y: 460, level: 5 },
-        { type: 'spider', x: 1820, y: 460, level: 5 }, { type: 'spider', x: 2150, y: 460, level: 5 } ],
+        { type: 'spider', x: 1820, y: 460, level: 5 }, { type: 'spider', x: 1930, y: 460, level: 5 },
+        { type: 'boss', boss: 'queen', x: 2120, y: 380, level: 4 } ],
       goal: { x: 2330, y: 440 },
       require: 3,
       intro: ['洞口垂着七色丝线，一根一根缠在骨头上。',
@@ -457,7 +560,8 @@
       spawns: [
         { type: 'wolf', x: 560, y: 460, level: 4 }, { type: 'spider', x: 950, y: 460, level: 4 },
         { type: 'imp', x: 1300, y: 460, level: 5 }, { type: 'wolf', x: 1700, y: 460, level: 4 },
-        { type: 'spider', x: 2100, y: 460, level: 5 }, { type: 'wolf', x: 2500, y: 460, level: 5 } ],
+        { type: 'spider', x: 2100, y: 460, level: 5 }, { type: 'wolf', x: 2500, y: 460, level: 5 },
+        { type: 'boss', boss: 'ape', x: 2700, y: 380, level: 5 } ],
       goal: { x: 2930, y: 440 },
       intro: ['八百里流沙，鹅毛飘不起，芦花定底沉。',
         '河心立着一块界碑，碑后有人影，脖子上挂九个骷髅。',
@@ -474,7 +578,8 @@
       spawns: [
         { type: 'imp', x: 480, y: 460, level: 5 }, { type: 'wolf', x: 900, y: 460, level: 5 },
         { type: 'imp', x: 1330, y: 460, level: 5 }, { type: 'wolf', x: 1720, y: 460, level: 6 },
-        { type: 'imp', x: 2150, y: 460, level: 5 } ],
+        { type: 'imp', x: 2150, y: 460, level: 5 },
+        { type: 'boss', boss: 'yellow', x: 2320, y: 380, level: 5 } ],
       goal: { x: 2530, y: 440 },
       require: 5,
       intro: ['波月洞里有月亮，是人造的那种——一面铜镜吊在洞顶。',
@@ -509,7 +614,8 @@
       spawns: [
         { type: 'wolf', x: 520, y: 460, level: 6 }, { type: 'imp', x: 900, y: 460, level: 6 },
         { type: 'wolf', x: 1280, y: 460, level: 6 }, { type: 'imp', x: 1680, y: 460, level: 6 },
-        { type: 'wolf', x: 2050, y: 460, level: 7 }, { type: 'imp', x: 2450, y: 460, level: 6 } ],
+        { type: 'wolf', x: 2050, y: 460, level: 7 }, { type: 'imp', x: 2450, y: 460, level: 6 },
+        { type: 'boss', boss: 'lion', x: 2700, y: 380, level: 6 } ],
       goal: { x: 2930, y: 440 },
       require: 7,
       intro: ['狮驼岭上四万八千小妖，旌旗遮天。',
@@ -527,7 +633,8 @@
       spawns: [
         { type: 'spider', x: 600, y: 460, level: 6 }, { type: 'imp', x: 1000, y: 460, level: 6 },
         { type: 'spider', x: 1400, y: 460, level: 6 }, { type: 'wolf', x: 1800, y: 460, level: 7 },
-        { type: 'imp', x: 2200, y: 460, level: 6 }, { type: 'spider', x: 2600, y: 460, level: 7 } ],
+        { type: 'imp', x: 2200, y: 460, level: 6 }, { type: 'spider', x: 2600, y: 460, level: 7 },
+        { type: 'boss', boss: 'redboy', x: 2900, y: 380, level: 6 } ],
       goal: { x: 3130, y: 440 },
       intro: ['火云洞终年不熄，洞口的热浪能把人推回去。',
         '红孩儿会三昧真火，一口火喷出来，连石头都烧成琉璃。',
@@ -544,7 +651,8 @@
       spawns: [
         { type: 'spider', x: 550, y: 460, level: 7 }, { type: 'wolf', x: 950, y: 460, level: 7 },
         { type: 'spider', x: 1350, y: 460, level: 7 }, { type: 'wolf', x: 1750, y: 460, level: 7 },
-        { type: 'spider', x: 2150, y: 460, level: 7 }, { type: 'wolf', x: 2550, y: 460, level: 7 } ],
+        { type: 'spider', x: 2150, y: 460, level: 7 }, { type: 'wolf', x: 2300, y: 460, level: 7 },
+        { type: 'boss', boss: 'fish', x: 2500, y: 380, level: 7 } ],
       goal: { x: 2730, y: 440 },
       require: 9,
       intro: ['通天河结了冰，冰下有东西在游，一路跟着你。',
@@ -2376,6 +2484,332 @@
 
   // ===== 怪物 =====
   // scale：按碰撞盒高度自动缩放（Boss 的碰撞盒比小怪大得多）
+  // ===== 首领骨架（按 art.kind 分派）=====
+  // 局部坐标：脚在 (0,0)，头在 -90 ~ -105，整体高度对齐牛魔王
+  function bossDemon(ctx, art, body, t) {
+    const skin = body || art.skin || '#5d6b52';
+    const cloth = body || art.cloth || '#3b2f24';
+    const trim = body || art.plume || '#c0392b';
+    const s = art.small ? 0.9 : 1;       // 红孩儿是个孩子，矮一头
+    ctx.save();
+    ctx.scale(s, s);
+    const breath = Math.sin(t / 460) * 1.2;
+    // 腿 + 战靴
+    rr(ctx, -16, -40, 13, 40, 5); shape(ctx, cloth, 1.3);
+    rr(ctx, 4, -40, 13, 40, 5); shape(ctx, cloth, 1.3);
+    rr(ctx, -19, -11, 18, 12, 3); shape(ctx, body || '#22181a', 1.1);
+    rr(ctx, 2, -11, 18, 12, 3); shape(ctx, body || '#22181a', 1.1);
+    // 后臂
+    line(ctx, -16, -78, -30, -56, 8, cloth);
+    circle(ctx, -31, -54, 5.5); shape(ctx, skin, 1.1);
+    // 躯干：腰甲 + 肩甲
+    rr(ctx, -18, -86 + breath, 36, 50, 11); shape(ctx, cloth, 1.6);
+    rr(ctx, -19, -66 + breath, 38, 9, 3); shape(ctx, body || '#c9a24a', 1.1);
+    for (const sx2 of [-1, 1]) {
+      circle(ctx, sx2 * 18, -84 + breath, 9.5); shape(ctx, body || '#4a4038', 1.4);
+      circle(ctx, sx2 * 18, -84 + breath, 4.2); shape(ctx, body || '#8a7f70', 0.9);
+    }
+    // 头
+    circle(ctx, 4, -102 + breath, 15); shape(ctx, skin, 1.6);
+    // 眉骨 + 眼
+    line(ctx, -7, -108 + breath, 15, -106 + breath, 3.4, body || '#2a1e18');
+    for (const ex of [-4, 11]) {
+      circle(ctx, ex, -101 + breath, 3.1); ctx.fillStyle = body || '#ffd479'; ctx.fill();
+      circle(ctx, ex + 0.6, -101.4 + breath, 1.3); ctx.fillStyle = '#1a0d08'; ctx.fill();
+    }
+    // 獠牙
+    ctx.fillStyle = body || '#fff6e2';
+    for (const sx2 of [-2, 8]) {
+      ctx.beginPath(); ctx.moveTo(sx2, -92 + breath); ctx.lineTo(sx2 + 3, -86 + breath); ctx.lineTo(sx2 + 5, -92 + breath);
+      ctx.closePath(); ctx.fill();
+    }
+    // 角
+    if (art.horn) {
+      ctx.strokeStyle = body || '#e8dcc8'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+      for (const sx2 of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(4 + sx2 * 12, -112 + breath);
+        ctx.quadraticCurveTo(4 + sx2 * 26, -124 + breath, 4 + sx2 * 22, -104 + breath);
+        ctx.stroke();
+      }
+    }
+    // 火焰头发（红孩儿）
+    if (art.flame) {
+      for (let i = 0; i < 5; i++) {
+        const bx = -6 + i * 5, ph = Math.sin(t / 120 + i * 1.3) * 4;
+        ctx.beginPath();
+        ctx.moveTo(bx, -112 + breath);
+        ctx.quadraticCurveTo(bx - 3, -126 + ph, bx + 1, -136 - ph);
+        ctx.quadraticCurveTo(bx + 4, -124, bx + 5, -112 + breath);
+        ctx.closePath();
+        shape(ctx, i % 2 ? '#ffb03a' : '#ff6a1e', 0.8);
+      }
+    } else {
+      // 头巾 / 冠
+      ctx.beginPath();
+      ctx.moveTo(-11, -110 + breath); ctx.quadraticCurveTo(4, -122 + breath, 19, -110 + breath);
+      ctx.lineTo(17, -105 + breath); ctx.quadraticCurveTo(4, -114 + breath, -9, -105 + breath);
+      ctx.closePath(); shape(ctx, trim, 1);
+    }
+    // 武器
+    const wAng = -0.12 + Math.sin(t / 520) * 0.06;
+    ctx.save();
+    ctx.translate(26, -66 + breath); ctx.rotate(wAng);
+    if (art.weapon === 'spear') {
+      line(ctx, 0, -40, 0, 44, 4, '#5b4a32');
+      ctx.beginPath();                                  // 火尖枪头
+      ctx.moveTo(0, -52); ctx.quadraticCurveTo(7, -40, 0, -34); ctx.quadraticCurveTo(-7, -40, 0, -52);
+      ctx.closePath(); shape(ctx, art.flame ? '#ffb03a' : '#cfd6de', 1.2);
+    } else {
+      line(ctx, 0, -34, 0, 34, 5, '#5b4a32');
+      // 大刀：窄长的刀身 + 深色刀脊，别做成一面白旗
+      ctx.beginPath();
+      ctx.moveTo(3, -36);
+      ctx.quadraticCurveTo(22, -28, 17, 2);
+      ctx.quadraticCurveTo(12, -12, 3, -18);
+      ctx.closePath(); shape(ctx, '#cfd6de', 1.3);
+      ctx.beginPath();
+      ctx.moveTo(3, -36); ctx.quadraticCurveTo(10, -26, 8, -8);
+      ctx.lineTo(3, -12); ctx.closePath(); shape(ctx, '#7d858f', 1);
+      // 护手
+      rr(ctx, -6, -8, 14, 5, 2); shape(ctx, '#c9a24a', 0.9);
+    }
+    ctx.restore();
+    // 前臂压到武器上
+    line(ctx, 15, -82 + breath, 26, -66 + breath, 8, skin);
+    circle(ctx, 26, -66 + breath, 5.6); shape(ctx, skin, 1.1);
+    ctx.restore();
+  }
+
+  function bossBeast(ctx, art, body, t) {
+    const fur = body || art.fur || '#6b5442';
+    const dark = body || art.furDark || '#493729';
+    const g = Math.sin(t / 130) * 2.2;
+    const snout = art.snout || 'pig';
+    // 后腿
+    line(ctx, -22, -26, -30, -6, 7, dark);
+    line(ctx, 16, -26, 24, -6, 7, dark);
+    // 近腿
+    line(ctx, -16, -26, -12 + g, -2, 8, fur);
+    line(ctx, 12, -26, 16 - g, -2, 8, fur);
+    // 身体
+    ctx.beginPath();
+    ctx.moveTo(-30, -30);
+    ctx.quadraticCurveTo(-34, -62, -6, -66);
+    ctx.quadraticCurveTo(22, -70, 30, -52);
+    ctx.quadraticCurveTo(34, -34, 18, -28);
+    ctx.quadraticCurveTo(-8, -24, -30, -30);
+    ctx.closePath();
+    shape(ctx, fur, 1.8);
+    // 肚皮浅色
+    ctx.beginPath();
+    ctx.moveTo(-14, -30); ctx.quadraticCurveTo(0, -26, 16, -32);
+    ctx.quadraticCurveTo(6, -46, -12, -44); ctx.closePath();
+    shape(ctx, 'rgba(255,235,205,0.22)', 0);
+    // 鬃毛（狮 / 猪）
+    if (art.mane) {
+      for (let i = 0; i < 9; i++) {
+        const a = -2.5 + i * 0.36;
+        const bx = 26 + Math.cos(a) * 16, by = -62 + Math.sin(a) * 16;
+        circle(ctx, bx, by, 8.5); shape(ctx, body || art.mane, 1.2);
+      }
+    }
+    // 头
+    if (snout === 'fish') {
+      // 鱼妖：圆头、巨眼、厚唇、鳃线、背鳍、尾鳍——靠"鱼"的特征，别做成老鼠
+      ctx.beginPath();
+      if (ctx.ellipse) ctx.ellipse(40, -54, 18, 15, -0.12, 0, Math.PI * 2); else ctx.arc(40, -54, 16, 0, Math.PI * 2);
+      shape(ctx, fur, 1.6);
+      // 宽扁的鱼嘴：一条往下的弧，不再往前凸成尖嘴
+      ctx.beginPath();
+      ctx.moveTo(50, -62); ctx.quadraticCurveTo(58, -54, 50, -46);
+      ctx.strokeStyle = '#3a1a12'; ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.stroke();
+      // 鳃
+      for (let i = 0; i < 2; i++) {
+        ctx.beginPath();
+        ctx.moveTo(30, -62 + i * 8);
+        ctx.quadraticCurveTo(26, -56 + i * 8, 30, -50 + i * 8);
+        ctx.strokeStyle = dark; ctx.lineWidth = 1.6; ctx.stroke();
+      }
+      // 巨眼
+      circle(ctx, 38, -60, 7.2); ctx.fillStyle = body || '#fff8e6'; ctx.fill();
+      circle(ctx, 40.5, -60, 3.4); ctx.fillStyle = '#161018'; ctx.fill();
+      circle(ctx, 41.6, -61.4, 1.2); ctx.fillStyle = '#fff'; ctx.fill();
+      // 背鳍 + 侧鳍 + 尾鳍
+      ctx.beginPath();
+      ctx.moveTo(12, -66); ctx.quadraticCurveTo(22, -88, 34, -66); ctx.closePath();
+      shape(ctx, body || art.fin || '#e8b48a', 1.2);
+      ctx.beginPath();
+      ctx.moveTo(12, -44); ctx.quadraticCurveTo(4, -30, 24, -32); ctx.closePath();
+      shape(ctx, body || art.fin || '#e8b48a', 1.1);
+      ctx.beginPath();
+      ctx.moveTo(-30, -46); ctx.quadraticCurveTo(-52, -58, -48, -40);
+      ctx.quadraticCurveTo(-52, -24, -30, -34); ctx.closePath();
+      shape(ctx, body || art.fin || '#e8b48a', 1.2);
+      // 鳞片
+      for (let i = 0; i < 4; i++) {
+        ctx.beginPath();
+        ctx.arc(-14 + i * 11, -50 + (i % 2) * 5, 5.5, 0.2, Math.PI - 0.2);
+        ctx.strokeStyle = 'rgba(0,0,0,0.22)'; ctx.lineWidth = 1.2; ctx.stroke();
+      }
+    } else {
+      ctx.beginPath();
+      ctx.moveTo(18, -64); ctx.quadraticCurveTo(42, -76, 52, -58);
+      ctx.quadraticCurveTo(56, -44, 40, -40);
+      ctx.quadraticCurveTo(24, -38, 18, -48);
+      ctx.closePath();
+      shape(ctx, fur, 1.6);
+      if (snout === 'pig') {
+        // 猪鼻：椭圆 + 两孔 + 獠牙
+        ctx.beginPath();
+        if (ctx.ellipse) ctx.ellipse(50, -54, 8, 6.5, 0, 0, Math.PI * 2); else ctx.arc(50, -54, 7, 0, Math.PI * 2);
+        shape(ctx, body || '#c98a8a', 1.1);
+        circle(ctx, 48, -55, 1.7); ctx.fillStyle = '#5a2a2a'; ctx.fill();
+        circle(ctx, 53, -55, 1.7); ctx.fillStyle = '#5a2a2a'; ctx.fill();
+      } else if (snout === 'lion') {
+        // 方吻 + 鼻 + 大獠牙
+        rr(ctx, 42, -60, 16, 16, 5); shape(ctx, body || '#d8bc8a', 1.2);
+        circle(ctx, 50, -54, 2.4); ctx.fillStyle = '#2a1a1a'; ctx.fill();
+      } else {
+        // 猿：短吻 + 大眉骨
+        ctx.beginPath();
+        if (ctx.ellipse) ctx.ellipse(47, -52, 8, 7, 0, 0, Math.PI * 2); else ctx.arc(47, -52, 7, 0, Math.PI * 2);
+        shape(ctx, body || '#c9ab84', 1.1);
+        line(ctx, 24, -68, 46, -64, 4, dark);
+      }
+      if (art.tusk) {
+        ctx.fillStyle = body || '#fff6e2';
+        for (const s2 of [1, -1]) {
+          ctx.beginPath();
+          ctx.moveTo(46 + s2 * 2, -46); ctx.quadraticCurveTo(50 + s2 * 3, -34, 44 + s2 * 2, -40);
+          ctx.closePath(); ctx.fill();
+        }
+      }
+      // 眼
+      circle(ctx, 38, -62, 4.2); ctx.fillStyle = body || '#ffce4a'; ctx.fill();
+      circle(ctx, 39, -62, 1.8); ctx.fillStyle = '#1a1008'; ctx.fill();
+    }
+    // 尾
+    ctx.beginPath();
+    ctx.moveTo(-30, -44);
+    ctx.quadraticCurveTo(-44, -50 + Math.sin(t / 240) * 6, -40, -30);
+    ctx.strokeStyle = dark; ctx.lineWidth = 4.5; ctx.lineCap = 'round'; ctx.stroke();
+    // 猿：长臂垂到地上 + 深色面罩，别和猪/狮混成一团
+    if (snout === 'ape') {
+      line(ctx, -10, -56, 4, -10, 9, dark);
+      circle(ctx, 5, -7, 7); shape(ctx, dark, 1.2);
+      line(ctx, 14, -60, 30, -14, 9.5, fur);
+      circle(ctx, 31, -9, 7.5); shape(ctx, body || '#c9ab84', 1.2);
+      ctx.beginPath();
+      if (ctx.ellipse) ctx.ellipse(45, -54, 9.5, 8.5, 0, 0, Math.PI * 2); else ctx.arc(45, -54, 8.5, 0, Math.PI * 2);
+      shape(ctx, 'rgba(26,36,32,0.5)', 0);
+      line(ctx, 38, -60, 44, -58, 2.2, '#0f1614');
+    }
+  }
+
+  function bossDragon(ctx, art, body, t) {
+    const sc = body || art.scale || '#2f7d6b';
+    const belly = body || art.belly || '#d9e8a8';
+    const sway = Math.sin(t / 420) * 5;
+    // 尾 + 身躯：一条粗线顺着身体爬上去（蛇形，不用方块）
+    ctx.beginPath();
+    ctx.moveTo(-46, -6);
+    ctx.quadraticCurveTo(-22, -10, -12, -30);
+    ctx.quadraticCurveTo(-4, -54, 10, -62);
+    ctx.strokeStyle = sc; ctx.lineWidth = 16; ctx.lineCap = 'round'; ctx.stroke();
+    ctx.strokeStyle = belly; ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.stroke();
+    // 背鳍
+    for (let i = 0; i < 5; i++) {
+      const bx = -34 + i * 10, by = -12 - i * 10;
+      ctx.beginPath();
+      ctx.moveTo(bx, by); ctx.lineTo(bx + 3, by - 9); ctx.lineTo(bx + 7, by - 1);
+      ctx.closePath(); shape(ctx, body || '#7fd8b8', 0.9);
+    }
+    // 前爪
+    line(ctx, 4, -56, 12, -36, 6, sc);
+    for (let i = 0; i < 3; i++) line(ctx, 12, -36, 20 + i * 3, -30 - i * 2, 2.4, body || '#f2f7e8');
+    line(ctx, -2, -48, -6, -28, 5.5, sc);
+    // 脖子
+    ctx.beginPath();
+    ctx.moveTo(6, -58); ctx.quadraticCurveTo(16 + sway * 0.2, -84, 26 + sway * 0.4, -92);
+    ctx.strokeStyle = sc; ctx.lineWidth = 12; ctx.lineCap = 'round'; ctx.stroke();
+    // 头：长吻 + 角 + 须 + 红眼
+    const hx = 28 + sway * 0.4, hy = -94;
+    ctx.save();
+    ctx.translate(hx, hy); ctx.rotate(0.1 + Math.sin(t / 700) * 0.05);
+    ctx.beginPath();
+    ctx.moveTo(-6, 4); ctx.quadraticCurveTo(14, -6, 26, -2);
+    ctx.quadraticCurveTo(30, 2, 22, 6); ctx.quadraticCurveTo(8, 10, -6, 4);
+    ctx.closePath(); shape(ctx, sc, 1.4);
+    // 嘴线 + 牙
+    line(ctx, 8, 3, 24, 1, 1.6, '#1a2b24');
+    ctx.fillStyle = body || '#fff6e2';
+    ctx.beginPath(); ctx.moveTo(16, 2); ctx.lineTo(19, 7); ctx.lineTo(21, 1); ctx.closePath(); ctx.fill();
+    // 角
+    ctx.strokeStyle = body || art.horn || '#e6dcc4'; ctx.lineWidth = 3.4; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(0, -2); ctx.quadraticCurveTo(-2, -16, 8, -14); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-6, 0); ctx.quadraticCurveTo(-12, -12, -2, -12); ctx.stroke();
+    // 须
+    ctx.strokeStyle = body || '#ffd479'; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.moveTo(24, 4); ctx.quadraticCurveTo(34, 8, 30, 16); ctx.stroke();
+    // 眼
+    circle(ctx, 12, -2, 3.4); ctx.fillStyle = body || art.eye || '#ffd479'; ctx.fill();
+    circle(ctx, 13, -2, 1.4); ctx.fillStyle = '#141a16'; ctx.fill();
+    ctx.restore();
+  }
+
+  function bossQueen(ctx, art, body, t) {
+    const skin = body || art.skin || '#8a4bb0';
+    const cloth = body || art.cloth || '#3a1746';
+    const g = Math.sin(t / 110) * 1.4;
+    // 八条蜘蛛腿（从腰后撑开）
+    for (let i = 0; i < 8; i++) {
+      const left = i < 4, k = i % 4;
+      const sgn = left ? -1 : 1;
+      const fx = sgn * (26 + k * 11);
+      const ph = Math.sin(t / 95 + i * 0.8) * 1.6;
+      ctx.beginPath();
+      ctx.moveTo(sgn * 4, -52 + k * 3);
+      ctx.quadraticCurveTo(sgn * (24 + k * 7), -68 + ph, fx, -2 + ph * 0.5);
+      ctx.strokeStyle = body || '#4a1f5e'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.stroke();
+    }
+    // 蛛腹
+    ctx.beginPath();
+    if (ctx.ellipse) ctx.ellipse(-10, -40, 22, 18, 0.2, 0, Math.PI * 2); else ctx.arc(-10, -40, 19, 0, Math.PI * 2);
+    shape(ctx, cloth, 1.5);
+    for (let i = 0; i < 3; i++) { circle(ctx, -16 + i * 6, -44 + i * 2, 3.4); shape(ctx, body || '#c9a6ff', 0.8); }
+    // 人形上身
+    ctx.beginPath();
+    ctx.moveTo(-6, -50); ctx.quadraticCurveTo(0, -76, 6, -80);
+    ctx.quadraticCurveTo(14, -72, 12, -50);
+    ctx.closePath(); shape(ctx, skin, 1.4);
+    // 裙褶
+    ctx.beginPath();
+    ctx.moveTo(-8, -50); ctx.lineTo(14, -50); ctx.lineTo(18, -34); ctx.lineTo(-12, -34);
+    ctx.closePath(); shape(ctx, cloth, 1.1);
+    // 手臂 + 垂丝
+    line(ctx, 4, -74, 20, -62, 4.5, skin);
+    line(ctx, 2, -72, -12, -60, 4.5, skin);
+    ctx.strokeStyle = body || 'rgba(230,220,255,0.75)'; ctx.lineWidth = 1.2;
+    for (const s2 of [20, -12]) {
+      ctx.beginPath(); ctx.moveTo(s2, -60); ctx.quadraticCurveTo(s2 + 4, -40, s2 - 2, -24 + g); ctx.stroke();
+    }
+    // 头 + 发髻 + 六眼
+    circle(ctx, 5, -92, 13); shape(ctx, skin, 1.5);
+    circle(ctx, 5, -104, 6.5); shape(ctx, body || '#22162a', 1);
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath();                        // 头冠尖
+      ctx.moveTo(-4 + i * 7, -104); ctx.lineTo(-2 + i * 7, -114); ctx.lineTo(2 + i * 7, -104);
+      ctx.closePath(); shape(ctx, body || '#c9a24a', 0.8);
+    }
+    for (let i = 0; i < 3; i++) {
+      circle(ctx, -1 + i * 6, -94, 2.1); ctx.fillStyle = '#ff5e8a'; ctx.fill();
+      circle(ctx, -1 + i * 6, -88, 1.5); ctx.fillStyle = '#ff9bb5'; ctx.fill();
+    }
+    ctx.fillStyle = '#2a1020';
+    ctx.beginPath(); ctx.moveTo(-2, -83); ctx.lineTo(12, -83); ctx.lineTo(5, -79); ctx.closePath(); ctx.fill();
+  }
+
   Art.drawEnemy = function (ctx, e, t, scale) {
     const flash = e.hitFlash > 0;
     const k = scale || 1;
@@ -2391,6 +2825,9 @@
     const hurtLeft = (e.hurtUntil || 0) - t;
     const hurtK = hurtLeft > 0 ? Math.sin(Math.min(1, hurtLeft / 200) * Math.PI) : 0;
     if (hurtK) { ctx.translate(-4.5 * hurtK, 0); ctx.rotate(-0.11 * hurtK); }
+    // 起手：往后一沉 + 微微下蹲，让玩家看得出"要打了"
+    const wind = e.state === 'windup' ? (e.tele || 0) : 0;
+    if (wind > 0) { ctx.translate(-5.5 * wind, 1.6 * wind); ctx.rotate(-0.055 * wind); }
     const body = flash ? '#ffffff' : null;
 
     if (e.kind === 'wolf') {
@@ -2468,8 +2905,9 @@
       circle(ctx, 15, -16.8, 1.5); ctx.fillStyle = '#ff6b6b'; ctx.fill();
       circle(ctx, 8.6, -20.4, 1.1); ctx.fillStyle = '#ff9b9b'; ctx.fill();
     } else if (e.kind === 'boss') {
-      const variant = e.variant || 'bull';
-      if (variant === 'bear') {
+      const art = e.art || { kind: e.variant || 'bull' };
+      const ak = art.kind || e.variant || 'bull';
+      if (ak === 'bear') {
         // 黑熊精：又壮又圆，披了件偷来的袈裟，手里一杆黑缨枪
         const fur = body || '#41301f', furDark = body || '#2a1d12';
         // 腿
@@ -2508,7 +2946,7 @@
           line(ctx, 0, -40, Math.sin(a) * 12, -40 + Math.cos(a) * 12, 2, body || '#1c1a22');
         }
         ctx.restore();
-      } else if (variant === 'bone') {
+      } else if (ak === 'bone') {
         // 白骨精：一副骨架披着破黑裙，双手两把骨刃
         const boneCol = body || '#ece6d8', cloth = body || '#1a1622';
         ctx.save();
@@ -2552,7 +2990,7 @@
         ctx.quadraticCurveTo(14, 10, 0, 4); ctx.closePath(); shape(ctx, boneCol, 1.2);
         ctx.restore();
         ctx.restore();
-      } else {
+      } else if (ak === 'bull') {
         // 牛魔王：壮硕红牛妖，黑铁胸甲 + 金腰带，肩扛一柄巨斧
         const hide = body || '#8e2b2b', hideDark = '#5e1a1a', iron = '#3b3f4a';
         // 腿 + 蹄
@@ -2617,6 +3055,14 @@
         // 前臂：从肩膀压到斧柄上
         line(ctx, 20, -62, 30, -50, 9, hide);
         circle(ctx, 30, -50, 6.5); shape(ctx, hide, 1.2);
+      } else if (ak === 'dragon') {
+        ctx.save(); ctx.scale(1.26, 1.26); bossDragon(ctx, art, body, t); ctx.restore();
+      } else if (ak === 'queen') {
+        ctx.save(); ctx.scale(1.06, 1.06); bossQueen(ctx, art, body, t); ctx.restore();
+      } else if (ak === 'beast') {
+        ctx.save(); ctx.scale(1.08, 1.08); bossBeast(ctx, art, body, t); ctx.restore();
+      } else {
+        ctx.save(); ctx.scale(1.08, 1.08); bossDemon(ctx, art, body, t); ctx.restore();
       }
     } else { // imp 小妖：短腿 + 圆身 + 角 + 獠牙，比纯色块好辨认
       const dark = body || '#8e2f26';
@@ -4384,6 +4830,7 @@
       this.noWeaponUntil = 0;        // 掷出兵器后，手上暂时是空的
       this.dashHits = null;
       this.buffAtkUntil = 0; this.buffSpdUntil = 0; this.buffDefUntil = 0; this.shieldUntil = 0;
+      this.slowUntil = 0;            // 中毒/缠丝：移速下降
       this.level = 1; this.exp = 0;
       // —— 动画状态 ——
       this.animT = 0;
@@ -4410,7 +4857,11 @@
       if (this.fxQueue.length < 60) this.fxQueue.push({ type: type, data: data || null });
     }
     get sprinting() { return this.runDir !== 0; }
-    get speedMul() { return (this.now < this.buffSpdUntil) ? 1.5 : 1; }
+    get speedMul() {
+      let m = (this.now < this.buffSpdUntil) ? 1.5 : 1;
+      if (this.now < this.slowUntil) m *= 0.55;
+      return m;
+    }
     get atkMul() { return (this.now < this.buffAtkUntil) ? 1.4 : 1; }
     get defMul() { return (this.now < this.buffDefUntil) ? 2 : 1; }
 
@@ -4611,25 +5062,34 @@
       const key = (XY.BOSSES && XY.BOSSES[variant]) ? variant : 'bull';
       const b = (XY.BOSSES && XY.BOSSES[key]) || XY.BOSS_BASE;
       const f = 1 + (lv - 1) * 0.18;
+      const moves = XY.bossMoves ? XY.bossMoves(b.moves) : [];
       const boss = new XY.Enemy('boss', {
         name: b.name, maxHp: Math.round(b.hp * f), hp: Math.round(b.hp * f),
         attack: Math.round(b.attack * f), defense: Math.round(b.defense * f),
         moveSpeed: b.moveSpeed, aggroRange: b.aggroRange, dropTable: b.dropTable,
-      }, x, y, 116, 152);
+      }, x, y, 116, 152, moves);
       boss.level = lv;
       boss.variant = key;
+      boss.title = b.title || '';
+      boss.art = b.art || { kind: key };
       return boss;
     }
     const base = XY.scaleEnemyStats(XY.ENEMY_BASE[kind], lv);
     const sizes = { imp: [44, 54], wolf: [66, 46], spider: [56, 40] };
     const [w, h] = sizes[kind];
-    const e = new XY.Enemy(kind, base, x, y, w, h);
+    const e = new XY.Enemy(kind, base, x, y, w, h, XY.movesFor ? XY.movesFor(kind) : []);
     e.level = lv;
     return e;
   };
 
+  const randBetween = (r, fallbackA, fallbackB) => {
+    const a = Array.isArray(r) ? r[0] : (fallbackA === undefined ? 1000 : fallbackA);
+    const b = Array.isArray(r) ? r[1] : (fallbackB === undefined ? a : fallbackB);
+    return a + Math.random() * Math.max(0, b - a);
+  };
+
   XY.Enemy = class {
-    constructor(kind, stats, x, y, w, h) {
+    constructor(kind, stats, x, y, w, h, moves) {
       this.kind = kind;
       this.stats = stats;
       this.name = stats.name;
@@ -4646,20 +5106,145 @@
       this.atkUntil = 0;
       this.hurtUntil = 0;     // 被打后的短暂僵直（造型层做后仰/抖动）
       this.isBoss = kind === 'boss';
+      // —— 招式与状态机 ——
+      this.moves = moves || [];
+      this.state = 'idle';    // idle/chase → windup → active → recover
+      this.stateUntil = 0;
+      this.cur = null;        // 当前招式
+      this.moveDir = -1;      // 起手时锁定的方向
+      this.tele = 0;          // 起手进度 0..1（美术层画预警用）
+      this.actK = 0;          // 出手进度 0..1
+      this.cds = {};          // 每招独立冷却
+      this.gapUntil = 0;      // 两招之间的最小间隔
+      this.strike = null;     // 一次性交给 game 结算的攻击
+      this.charge = null;     // 冲撞的持续判定
+      this.keepDist = Math.max(34, Math.round(w * 0.78));   // 停在兵器够得着的距离，别骑到人身上
     }
+
+    // 首领半血狂暴：起手更短、冷却更短
+    get enraged() { return this.isBoss && this.hp <= this.maxHp * 0.5; }
+
+    moveReady(m, dist, now) {
+      if ((this.cds[m.key] || 0) > now) return false;
+      const r = m.range;
+      if (Array.isArray(r)) return dist >= r[0] && dist <= r[1];
+      return dist <= r;
+    }
+
+    pickMove(dist, now) {
+      const pool = [];
+      for (const m of this.moves) if (this.moveReady(m, dist, now)) pool.push(m);
+      if (!pool.length) return null;
+      return pool[Math.floor(Math.random() * pool.length)];
+    }
+
+    beginWindup(m, now, player) {
+      this.state = 'windup';
+      this.cur = m;
+      this.tele = 0;
+      this.moveDir = (player.x + player.w / 2) >= (this.x + this.w / 2) ? 1 : -1;
+      this.facing = this.moveDir;
+      const scale = this.enraged ? 0.78 : 1;
+      this.stateUntil = now + Math.max(120, Math.round((m.windup || 400) * scale));
+    }
+
+    beginActive(now, player) {
+      const m = this.cur;
+      if (!m) { this.state = 'chase'; return; }
+      this.state = 'active';
+      this.actK = 0;
+      this.stateUntil = now + Math.max(60, m.active || 110);
+      this.atkUntil = this.stateUntil;               // 造型层据此做前冲
+      const dir = this.moveDir || this.facing || 1;
+      const cx = this.x + this.w / 2;
+      if (m.type === 'melee') {
+        const reach = m.range || 60;
+        const box = {
+          x: dir > 0 ? cx + this.w * 0.1 : cx - this.w * 0.1 - reach,
+          y: this.y + this.h * 0.06, w: reach, h: this.h * 0.88,
+        };
+        this.strike = { type: 'melee', move: m, box, mult: m.mult, dir };
+      } else if (m.type === 'dash') {
+        this.charge = { until: this.stateUntil, dir, mult: m.mult, move: m, hit: false };
+        this.strike = { type: 'dash', move: m, dir, mult: m.mult };
+      } else if (m.type === 'aoe') {
+        this.strike = {
+          type: 'aoe', move: m, mult: m.mult, dir,
+          radius: m.radius || 180, x: cx, y: this.y + this.h,
+        };
+      } else if (m.type === 'shot') {
+        this.strike = {
+          type: 'shot', move: m, mult: m.mult, dir,
+          x: cx + dir * this.w * 0.42, y: this.y + this.h * 0.44,
+          aimY: player.y + player.h * 0.45,
+        };
+      } else if (m.type === 'summon') {
+        this.strike = { type: 'summon', move: m, count: m.count || 2, kind: m.summonKind || 'imp' };
+      }
+    }
+
+    endMove(now) {
+      const m = this.cur;
+      this.state = 'recover';
+      this.stateUntil = now + ((m && m.recover) || 400) * (this.enraged ? 0.85 : 1);
+      this.gapUntil = now + 200;
+      if (m) this.cds[m.key] = now + randBetween(m.cd, 1400, 2200) * (this.enraged ? 0.72 : 1);
+      this.cur = null;
+      this.charge = null;
+    }
+
     update(dt, player, level, now) {
       this.now = now;
       if (this.hitFlash > 0) this.hitFlash -= dt;
-      // 击退/眩晕：不动
-      if (now < this.stunUntil) { this.vx = 0; this.vy += GRAVITY * dt; XY.moveAndCollide(this, level.platforms, dt); return; }
+      // 眩晕 / 被打断：只受重力，不出招
+      if (now < this.stunUntil) {
+        this.vx = 0; this.vy += GRAVITY * dt;
+        XY.moveAndCollide(this, level.platforms, dt);
+        this.tele = 0;
+        return;
+      }
       const dx = (player.x + player.w / 2) - (this.x + this.w / 2);
       const dist = Math.abs(dx);
-      if (dist < this.stats.aggroRange) {
-        this.facing = dx >= 0 ? 1 : -1;
-        this.vx = approach(this.vx, this.facing * this.stats.moveSpeed, this.stats.moveSpeed * 8 * dt);
+      const dir = dx >= 0 ? 1 : -1;
+      const aggro = dist < this.stats.aggroRange;
+      const alive = player.hp > 0;
+      const speed = this.stats.moveSpeed * (this.enraged ? 1.12 : 1);
+      const steer = (target, rate) => { this.vx = approach(this.vx, target, rate); };
+
+      if (this.state === 'windup') {
+        // 起手进度：0 刚抬手、1 就要打下来了（美术层拿它画预警）
+        const wu = this.cur ? Math.max(1, (this.cur.windup || 400) * (this.enraged ? 0.78 : 1)) : 400;
+        this.tele = Math.min(1, Math.max(0, 1 - (this.stateUntil - now) / wu));
+        steer(0, 1400 * dt);
+        if (now >= this.stateUntil) this.beginActive(now, player);
+      } else if (this.state === 'active') {
+        const m = this.cur;
+        this.actK = m ? Math.min(1, 1 - (this.stateUntil - now) / Math.max(1, m.active || 110)) : 1;
+        if (m && m.type === 'dash') steer((this.moveDir || 1) * (m.speed || 480), 6000 * dt);
+        else steer(0, 1200 * dt);
+        if (now >= this.stateUntil) this.endMove(now);
+      } else if (this.state === 'recover') {
+        this.tele = 0;
+        steer(0, 900 * dt);
+        if (now >= this.stateUntil) this.state = 'chase';
+      } else if (aggro && alive) {
+        this.state = 'chase';
+        this.facing = dir;
+        this.tele = 0;
+        if (dist > this.keepDist) steer(this.facing * speed, speed * 8 * dt);
+        else steer(0, speed * 10 * dt);
+        if (now >= this.gapUntil) {
+          const m = this.pickMove(dist, now);
+          if (m) this.beginWindup(m, now, player);
+        }
       } else {
-        this.vx = approach(this.vx, 0, this.stats.moveSpeed * 8 * dt);
+        this.state = 'idle';
+        this.tele = 0;
+        steer(0, speed * 6 * dt);
       }
+      // 被击退期间不主动走，只留惯性
+      if (now < this.knockUntil) this.vx *= 0.9;
+
       this.vy += GRAVITY * dt;
       if (this.vy > 1200) this.vy = 1200;
       XY.moveAndCollide(this, level.platforms, dt);
@@ -4687,6 +5272,7 @@
       this.life = life || 1.6; this.alive = true;
     }
     update(dt, level) {
+      if (this.gravity) this.vy += this.gravity * dt;
       this.x += this.vx * dt; this.y += this.vy * dt;
       this.life -= dt;
       if (this.life <= 0) this.alive = false;
@@ -4917,6 +5503,119 @@
     ctx.fillStyle = '#ffe9a8'; ctx.font = 'bold 14px serif'; ctx.fillText('终', gx + 14, gy - 56);
   };
 
+  // 出招预警：地面上画出「这一下够得着的范围」，再用一段扫过来的亮扇形表示蓄力进度
+  UI.drawEnemyTell = function (ctx, e, now) {
+    const m = e.cur;
+    if (!m) return;
+    const t = e.state === 'windup' ? (e.tele || 0) : 1;
+    const col = m.tell || '#ff8a5e';
+    const cx = e.x + e.w / 2, feet = e.y + e.h;
+    const reach = Array.isArray(m.range) ? Math.max(90, m.range[0]) : (m.radius || m.range || 90);
+    const dir = e.moveDir || e.facing || 1;
+    const TAU = Math.PI * 2;
+    const rx = Math.max(16, reach * (1.08 - 0.16 * t));
+    // 压扁成贴地的一条：圈子再大也不会爬到大半身位上去挡住自己
+    const ry = Math.max(12, Math.min(rx * 0.30, 24));
+
+    // 冲撞：先把冲过去的那条道铺出来
+    if (m.type === 'dash') {
+      const far = Math.min(Array.isArray(m.range) ? m.range[1] : 300, 340);
+      const x0 = cx + dir * e.w * 0.5;
+      ctx.save();
+      ctx.globalAlpha = 0.10 + 0.13 * t;
+      ctx.fillStyle = col;
+      ctx.fillRect(Math.min(x0, x0 + dir * far), feet - 26, far, 26);
+      ctx.globalAlpha = 0.5 + 0.4 * t;
+      ctx.strokeStyle = col; ctx.lineWidth = 2;
+      if (ctx.setLineDash) ctx.setLineDash([9, 7]);
+      ctx.beginPath();
+      ctx.moveTo(x0, feet - 1); ctx.lineTo(x0 + dir * far, feet - 1);
+      ctx.stroke();
+      if (ctx.setLineDash) ctx.setLineDash([]);
+      // 指向箭头
+      ctx.globalAlpha = 0.6 + 0.4 * t;
+      const ax = x0 + dir * far * 0.98;
+      ctx.beginPath();
+      ctx.moveTo(ax, feet - 8);
+      ctx.lineTo(ax - dir * 13, feet - 18);
+      ctx.lineTo(ax - dir * 13, feet + 2);
+      ctx.closePath(); ctx.fillStyle = col; ctx.fill();
+      ctx.restore();
+    }
+
+    const ex = cx + dir * reach * (m.type === 'dash' ? 0.15 : 0.12);
+    const ey = feet - 3;
+    const ellipse = (x, y, r1, r2, a0, a1) => {
+      ctx.beginPath();
+      if (ctx.ellipse) ctx.ellipse(x, y, r1, r2, 0, a0, a1);
+      else ctx.arc(x, y, r1, a0, a1);
+    };
+
+    ctx.save();
+    // 1) 危险区底色
+    ctx.globalAlpha = 0.16 + 0.30 * t;
+    ctx.fillStyle = col;
+    ellipse(ex, ey, rx, ry, 0, TAU); ctx.fill();
+    // 2) 蓄力扇形：从正上方开始顺时针扫一圈，扫满就出手
+    ctx.globalAlpha = 0.34 + 0.42 * t;
+    ctx.beginPath();
+    ctx.moveTo(ex, ey);
+    if (ctx.ellipse) ctx.ellipse(ex, ey, rx, ry, 0, -Math.PI / 2, -Math.PI / 2 + TAU * t);
+    else ctx.arc(ex, ey, rx, -Math.PI / 2, -Math.PI / 2 + TAU * t);
+    ctx.closePath();
+    ctx.fill();
+    // 3) 亮边：先垫一圈深色描边，浅色地面上也能咬住边
+    ctx.globalAlpha = 0.42;
+    ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+    ctx.lineWidth = 5 + 1.8 * t;
+    ellipse(ex, ey, rx, ry, 0, TAU); ctx.stroke();
+    ctx.globalAlpha = 0.9 + 0.1 * t;
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 2.8 + 1.8 * t;
+    ellipse(ex, ey, rx, ry, 0, TAU); ctx.stroke();
+    // 白芯细线：不管地面是深是浅，这条边都咬得住
+    ctx.globalAlpha = 0.55 + 0.35 * t;
+    ctx.strokeStyle = '#fff6dd';
+    ctx.lineWidth = 1.2;
+    ellipse(ex, ey, rx, ry, 0, TAU); ctx.stroke();
+    // 4) 快出手时再补一圈内收的细圈，压迫感更强
+    if (t > 0.55) {
+      ctx.globalAlpha = (t - 0.55) / 0.45 * 0.75;
+      ctx.lineWidth = 1.5;
+      ellipse(ex, ey, rx * (1 - 0.5 * t), ry * (1 - 0.5 * t), 0, TAU); ctx.stroke();
+    }
+    // 5) 临门一脚：整块范围再闪一下
+    if (t > 0.86) {
+      ctx.globalAlpha = 0.22 + 0.22 * Math.sin(now / 45);
+      ctx.fillStyle = col;
+      ellipse(ex, ey, rx, ry, 0, TAU); ctx.fill();
+    }
+    // 6) 头顶的叹号挪到 drawAlertMark（画在敌人之上，才不会被脑袋挡住）
+    ctx.restore();
+  };
+
+  // 头上的"!"：单独画在敌人之后，小怪才用（首领个头太大，靠地面光圈 + 顶部血条闪红提示）
+  UI.drawAlertMark = function (ctx, e, now) {
+    if (e.isBoss || e.state !== 'windup') return;
+    const cx = e.x + e.w / 2;
+    const by = e.y - 24; // 让开头顶血条（血条在 y-10）
+    const pulse = 0.62 + 0.38 * Math.sin(now / 70);
+    ctx.save();
+    ctx.globalAlpha = 0.62 * pulse;
+    ctx.fillStyle = '#1a0f0c';
+    ctx.beginPath(); ctx.arc(cx, by, 9.5, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 0.9 * pulse;
+    ctx.strokeStyle = '#ffcf6a'; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.arc(cx, by, 9.5, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = pulse;
+    ctx.fillStyle = '#ffe08a';
+    ctx.font = 'bold 15px sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('!', cx, by + 1);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    ctx.restore();
+  };
+
   UI.drawWorld = function (ctx, game) {
     const now = game.now;
     UI.drawPlatforms(ctx, game);
@@ -4928,8 +5627,11 @@
     // 敌人
     for (const e of game.level.enemies) {
       if (!e.alive) continue;
+      if (e.state === 'windup' || e.state === 'active') UI.drawEnemyTell(ctx, e, now);
       const k = (e.h / (ENEMY_ART_H[e.kind] || 34)) * 1.02;
       Art().drawEnemy(ctx, e, now, k);
+      // 起手叹号画在身上面，别被脑袋糊住
+      UI.drawAlertMark(ctx, e, now);
       // 血条
       if (!e.isBoss) {
         const bw = Math.max(30, e.w);
@@ -5078,7 +5780,7 @@
     const killed = game.level.enemies.filter((e) => !e.alive).length;
     ctx.fillStyle = '#8a93a6'; ctx.font = '11px sans-serif';
     if (game.level.hasBoss) {
-      // 首领名从场上那只 boss 取，别写死"牛魔王"——12 关里三只首领各不同
+      // 首领名从场上那只 boss 取，别写死"牛魔王"——12 关里首领各不相同
       let bossName = '';
       for (const e of game.level.enemies) if (e.isBoss && e.name) bossName = e.name;
       ctx.fillText(bossName ? '击败 ' + bossName + ' 即可通关' : '击败首领即可通关', W - 20, 48);
@@ -5192,11 +5894,99 @@
     ctx.fillText('B 背包 · L 锻造 · G 商店 · H 技能 · P 暂停 · M 静音', W / 2, H - 6);
     ctx.textAlign = 'left';
 
-    if (XY.Input && XY.Input.keyCount === 0) {
+    if (XY.Input && XY.Input.keyCount === 0 && (game.bossBarA || 0) < 0.25) {
       ctx.fillStyle = 'rgba(255,212,121,0.92)'; ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center';
       ctx.fillText('键盘未接管 · 用画面下方按钮操作（或先点一下画面再按键）', W / 2, 112);
       ctx.textAlign = 'left';
     }
+  };
+
+  // ===== 首领血条（屏幕上方，遇敌时滑下来）=====
+  UI.drawBossBar = function (ctx, game) {
+    const a = Math.min(1, game.bossBarA || 0);
+    const boss = game.bossRef;
+    if (!boss || a < 0.02) return;
+    const enraged = boss.hp <= boss.maxHp * 0.5;
+    const winding = boss.state === 'windup';
+    const pulse = 0.6 + 0.4 * Math.sin((game.now || 0) / 90);
+    const pw = 588, ph = 66, px = (W - pw) / 2, py = 86;
+    const barX = px + 20, barY = py + 32, barW = pw - 40, barH = 15;
+    const pct = Math.max(0, Math.min(1, boss.hp / boss.maxHp));
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.translate(0, (1 - a) * -24);
+    // 底板
+    rrect(ctx, px, py, pw, ph, 12);
+    ctx.fillStyle = 'rgba(10,12,20,0.84)'; ctx.fill();
+    if (winding) {
+      // 首领起手：整条外框闪红，提醒"要出招了"
+      ctx.globalAlpha = a * (0.45 + 0.5 * pulse);
+      rrect(ctx, px - 2, py - 2, pw + 4, ph + 4, 13);
+      ctx.strokeStyle = '#ff5e5e'; ctx.lineWidth = 3; ctx.stroke();
+      ctx.globalAlpha = a;
+    }
+    ctx.strokeStyle = enraged ? 'rgba(255,94,94,0.92)' : 'rgba(255,212,121,0.62)';
+    ctx.lineWidth = 1.8; ctx.stroke();
+    // 两端的小回纹
+    ctx.strokeStyle = enraged ? '#ff5e5e' : '#ffd479'; ctx.lineWidth = 2;
+    for (const s of [0, 1]) {
+      const x0 = s ? px + pw - 20 : px + 20;
+      ctx.beginPath();
+      ctx.moveTo(x0, py + 7); ctx.lineTo(s ? x0 + 14 : x0 - 14, py + 7);
+      ctx.stroke();
+    }
+    // 名字 + 称号
+    ctx.textAlign = 'center';
+    ctx.fillStyle = enraged ? '#ff9a9a' : '#ffd479';
+    ctx.font = 'bold 21px "PingFang SC", "Microsoft YaHei", serif';
+    ctx.fillText(boss.name + (boss.level ? '  Lv.' + boss.level : ''), W / 2, py + 25);
+    // 血条
+    rrect(ctx, barX, barY, barW, barH, barH / 2);
+    ctx.fillStyle = '#191a24'; ctx.fill();
+    if (pct > 0) {
+      if (ctx.createLinearGradient) {
+        const g = ctx.createLinearGradient(barX, barY, barX + barW, barY);
+        g.addColorStop(0, enraged ? '#8f1c1c' : '#9e2b2b');
+        g.addColorStop(0.6, enraged ? '#e03a2a' : '#d94a35');
+        g.addColorStop(1, enraged ? '#ff7a3a' : '#ef7a3f');
+        ctx.fillStyle = g;
+      } else ctx.fillStyle = '#c0392b';
+      rrect(ctx, barX, barY, Math.max(barH, barW * pct), barH, barH / 2); ctx.fill();
+      const prev = ctx.globalAlpha;
+      ctx.globalAlpha = prev * 0.32; ctx.fillStyle = '#fff';
+      rrect(ctx, barX + 3, barY + 2, Math.max(0, barW * pct - 6), barH * 0.32, 3); ctx.fill();
+      ctx.globalAlpha = prev;
+    }
+    // 四分之一刻度
+    ctx.strokeStyle = 'rgba(0,0,0,0.38)'; ctx.lineWidth = 1;
+    for (let i = 1; i < 4; i++) {
+      const tx = barX + (barW * i) / 4;
+      ctx.beginPath(); ctx.moveTo(tx, barY); ctx.lineTo(tx, barY + barH); ctx.stroke();
+    }
+    // 半血狂暴线
+    const mx = barX + barW * 0.5;
+    ctx.strokeStyle = 'rgba(255,212,121,0.9)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(mx, barY - 3); ctx.lineTo(mx, barY + barH + 3); ctx.stroke();
+    // 血量数字（条内右侧）
+    ctx.textAlign = 'right';
+    ctx.fillStyle = 'rgba(255,255,255,0.92)'; ctx.font = 'bold 11px sans-serif';
+    ctx.fillText(Math.ceil(boss.hp) + ' / ' + boss.maxHp, barX + barW - 8, barY + barH - 3.5);
+    // 称号 / 起手招式 / 狂暴提示
+    ctx.textAlign = 'center';
+    if (winding && boss.cur) {
+      ctx.fillStyle = 'rgba(255,120,110,' + (0.65 + 0.35 * pulse) + ')';
+      ctx.font = 'bold 11px "PingFang SC", sans-serif';
+      ctx.fillText('！' + boss.cur.name + '  起手', W / 2, py + ph - 4);
+    } else if (enraged) {
+      ctx.fillStyle = 'rgba(255,140,110,' + (0.6 + 0.35 * Math.sin((game.now || 0) / 180)) + ')';
+      ctx.font = 'bold 11px "PingFang SC", sans-serif';
+      ctx.fillText('狂暴 · 出手更快', W / 2, py + ph - 4);
+    } else {
+      ctx.fillStyle = 'rgba(160,172,190,0.82)'; ctx.font = '11px "PingFang SC", sans-serif';
+      ctx.fillText(boss.title ? '「' + boss.title + '」' : '', W / 2, py + ph - 4);
+    }
+    ctx.textAlign = 'left';
+    ctx.restore();
   };
 
   // ===== 标题 =====
@@ -6236,7 +7026,7 @@
 
   // ===== Toast =====
   UI.drawToast = function (ctx, game) {
-    let y = 150; // 让开顶部 HUD 与"键盘未接管"提示条，避免文字叠在一起
+    let y = (game.bossBarA || 0) > 0.3 ? 172 : 150; // 首领血条在时往下让一格
     for (const t of game.toasts) {
       ctx.globalAlpha = Math.min(1, t.left / 600);
       center(ctx, t.text, y, 'bold 17px "PingFang SC", sans-serif', '#ffd479');
@@ -6277,6 +7067,9 @@
       this.specials = [];       // 掷出的兵器等"有自己生命周期的招式"
       this.pending = [];        // 延迟结算（重劈的落点判定）
       this.cam = { x: 0 };
+      this.bossRef = null;       // 场上的首领（血条读它）
+      this.bossBarA = 0;         // 血条淡入淡出
+      this.bossDeadAt = 0;
       this.cutIndex = 0; this.cutTimer = 0;
       this.inventory = {}; this.equipped = {}; this.treasures = [];
       this.treasureSlots = [null, null, null];
@@ -6549,6 +7342,7 @@
       this.projectiles = []; this.floaters = []; this.expPops = [];
       this.specials = []; this.pending = [];
       this.fx.clear();
+      this.bossRef = null; this.bossBarA = 0; this.bossDeadAt = 0;
       const pl = this.player;
       pl.x = 80; pl.y = 360; pl.vx = 0; pl.vy = 0; pl.facing = 1;
       pl.hp = pl.maxHp;
@@ -6735,7 +7529,7 @@
               state: this.state, cam: Math.round(this.cam.x),
               player: pl ? { x: Math.round(pl.x), y: Math.round(pl.y), onGround: pl.onGround, vy: Math.round(pl.vy) } : null,
               platforms: lv ? lv.platforms.map((p2) => [p2.x, p2.y, p2.w, p2.h]) : null,
-              enemies: lv ? lv.enemies.map((e) => ({ k: e.kind, x: Math.round(e.x), y: Math.round(e.y), w: e.w, h: e.h, hp: Math.round(e.hp), alive: e.alive })) : null,
+              enemies: lv ? lv.enemies.map((e) => ({ k: e.kind, x: Math.round(e.x), y: Math.round(e.y), w: e.w, h: e.h, hp: Math.round(e.hp), alive: e.alive, s: e.state, m: e.cur ? e.cur.key : null, t: +(e.tele || 0).toFixed(2) })) : null,
             });
           }
         }
@@ -6873,20 +7667,27 @@
             }
           }
         } else {
-          if (pl.hp > 0 && pl.invuln <= now && XY.aabb({ x: p.x - p.r, y: p.y - p.r, w: p.r * 2, h: p.r * 2 }, pl)) { this.hurtPlayer(p.damage); p.alive = false; }
+          if (pl.hp > 0 && pl.invuln <= now && XY.aabb({ x: p.x - p.r, y: p.y - p.r, w: p.r * 2, h: p.r * 2 }, pl)) {
+            this.hurtPlayer(p.damage);
+            if (p.slow) {
+              pl.slowUntil = now + 2200;
+              this.floater(pl.x + pl.w / 2, pl.y - 18, '缠住了', '#c9a6ff');
+            }
+            p.alive = false;
+          }
         }
       }
       this.projectiles = this.projectiles.filter((p) => p.alive);
 
-      // 敌人近身攻击
+      // 敌人出招：AI 在 windup 结束时挂一次 strike，这里结算（一招只打一次）
       for (const e of lv.enemies) {
         if (!e.alive) continue;
-        if (now >= e.atkReady && pl.invuln <= now && now >= pl.dashUntil && XY.aabb(e, pl)) {
-          const d = XY.computeDamage({ attack: e.stats.attack, critRate: 0 }, { defense: pl.stats.defense * pl.defMul }, 1, Math.random);
-          e.atkUntil = now + 260;
-          this.hurtPlayer(d.amount);
-          this.fx.slash(pl.x + pl.w / 2, pl.y + 12, pl.facing * -1, '#ff8a5e', 0.75, 0.18);
-          e.atkReady = now + 900;
+        if (e.strike) { this.resolveEnemyStrike(e, e.strike); e.strike = null; }
+        // 冲撞：整个 active 期间贴身就撞，撞到一次就停
+        const c = e.charge;
+        if (c && !c.hit && now < c.until && pl.hp > 0 && XY.aabb(e, pl)) {
+          c.hit = true;
+          this.hurtPlayerBy(e, c.mult, { tag: 'charge' });
         }
       }
 
@@ -6904,6 +7705,18 @@
           }
         }
       }
+
+      // —— 首领血条：走到首领跟前才浮出来，打死之后再留 0.9 秒 ——
+      const bossNow = lv.enemies.find((e) => e.isBoss && e.alive) || null;
+      if (bossNow) { this.bossRef = bossNow; this.bossDeadAt = 0; }
+      else if (this.bossRef && !this.bossDeadAt) this.bossDeadAt = now;
+      let wantBar = 0;
+      if (this.bossRef) {
+        const bd = Math.abs((this.bossRef.x + this.bossRef.w / 2) - (pl.x + pl.w / 2));
+        if (bossNow && bd < 680) wantBar = 1;
+        else if (!bossNow && this.bossDeadAt && now - this.bossDeadAt < 900) wantBar = 1;
+      }
+      this.bossBarA = (this.bossBarA || 0) + (wantBar - (this.bossBarA || 0)) * Math.min(1, dt * 8);
 
       this.cam.x = clamp(pl.x + pl.w / 2 - W / 2, 0, lv.width - W);
 
@@ -7232,6 +8045,12 @@
       e.hp = Math.max(0, (Number.isFinite(e.hp) ? e.hp : e.maxHp) - dmg);
       e.hitFlash = 0.12;
       e.hurtUntil = this.now + 220;                 // 挨打动作：后仰一下再站稳
+      // 暴击能打断小怪的起手（首领霸体，只能靠躲）
+      if (isCrit && !e.isBoss && e.state === 'windup') {
+        e.state = 'recover'; e.stateUntil = this.now + 340;
+        e.cur = null; e.tele = 0; e.strike = null;
+        this.floater(e.x + e.w / 2, e.y - 22, '打断', '#7fd0ff');
+      }
       if (XY.Audio) XY.Audio.sfx(isCrit ? 'crit' : 'hit');
       this.floater(e.x + e.w / 2, e.y, '-' + dmg + (isCrit ? '!' : ''), isCrit ? '#ff5e5e' : '#fff');
       this.fx.spark(e.x + e.w / 2, e.y + e.h / 2, isCrit ? 10 : 5, isCrit ? '#ff8a5e' : '#ffe9a8', { speed: 190 });
@@ -7273,6 +8092,96 @@
       if (e.isBoss) { this.fx.ring(e.x + e.w / 2, e.y + e.h / 2, 10, 220, '#ffd479', 0.7, 8); this.shake = 12; this.toast('击败 ' + e.name + '！'); }
       this.save();
     }
+    // —— 敌人一招打出来：近身 / 冲撞 / 震地 / 妖火 / 召妖 ——
+    // 伤害在出招那一刻才算，起手（windup）时玩家还来得及躲。
+    enemyDamage(e, mult) {
+      const pl = this.player;
+      const r = XY.computeDamage({ attack: e.stats.attack, critRate: 0 },
+        { defense: pl.stats.defense * pl.defMul }, mult || 1, Math.random);
+      const v = Number.isFinite(r.amount) ? r.amount : 1;
+      return Math.max(1, Math.round(v));
+    }
+
+    hurtPlayerBy(e, mult, opts) {
+      const pl = this.player, o = opts || {};
+      if (pl.hp <= 0 || pl.invuln > this.now) return false;
+      this.hurtPlayer(this.enemyDamage(e, mult));
+      if (o.tag === 'charge') this.shake = Math.min(16, this.shake + 5);
+      return true;
+    }
+
+    resolveEnemyStrike(e, s) {
+      const pl = this.player, m = s.move || {}, now = this.now;
+      const tell = m.tell || '#ff8a5e';
+      if (XY.Audio) {
+        const map = { melee: e.isBoss ? 'smash' : 'swing', dash: 'dash', aoe: 'aoe', shot: 'shoot', summon: 'open' };
+        XY.Audio.sfx(map[s.type]);
+      }
+      if (s.type === 'melee') {
+        this.fx.slash(s.box.x + s.box.w * 0.5, s.box.y + s.box.h * 0.45, s.dir,
+          tell, Math.max(0.55, s.box.w / 78), 0.2);
+        if (XY.aabb(s.box, pl)) {
+          this.hurtPlayerBy(e, s.mult, { tag: m.dot ? 'slow' : 'hit' });
+          if (m.dot) {
+            pl.slowUntil = now + 2400;
+            this.floater(pl.x + pl.w / 2, pl.y - 18, '中毒 · 减速', '#b06bff');
+          }
+          this.shake = Math.min(14, this.shake + (m.shake || 2.5));
+        }
+      } else if (s.type === 'dash') {
+        this.fx.dust(e.x + e.w / 2, e.y + e.h, 12, '#c9a06a', 70, 45);
+        this.fx.slash(e.x + e.w / 2 + s.dir * e.w * 0.4, e.y + e.h * 0.45, s.dir, tell, 1.1, 0.24);
+        this.shake = Math.min(14, this.shake + (m.shake || 4));
+      } else if (s.type === 'aoe') {
+        this.fx.ring(s.x, s.y, 10, s.radius, tell, 0.5, 9);
+        this.fx.ring(s.x, s.y, 4, s.radius * 0.62, '#fff6cc', 0.38, 5);
+        this.fx.dust(s.x, s.y, 20, '#c9a06a', 110, 55);
+        this.shake = Math.min(20, this.shake + (m.shake || 8));
+        const dx = Math.abs((pl.x + pl.w / 2) - s.x);
+        const feet = pl.y + pl.h;
+        if (dx <= s.radius && feet >= s.y - 96 && pl.y < s.y + 12) this.hurtPlayerBy(e, s.mult, { tag: 'quake' });
+      } else if (s.type === 'shot') {
+        const pdef = m.proj || {};
+        const count = pdef.count || 1;
+        for (let i = 0; i < count; i++) {
+          const spread = (i - (count - 1) / 2);
+          const p = new XY.Projectile(
+            s.x, s.y + spread * 10,
+            s.dir * (pdef.speed || 320), (pdef.vy || 0) + spread * 22,
+            this.enemyDamage(e, s.mult), 'enemy',
+            pdef.r || 8, pdef.color || tell, pdef.life || 2.4
+          );
+          p.gravity = pdef.gravity || 0;
+          p.slow = !!m.slow;
+          this.projectiles.push(p);
+        }
+        this.fx.spark(s.x, s.y, 8, pdef.color || tell, { speed: 160, angle: s.dir > 0 ? 0 : Math.PI, spread: 0.8 });
+      } else if (s.type === 'summon') {
+        this.summonMinions(e, s);
+      }
+    }
+
+    summonMinions(e, s) {
+      const count = s.count || 2;
+      let made = 0;
+      for (let i = 0; i < count; i++) {
+        const side = i % 2 === 0 ? 1 : -1;
+        const x = clamp(e.x + e.w / 2 + side * (70 + i * 24), 20, this.level.width - 60);
+        if (this.level.enemies.filter((q) => q.alive).length > 14) break;   // 别把屏幕塞爆
+        const minion = XY.makeEnemy(s.kind || 'imp', x, e.y + e.h - 60, Math.max(1, e.level || 1));
+        XY.liftOutOfPlatforms(minion, this.level.platforms);
+        minion.summoned = true;
+        this.level.enemies.push(minion);
+        this.fx.ring(minion.x + minion.w / 2, minion.y + minion.h, 4, 30, '#9ad0ff', 0.45, 4);
+        this.fx.dust(minion.x + minion.w / 2, minion.y + minion.h, 8, '#9ad0ff', 30, 50);
+        made++;
+      }
+      if (made) {
+        this.toast(e.name + ' 召来 ' + made + ' 只帮手');
+        this.shake = Math.min(10, this.shake + 2);
+      }
+    }
+
     hurtPlayer(amount) {
       const pl = this.player;
       if (pl.shieldUntil > this.now) amount = Math.round(amount * 0.3);
@@ -7548,6 +8457,12 @@
       this.player.exp = 40;
       this.player.recalcStats({ fullHeal: true });
       this.player.x = 300;
+      // ?px=1900 把角色直接放到指定位置（截图看首领/血条/预警用）
+      if (params.get('px') != null) {
+        const px0 = parseFloat(params.get('px'));
+        const lim = (XY.LEVELS[this.levelIndex] || XY.LEVELS[0]).width - 90;
+        if (Number.isFinite(px0)) this.player.x = clamp(px0, 20, lim);
+      }
       // 招式定格：?atk=0..3&atkp=0.5 把普攻定格在指定进度，方便看动作
       // 走 pose() 的调试分支，而不是伪造 attackStart/attackUntil——后者算出来的
       // p 会变成负数（被 seg 夹到 0），看起来四招全都停在起手，白折腾。
@@ -7558,6 +8473,12 @@
         this.player._dbgAtk = { k: ak, p: ap, path: cfg.path, body: cfg.body };
         this._dbgSlash = { k: ak, p: ap, style: cfg.style, fxDx: cfg.fxDx, fxDy: cfg.fxDy };
         this._dbgSlashAt = -9999;
+      }
+      // ?bosshp=0.35 把首领血量压到指定比例，方便看狂暴态的血条
+      if (params.get('bosshp') != null) {
+        const ratio = parseFloat(params.get('bosshp'));
+        const boss = this.level.enemies.find((q) => q.isBoss);
+        if (boss && Number.isFinite(ratio)) boss.hp = Math.max(1, Math.round(boss.maxHp * Math.min(1, Math.max(0.01, ratio))));
       }
       const map = {
         title: 'title', charselect: 'charselect', levelselect: 'levelselect', cutscene: 'cutscene', intro: 'levelIntro',
@@ -7610,7 +8531,7 @@
           state: this.state, cam: Math.round(this.cam.x),
           player: pl ? { x: Math.round(pl.x), y: Math.round(pl.y), onGround: pl.onGround, vy: Math.round(pl.vy) } : null,
           platforms: lv ? lv.platforms.map((q) => [q.x, q.y, q.w, q.h]) : null,
-          enemies: lv ? lv.enemies.map((e) => ({ k: e.kind, x: Math.round(e.x), y: Math.round(e.y), w: e.w, h: e.h, hp: Math.round(e.hp), alive: e.alive })) : null,
+          enemies: lv ? lv.enemies.map((e) => ({ k: e.kind, x: Math.round(e.x), y: Math.round(e.y), w: e.w, h: e.h, hp: Math.round(e.hp), alive: e.alive, s: e.state, m: e.cur ? e.cur.key : null, t: +(e.tele || 0).toFixed(2) })) : null,
         };
         if (typeof document !== 'undefined') {
           const el = document.getElementById('diag');
@@ -7676,6 +8597,7 @@
         ctx.fillRect(0, 0, W, H);
       }
       XY.UI.drawHUD(ctx, this);
+      XY.UI.drawBossBar(ctx, this);
       XY.UI.drawToast(ctx, this);
     }
   };

@@ -24,6 +24,9 @@
       this.specials = [];       // 掷出的兵器等"有自己生命周期的招式"
       this.pending = [];        // 延迟结算（重劈的落点判定）
       this.cam = { x: 0 };
+      this.bossRef = null;       // 场上的首领（血条读它）
+      this.bossBarA = 0;         // 血条淡入淡出
+      this.bossDeadAt = 0;
       this.cutIndex = 0; this.cutTimer = 0;
       this.inventory = {}; this.equipped = {}; this.treasures = [];
       this.treasureSlots = [null, null, null];
@@ -296,6 +299,7 @@
       this.projectiles = []; this.floaters = []; this.expPops = [];
       this.specials = []; this.pending = [];
       this.fx.clear();
+      this.bossRef = null; this.bossBarA = 0; this.bossDeadAt = 0;
       const pl = this.player;
       pl.x = 80; pl.y = 360; pl.vx = 0; pl.vy = 0; pl.facing = 1;
       pl.hp = pl.maxHp;
@@ -482,7 +486,7 @@
               state: this.state, cam: Math.round(this.cam.x),
               player: pl ? { x: Math.round(pl.x), y: Math.round(pl.y), onGround: pl.onGround, vy: Math.round(pl.vy) } : null,
               platforms: lv ? lv.platforms.map((p2) => [p2.x, p2.y, p2.w, p2.h]) : null,
-              enemies: lv ? lv.enemies.map((e) => ({ k: e.kind, x: Math.round(e.x), y: Math.round(e.y), w: e.w, h: e.h, hp: Math.round(e.hp), alive: e.alive })) : null,
+              enemies: lv ? lv.enemies.map((e) => ({ k: e.kind, x: Math.round(e.x), y: Math.round(e.y), w: e.w, h: e.h, hp: Math.round(e.hp), alive: e.alive, s: e.state, m: e.cur ? e.cur.key : null, t: +(e.tele || 0).toFixed(2) })) : null,
             });
           }
         }
@@ -620,20 +624,27 @@
             }
           }
         } else {
-          if (pl.hp > 0 && pl.invuln <= now && XY.aabb({ x: p.x - p.r, y: p.y - p.r, w: p.r * 2, h: p.r * 2 }, pl)) { this.hurtPlayer(p.damage); p.alive = false; }
+          if (pl.hp > 0 && pl.invuln <= now && XY.aabb({ x: p.x - p.r, y: p.y - p.r, w: p.r * 2, h: p.r * 2 }, pl)) {
+            this.hurtPlayer(p.damage);
+            if (p.slow) {
+              pl.slowUntil = now + 2200;
+              this.floater(pl.x + pl.w / 2, pl.y - 18, '缠住了', '#c9a6ff');
+            }
+            p.alive = false;
+          }
         }
       }
       this.projectiles = this.projectiles.filter((p) => p.alive);
 
-      // 敌人近身攻击
+      // 敌人出招：AI 在 windup 结束时挂一次 strike，这里结算（一招只打一次）
       for (const e of lv.enemies) {
         if (!e.alive) continue;
-        if (now >= e.atkReady && pl.invuln <= now && now >= pl.dashUntil && XY.aabb(e, pl)) {
-          const d = XY.computeDamage({ attack: e.stats.attack, critRate: 0 }, { defense: pl.stats.defense * pl.defMul }, 1, Math.random);
-          e.atkUntil = now + 260;
-          this.hurtPlayer(d.amount);
-          this.fx.slash(pl.x + pl.w / 2, pl.y + 12, pl.facing * -1, '#ff8a5e', 0.75, 0.18);
-          e.atkReady = now + 900;
+        if (e.strike) { this.resolveEnemyStrike(e, e.strike); e.strike = null; }
+        // 冲撞：整个 active 期间贴身就撞，撞到一次就停
+        const c = e.charge;
+        if (c && !c.hit && now < c.until && pl.hp > 0 && XY.aabb(e, pl)) {
+          c.hit = true;
+          this.hurtPlayerBy(e, c.mult, { tag: 'charge' });
         }
       }
 
@@ -651,6 +662,18 @@
           }
         }
       }
+
+      // —— 首领血条：走到首领跟前才浮出来，打死之后再留 0.9 秒 ——
+      const bossNow = lv.enemies.find((e) => e.isBoss && e.alive) || null;
+      if (bossNow) { this.bossRef = bossNow; this.bossDeadAt = 0; }
+      else if (this.bossRef && !this.bossDeadAt) this.bossDeadAt = now;
+      let wantBar = 0;
+      if (this.bossRef) {
+        const bd = Math.abs((this.bossRef.x + this.bossRef.w / 2) - (pl.x + pl.w / 2));
+        if (bossNow && bd < 680) wantBar = 1;
+        else if (!bossNow && this.bossDeadAt && now - this.bossDeadAt < 900) wantBar = 1;
+      }
+      this.bossBarA = (this.bossBarA || 0) + (wantBar - (this.bossBarA || 0)) * Math.min(1, dt * 8);
 
       this.cam.x = clamp(pl.x + pl.w / 2 - W / 2, 0, lv.width - W);
 
@@ -979,6 +1002,12 @@
       e.hp = Math.max(0, (Number.isFinite(e.hp) ? e.hp : e.maxHp) - dmg);
       e.hitFlash = 0.12;
       e.hurtUntil = this.now + 220;                 // 挨打动作：后仰一下再站稳
+      // 暴击能打断小怪的起手（首领霸体，只能靠躲）
+      if (isCrit && !e.isBoss && e.state === 'windup') {
+        e.state = 'recover'; e.stateUntil = this.now + 340;
+        e.cur = null; e.tele = 0; e.strike = null;
+        this.floater(e.x + e.w / 2, e.y - 22, '打断', '#7fd0ff');
+      }
       if (XY.Audio) XY.Audio.sfx(isCrit ? 'crit' : 'hit');
       this.floater(e.x + e.w / 2, e.y, '-' + dmg + (isCrit ? '!' : ''), isCrit ? '#ff5e5e' : '#fff');
       this.fx.spark(e.x + e.w / 2, e.y + e.h / 2, isCrit ? 10 : 5, isCrit ? '#ff8a5e' : '#ffe9a8', { speed: 190 });
@@ -1020,6 +1049,96 @@
       if (e.isBoss) { this.fx.ring(e.x + e.w / 2, e.y + e.h / 2, 10, 220, '#ffd479', 0.7, 8); this.shake = 12; this.toast('击败 ' + e.name + '！'); }
       this.save();
     }
+    // —— 敌人一招打出来：近身 / 冲撞 / 震地 / 妖火 / 召妖 ——
+    // 伤害在出招那一刻才算，起手（windup）时玩家还来得及躲。
+    enemyDamage(e, mult) {
+      const pl = this.player;
+      const r = XY.computeDamage({ attack: e.stats.attack, critRate: 0 },
+        { defense: pl.stats.defense * pl.defMul }, mult || 1, Math.random);
+      const v = Number.isFinite(r.amount) ? r.amount : 1;
+      return Math.max(1, Math.round(v));
+    }
+
+    hurtPlayerBy(e, mult, opts) {
+      const pl = this.player, o = opts || {};
+      if (pl.hp <= 0 || pl.invuln > this.now) return false;
+      this.hurtPlayer(this.enemyDamage(e, mult));
+      if (o.tag === 'charge') this.shake = Math.min(16, this.shake + 5);
+      return true;
+    }
+
+    resolveEnemyStrike(e, s) {
+      const pl = this.player, m = s.move || {}, now = this.now;
+      const tell = m.tell || '#ff8a5e';
+      if (XY.Audio) {
+        const map = { melee: e.isBoss ? 'smash' : 'swing', dash: 'dash', aoe: 'aoe', shot: 'shoot', summon: 'open' };
+        XY.Audio.sfx(map[s.type]);
+      }
+      if (s.type === 'melee') {
+        this.fx.slash(s.box.x + s.box.w * 0.5, s.box.y + s.box.h * 0.45, s.dir,
+          tell, Math.max(0.55, s.box.w / 78), 0.2);
+        if (XY.aabb(s.box, pl)) {
+          this.hurtPlayerBy(e, s.mult, { tag: m.dot ? 'slow' : 'hit' });
+          if (m.dot) {
+            pl.slowUntil = now + 2400;
+            this.floater(pl.x + pl.w / 2, pl.y - 18, '中毒 · 减速', '#b06bff');
+          }
+          this.shake = Math.min(14, this.shake + (m.shake || 2.5));
+        }
+      } else if (s.type === 'dash') {
+        this.fx.dust(e.x + e.w / 2, e.y + e.h, 12, '#c9a06a', 70, 45);
+        this.fx.slash(e.x + e.w / 2 + s.dir * e.w * 0.4, e.y + e.h * 0.45, s.dir, tell, 1.1, 0.24);
+        this.shake = Math.min(14, this.shake + (m.shake || 4));
+      } else if (s.type === 'aoe') {
+        this.fx.ring(s.x, s.y, 10, s.radius, tell, 0.5, 9);
+        this.fx.ring(s.x, s.y, 4, s.radius * 0.62, '#fff6cc', 0.38, 5);
+        this.fx.dust(s.x, s.y, 20, '#c9a06a', 110, 55);
+        this.shake = Math.min(20, this.shake + (m.shake || 8));
+        const dx = Math.abs((pl.x + pl.w / 2) - s.x);
+        const feet = pl.y + pl.h;
+        if (dx <= s.radius && feet >= s.y - 96 && pl.y < s.y + 12) this.hurtPlayerBy(e, s.mult, { tag: 'quake' });
+      } else if (s.type === 'shot') {
+        const pdef = m.proj || {};
+        const count = pdef.count || 1;
+        for (let i = 0; i < count; i++) {
+          const spread = (i - (count - 1) / 2);
+          const p = new XY.Projectile(
+            s.x, s.y + spread * 10,
+            s.dir * (pdef.speed || 320), (pdef.vy || 0) + spread * 22,
+            this.enemyDamage(e, s.mult), 'enemy',
+            pdef.r || 8, pdef.color || tell, pdef.life || 2.4
+          );
+          p.gravity = pdef.gravity || 0;
+          p.slow = !!m.slow;
+          this.projectiles.push(p);
+        }
+        this.fx.spark(s.x, s.y, 8, pdef.color || tell, { speed: 160, angle: s.dir > 0 ? 0 : Math.PI, spread: 0.8 });
+      } else if (s.type === 'summon') {
+        this.summonMinions(e, s);
+      }
+    }
+
+    summonMinions(e, s) {
+      const count = s.count || 2;
+      let made = 0;
+      for (let i = 0; i < count; i++) {
+        const side = i % 2 === 0 ? 1 : -1;
+        const x = clamp(e.x + e.w / 2 + side * (70 + i * 24), 20, this.level.width - 60);
+        if (this.level.enemies.filter((q) => q.alive).length > 14) break;   // 别把屏幕塞爆
+        const minion = XY.makeEnemy(s.kind || 'imp', x, e.y + e.h - 60, Math.max(1, e.level || 1));
+        XY.liftOutOfPlatforms(minion, this.level.platforms);
+        minion.summoned = true;
+        this.level.enemies.push(minion);
+        this.fx.ring(minion.x + minion.w / 2, minion.y + minion.h, 4, 30, '#9ad0ff', 0.45, 4);
+        this.fx.dust(minion.x + minion.w / 2, minion.y + minion.h, 8, '#9ad0ff', 30, 50);
+        made++;
+      }
+      if (made) {
+        this.toast(e.name + ' 召来 ' + made + ' 只帮手');
+        this.shake = Math.min(10, this.shake + 2);
+      }
+    }
+
     hurtPlayer(amount) {
       const pl = this.player;
       if (pl.shieldUntil > this.now) amount = Math.round(amount * 0.3);
@@ -1295,6 +1414,12 @@
       this.player.exp = 40;
       this.player.recalcStats({ fullHeal: true });
       this.player.x = 300;
+      // ?px=1900 把角色直接放到指定位置（截图看首领/血条/预警用）
+      if (params.get('px') != null) {
+        const px0 = parseFloat(params.get('px'));
+        const lim = (XY.LEVELS[this.levelIndex] || XY.LEVELS[0]).width - 90;
+        if (Number.isFinite(px0)) this.player.x = clamp(px0, 20, lim);
+      }
       // 招式定格：?atk=0..3&atkp=0.5 把普攻定格在指定进度，方便看动作
       // 走 pose() 的调试分支，而不是伪造 attackStart/attackUntil——后者算出来的
       // p 会变成负数（被 seg 夹到 0），看起来四招全都停在起手，白折腾。
@@ -1305,6 +1430,12 @@
         this.player._dbgAtk = { k: ak, p: ap, path: cfg.path, body: cfg.body };
         this._dbgSlash = { k: ak, p: ap, style: cfg.style, fxDx: cfg.fxDx, fxDy: cfg.fxDy };
         this._dbgSlashAt = -9999;
+      }
+      // ?bosshp=0.35 把首领血量压到指定比例，方便看狂暴态的血条
+      if (params.get('bosshp') != null) {
+        const ratio = parseFloat(params.get('bosshp'));
+        const boss = this.level.enemies.find((q) => q.isBoss);
+        if (boss && Number.isFinite(ratio)) boss.hp = Math.max(1, Math.round(boss.maxHp * Math.min(1, Math.max(0.01, ratio))));
       }
       const map = {
         title: 'title', charselect: 'charselect', levelselect: 'levelselect', cutscene: 'cutscene', intro: 'levelIntro',
@@ -1357,7 +1488,7 @@
           state: this.state, cam: Math.round(this.cam.x),
           player: pl ? { x: Math.round(pl.x), y: Math.round(pl.y), onGround: pl.onGround, vy: Math.round(pl.vy) } : null,
           platforms: lv ? lv.platforms.map((q) => [q.x, q.y, q.w, q.h]) : null,
-          enemies: lv ? lv.enemies.map((e) => ({ k: e.kind, x: Math.round(e.x), y: Math.round(e.y), w: e.w, h: e.h, hp: Math.round(e.hp), alive: e.alive })) : null,
+          enemies: lv ? lv.enemies.map((e) => ({ k: e.kind, x: Math.round(e.x), y: Math.round(e.y), w: e.w, h: e.h, hp: Math.round(e.hp), alive: e.alive, s: e.state, m: e.cur ? e.cur.key : null, t: +(e.tele || 0).toFixed(2) })) : null,
         };
         if (typeof document !== 'undefined') {
           const el = document.getElementById('diag');
@@ -1423,6 +1554,7 @@
         ctx.fillRect(0, 0, W, H);
       }
       XY.UI.drawHUD(ctx, this);
+      XY.UI.drawBossBar(ctx, this);
       XY.UI.drawToast(ctx, this);
     }
   };

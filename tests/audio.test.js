@@ -44,6 +44,11 @@ function run(g, idx) {
   g.now = 4000;
   return g;
 }
+// 现在每一关都有首领，通关条件是把它打掉（不再靠走到旗子）
+function clearLevel(g) {
+  for (const e of g.level.enemies) if (e.isBoss) e.alive = false;
+  step(g);
+}
 function resetAudio() {
   const A = XY.Audio;
   if (A._timer) { clearInterval(A._timer); A._timer = null; }
@@ -57,8 +62,7 @@ function resetAudio() {
 test.it('走到终点即进入过关结算，五个选项齐全且发放仙玉', () => {
   const g = run(fresh());
   const jade0 = g.jade;
-  g.player.x = g.level.goal.x;
-  step(g);
+  clearLevel(g);
   assert.strictEqual(g.state, 'levelClear', '通关后应停在结算界面，而不是直接切下一关');
   assert.ok(g.clearStats && g.clearStats.name === XY.LEVELS[0].name, '结算应记录关卡名');
   assert.ok(g.clearStats.total >= 1, '结算应记录本关妖物总数');
@@ -70,8 +74,7 @@ test.it('走到终点即进入过关结算，五个选项齐全且发放仙玉',
 
 test.it('结算菜单：可跳商店/锻造/参悟，Esc 原路返回结算而不是回到战斗', () => {
   const g = run(fresh());
-  g.player.x = g.level.goal.x;
-  step(g);
+  clearLevel(g);
   assert.strictEqual(g.state, 'levelClear');
 
   for (const [key, want] of [['KeyG', 'shop'], ['KeyL', 'craft'], ['KeyH', 'skillup']]) {
@@ -84,8 +87,7 @@ test.it('结算菜单：可跳商店/锻造/参悟，Esc 原路返回结算而�
 
 test.it('结算菜单：下一关进入新关卡前情，最后一关是「完成取经」→ win', () => {
   const g = run(fresh());
-  g.player.x = g.level.goal.x;
-  step(g);
+  clearLevel(g);
   g.clearIndex = 0;
   tap('Enter'); step(g);
   assert.strictEqual(g.state, 'levelIntro', '下一关应先播关卡前情');
@@ -110,8 +112,7 @@ test.it('结算菜单：下一关进入新关卡前情，最后一关是「完�
 
 test.it('返回主菜单：结算里选主菜单会回到标题页', () => {
   const g = run(fresh());
-  g.player.x = g.level.goal.x;
-  step(g);
+  clearLevel(g);
   g.clearIndex = g.clearOptions().length - 1;
   g.render();
   tap('Enter'); step(g);

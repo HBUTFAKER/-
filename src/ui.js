@@ -195,6 +195,119 @@
     ctx.fillStyle = '#ffe9a8'; ctx.font = 'bold 14px serif'; ctx.fillText('终', gx + 14, gy - 56);
   };
 
+  // 出招预警：地面上画出「这一下够得着的范围」，再用一段扫过来的亮扇形表示蓄力进度
+  UI.drawEnemyTell = function (ctx, e, now) {
+    const m = e.cur;
+    if (!m) return;
+    const t = e.state === 'windup' ? (e.tele || 0) : 1;
+    const col = m.tell || '#ff8a5e';
+    const cx = e.x + e.w / 2, feet = e.y + e.h;
+    const reach = Array.isArray(m.range) ? Math.max(90, m.range[0]) : (m.radius || m.range || 90);
+    const dir = e.moveDir || e.facing || 1;
+    const TAU = Math.PI * 2;
+    const rx = Math.max(16, reach * (1.08 - 0.16 * t));
+    // 压扁成贴地的一条：圈子再大也不会爬到大半身位上去挡住自己
+    const ry = Math.max(12, Math.min(rx * 0.30, 24));
+
+    // 冲撞：先把冲过去的那条道铺出来
+    if (m.type === 'dash') {
+      const far = Math.min(Array.isArray(m.range) ? m.range[1] : 300, 340);
+      const x0 = cx + dir * e.w * 0.5;
+      ctx.save();
+      ctx.globalAlpha = 0.10 + 0.13 * t;
+      ctx.fillStyle = col;
+      ctx.fillRect(Math.min(x0, x0 + dir * far), feet - 26, far, 26);
+      ctx.globalAlpha = 0.5 + 0.4 * t;
+      ctx.strokeStyle = col; ctx.lineWidth = 2;
+      if (ctx.setLineDash) ctx.setLineDash([9, 7]);
+      ctx.beginPath();
+      ctx.moveTo(x0, feet - 1); ctx.lineTo(x0 + dir * far, feet - 1);
+      ctx.stroke();
+      if (ctx.setLineDash) ctx.setLineDash([]);
+      // 指向箭头
+      ctx.globalAlpha = 0.6 + 0.4 * t;
+      const ax = x0 + dir * far * 0.98;
+      ctx.beginPath();
+      ctx.moveTo(ax, feet - 8);
+      ctx.lineTo(ax - dir * 13, feet - 18);
+      ctx.lineTo(ax - dir * 13, feet + 2);
+      ctx.closePath(); ctx.fillStyle = col; ctx.fill();
+      ctx.restore();
+    }
+
+    const ex = cx + dir * reach * (m.type === 'dash' ? 0.15 : 0.12);
+    const ey = feet - 3;
+    const ellipse = (x, y, r1, r2, a0, a1) => {
+      ctx.beginPath();
+      if (ctx.ellipse) ctx.ellipse(x, y, r1, r2, 0, a0, a1);
+      else ctx.arc(x, y, r1, a0, a1);
+    };
+
+    ctx.save();
+    // 1) 危险区底色
+    ctx.globalAlpha = 0.16 + 0.30 * t;
+    ctx.fillStyle = col;
+    ellipse(ex, ey, rx, ry, 0, TAU); ctx.fill();
+    // 2) 蓄力扇形：从正上方开始顺时针扫一圈，扫满就出手
+    ctx.globalAlpha = 0.34 + 0.42 * t;
+    ctx.beginPath();
+    ctx.moveTo(ex, ey);
+    if (ctx.ellipse) ctx.ellipse(ex, ey, rx, ry, 0, -Math.PI / 2, -Math.PI / 2 + TAU * t);
+    else ctx.arc(ex, ey, rx, -Math.PI / 2, -Math.PI / 2 + TAU * t);
+    ctx.closePath();
+    ctx.fill();
+    // 3) 亮边：先垫一圈深色描边，浅色地面上也能咬住边
+    ctx.globalAlpha = 0.42;
+    ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+    ctx.lineWidth = 5 + 1.8 * t;
+    ellipse(ex, ey, rx, ry, 0, TAU); ctx.stroke();
+    ctx.globalAlpha = 0.9 + 0.1 * t;
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 2.8 + 1.8 * t;
+    ellipse(ex, ey, rx, ry, 0, TAU); ctx.stroke();
+    // 白芯细线：不管地面是深是浅，这条边都咬得住
+    ctx.globalAlpha = 0.55 + 0.35 * t;
+    ctx.strokeStyle = '#fff6dd';
+    ctx.lineWidth = 1.2;
+    ellipse(ex, ey, rx, ry, 0, TAU); ctx.stroke();
+    // 4) 快出手时再补一圈内收的细圈，压迫感更强
+    if (t > 0.55) {
+      ctx.globalAlpha = (t - 0.55) / 0.45 * 0.75;
+      ctx.lineWidth = 1.5;
+      ellipse(ex, ey, rx * (1 - 0.5 * t), ry * (1 - 0.5 * t), 0, TAU); ctx.stroke();
+    }
+    // 5) 临门一脚：整块范围再闪一下
+    if (t > 0.86) {
+      ctx.globalAlpha = 0.22 + 0.22 * Math.sin(now / 45);
+      ctx.fillStyle = col;
+      ellipse(ex, ey, rx, ry, 0, TAU); ctx.fill();
+    }
+    // 6) 头顶的叹号挪到 drawAlertMark（画在敌人之上，才不会被脑袋挡住）
+    ctx.restore();
+  };
+
+  // 头上的"!"：单独画在敌人之后，小怪才用（首领个头太大，靠地面光圈 + 顶部血条闪红提示）
+  UI.drawAlertMark = function (ctx, e, now) {
+    if (e.isBoss || e.state !== 'windup') return;
+    const cx = e.x + e.w / 2;
+    const by = e.y - 24; // 让开头顶血条（血条在 y-10）
+    const pulse = 0.62 + 0.38 * Math.sin(now / 70);
+    ctx.save();
+    ctx.globalAlpha = 0.62 * pulse;
+    ctx.fillStyle = '#1a0f0c';
+    ctx.beginPath(); ctx.arc(cx, by, 9.5, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 0.9 * pulse;
+    ctx.strokeStyle = '#ffcf6a'; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.arc(cx, by, 9.5, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = pulse;
+    ctx.fillStyle = '#ffe08a';
+    ctx.font = 'bold 15px sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('!', cx, by + 1);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    ctx.restore();
+  };
+
   UI.drawWorld = function (ctx, game) {
     const now = game.now;
     UI.drawPlatforms(ctx, game);
@@ -206,8 +319,11 @@
     // 敌人
     for (const e of game.level.enemies) {
       if (!e.alive) continue;
+      if (e.state === 'windup' || e.state === 'active') UI.drawEnemyTell(ctx, e, now);
       const k = (e.h / (ENEMY_ART_H[e.kind] || 34)) * 1.02;
       Art().drawEnemy(ctx, e, now, k);
+      // 起手叹号画在身上面，别被脑袋糊住
+      UI.drawAlertMark(ctx, e, now);
       // 血条
       if (!e.isBoss) {
         const bw = Math.max(30, e.w);
@@ -356,7 +472,7 @@
     const killed = game.level.enemies.filter((e) => !e.alive).length;
     ctx.fillStyle = '#8a93a6'; ctx.font = '11px sans-serif';
     if (game.level.hasBoss) {
-      // 首领名从场上那只 boss 取，别写死"牛魔王"——12 关里三只首领各不同
+      // 首领名从场上那只 boss 取，别写死"牛魔王"——12 关里首领各不相同
       let bossName = '';
       for (const e of game.level.enemies) if (e.isBoss && e.name) bossName = e.name;
       ctx.fillText(bossName ? '击败 ' + bossName + ' 即可通关' : '击败首领即可通关', W - 20, 48);
@@ -470,11 +586,99 @@
     ctx.fillText('B 背包 · L 锻造 · G 商店 · H 技能 · P 暂停 · M 静音', W / 2, H - 6);
     ctx.textAlign = 'left';
 
-    if (XY.Input && XY.Input.keyCount === 0) {
+    if (XY.Input && XY.Input.keyCount === 0 && (game.bossBarA || 0) < 0.25) {
       ctx.fillStyle = 'rgba(255,212,121,0.92)'; ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center';
       ctx.fillText('键盘未接管 · 用画面下方按钮操作（或先点一下画面再按键）', W / 2, 112);
       ctx.textAlign = 'left';
     }
+  };
+
+  // ===== 首领血条（屏幕上方，遇敌时滑下来）=====
+  UI.drawBossBar = function (ctx, game) {
+    const a = Math.min(1, game.bossBarA || 0);
+    const boss = game.bossRef;
+    if (!boss || a < 0.02) return;
+    const enraged = boss.hp <= boss.maxHp * 0.5;
+    const winding = boss.state === 'windup';
+    const pulse = 0.6 + 0.4 * Math.sin((game.now || 0) / 90);
+    const pw = 588, ph = 66, px = (W - pw) / 2, py = 86;
+    const barX = px + 20, barY = py + 32, barW = pw - 40, barH = 15;
+    const pct = Math.max(0, Math.min(1, boss.hp / boss.maxHp));
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.translate(0, (1 - a) * -24);
+    // 底板
+    rrect(ctx, px, py, pw, ph, 12);
+    ctx.fillStyle = 'rgba(10,12,20,0.84)'; ctx.fill();
+    if (winding) {
+      // 首领起手：整条外框闪红，提醒"要出招了"
+      ctx.globalAlpha = a * (0.45 + 0.5 * pulse);
+      rrect(ctx, px - 2, py - 2, pw + 4, ph + 4, 13);
+      ctx.strokeStyle = '#ff5e5e'; ctx.lineWidth = 3; ctx.stroke();
+      ctx.globalAlpha = a;
+    }
+    ctx.strokeStyle = enraged ? 'rgba(255,94,94,0.92)' : 'rgba(255,212,121,0.62)';
+    ctx.lineWidth = 1.8; ctx.stroke();
+    // 两端的小回纹
+    ctx.strokeStyle = enraged ? '#ff5e5e' : '#ffd479'; ctx.lineWidth = 2;
+    for (const s of [0, 1]) {
+      const x0 = s ? px + pw - 20 : px + 20;
+      ctx.beginPath();
+      ctx.moveTo(x0, py + 7); ctx.lineTo(s ? x0 + 14 : x0 - 14, py + 7);
+      ctx.stroke();
+    }
+    // 名字 + 称号
+    ctx.textAlign = 'center';
+    ctx.fillStyle = enraged ? '#ff9a9a' : '#ffd479';
+    ctx.font = 'bold 21px "PingFang SC", "Microsoft YaHei", serif';
+    ctx.fillText(boss.name + (boss.level ? '  Lv.' + boss.level : ''), W / 2, py + 25);
+    // 血条
+    rrect(ctx, barX, barY, barW, barH, barH / 2);
+    ctx.fillStyle = '#191a24'; ctx.fill();
+    if (pct > 0) {
+      if (ctx.createLinearGradient) {
+        const g = ctx.createLinearGradient(barX, barY, barX + barW, barY);
+        g.addColorStop(0, enraged ? '#8f1c1c' : '#9e2b2b');
+        g.addColorStop(0.6, enraged ? '#e03a2a' : '#d94a35');
+        g.addColorStop(1, enraged ? '#ff7a3a' : '#ef7a3f');
+        ctx.fillStyle = g;
+      } else ctx.fillStyle = '#c0392b';
+      rrect(ctx, barX, barY, Math.max(barH, barW * pct), barH, barH / 2); ctx.fill();
+      const prev = ctx.globalAlpha;
+      ctx.globalAlpha = prev * 0.32; ctx.fillStyle = '#fff';
+      rrect(ctx, barX + 3, barY + 2, Math.max(0, barW * pct - 6), barH * 0.32, 3); ctx.fill();
+      ctx.globalAlpha = prev;
+    }
+    // 四分之一刻度
+    ctx.strokeStyle = 'rgba(0,0,0,0.38)'; ctx.lineWidth = 1;
+    for (let i = 1; i < 4; i++) {
+      const tx = barX + (barW * i) / 4;
+      ctx.beginPath(); ctx.moveTo(tx, barY); ctx.lineTo(tx, barY + barH); ctx.stroke();
+    }
+    // 半血狂暴线
+    const mx = barX + barW * 0.5;
+    ctx.strokeStyle = 'rgba(255,212,121,0.9)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(mx, barY - 3); ctx.lineTo(mx, barY + barH + 3); ctx.stroke();
+    // 血量数字（条内右侧）
+    ctx.textAlign = 'right';
+    ctx.fillStyle = 'rgba(255,255,255,0.92)'; ctx.font = 'bold 11px sans-serif';
+    ctx.fillText(Math.ceil(boss.hp) + ' / ' + boss.maxHp, barX + barW - 8, barY + barH - 3.5);
+    // 称号 / 起手招式 / 狂暴提示
+    ctx.textAlign = 'center';
+    if (winding && boss.cur) {
+      ctx.fillStyle = 'rgba(255,120,110,' + (0.65 + 0.35 * pulse) + ')';
+      ctx.font = 'bold 11px "PingFang SC", sans-serif';
+      ctx.fillText('！' + boss.cur.name + '  起手', W / 2, py + ph - 4);
+    } else if (enraged) {
+      ctx.fillStyle = 'rgba(255,140,110,' + (0.6 + 0.35 * Math.sin((game.now || 0) / 180)) + ')';
+      ctx.font = 'bold 11px "PingFang SC", sans-serif';
+      ctx.fillText('狂暴 · 出手更快', W / 2, py + ph - 4);
+    } else {
+      ctx.fillStyle = 'rgba(160,172,190,0.82)'; ctx.font = '11px "PingFang SC", sans-serif';
+      ctx.fillText(boss.title ? '「' + boss.title + '」' : '', W / 2, py + ph - 4);
+    }
+    ctx.textAlign = 'left';
+    ctx.restore();
   };
 
   // ===== 标题 =====
@@ -1514,7 +1718,7 @@
 
   // ===== Toast =====
   UI.drawToast = function (ctx, game) {
-    let y = 150; // 让开顶部 HUD 与"键盘未接管"提示条，避免文字叠在一起
+    let y = (game.bossBarA || 0) > 0.3 ? 172 : 150; // 首领血条在时往下让一格
     for (const t of game.toasts) {
       ctx.globalAlpha = Math.min(1, t.left / 600);
       center(ctx, t.text, y, 'bold 17px "PingFang SC", sans-serif', '#ffd479');

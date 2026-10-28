@@ -231,24 +231,123 @@
       { itemId: 'mat_soul', weight: 1, chance: 0.3, min: 1, max: 1 },
       { itemId: 'mat_herb', weight: 1, chance: 0.3, min: 1, max: 1 } ] },
   };
-  // 三只首领：造型在 art.js 里按 variant 分支画，这里只管数值与人设
-  XY.BOSSES = {
-    bull: { name: '牛魔王', hp: 600, attack: 22, defense: 10, moveSpeed: 70, aggroRange: 9999,
-      dropTable: [
-        { itemId: 'mat_soul', weight: 1, chance: 1, min: 3, max: 5 },
-        { itemId: 'mat_fire', weight: 1, chance: 0.8, min: 2, max: 3 },
-        { itemId: 'mat_stone', weight: 1, chance: 0.8, min: 2, max: 3 } ] },
-    bear: { name: '黑熊精', hp: 520, attack: 20, defense: 14, moveSpeed: 64, aggroRange: 9999,
-      dropTable: [
-        { itemId: 'mat_soul', weight: 1, chance: 1, min: 2, max: 4 },
-        { itemId: 'mat_stone', weight: 1, chance: 0.9, min: 2, max: 4 },
-        { itemId: 'mat_herb', weight: 1, chance: 0.6, min: 1, max: 3 } ] },
-    bone: { name: '白骨精', hp: 480, attack: 24, defense: 7, moveSpeed: 96, aggroRange: 9999,
-      dropTable: [
-        { itemId: 'mat_soul', weight: 1, chance: 1, min: 3, max: 6 },
-        { itemId: 'mat_wood', weight: 1, chance: 0.7, min: 2, max: 3 },
-        { itemId: 'mat_fire', weight: 1, chance: 0.6, min: 1, max: 2 } ] },
+  // ===== 敌人招式表 =====
+  // 每只怪都有「普攻 + 技能」，不再是站着贴人扣血。
+  //   type：melee 近身 / shot 远程 / dash 冲撞 / aoe 震地 / summon 召唤
+  //   windup 起手（这段时间有红圈提示，玩家能躲）/ active 出手 / recover 收招
+  //   range：近身是够得着的长度；远程/冲撞是 [最近, 最远]，超出就不放
+  //   cd：两段之间的随机冷却区间（毫秒）
+  //   tell：起手提示色
+  XY.ENEMY_MOVES = {
+    imp: [
+      { key: 'claw', name: '抓挠', type: 'melee', range: 52, mult: 1,
+        windup: 320, active: 110, recover: 300, cd: [820, 1300], tell: '#ffb35c' },
+      { key: 'rock', name: '掷石', type: 'shot', range: [140, 360], mult: 0.85,
+        windup: 520, active: 90, recover: 430, cd: [2200, 3200], tell: '#e08a4a',
+        proj: { speed: 330, vy: -170, gravity: 620, r: 7, color: '#b08a5c', life: 2.6 } },
+    ],
+    wolf: [
+      { key: 'bite', name: '撕咬', type: 'melee', range: 64, mult: 1.05,
+        windup: 280, active: 110, recover: 250, cd: [700, 1150], tell: '#ff8a5e' },
+      { key: 'pounce', name: '扑击', type: 'dash', range: [86, 240], mult: 1.35, speed: 520,
+        windup: 430, active: 240, recover: 430, cd: [2500, 3500], tell: '#ff5e5e' },
+    ],
+    spider: [
+      { key: 'fangs', name: '毒牙', type: 'melee', range: 50, mult: 0.95, dot: true,
+        windup: 300, active: 100, recover: 300, cd: [880, 1320], tell: '#b06bff' },
+      { key: 'web', name: '吐丝', type: 'shot', range: [110, 320], mult: 0.7, slow: true,
+        windup: 470, active: 80, recover: 400, cd: [2300, 3300], tell: '#c9a6ff',
+        proj: { speed: 300, vy: 0, gravity: 0, r: 6, color: '#c9a6ff', life: 2.2 } },
+    ],
   };
+  // 首领招式的公共库：每只首领从里面挑 3~4 个，配出自己的节奏
+  XY.BOSS_MOVES = {
+    slam: { key: 'slam', name: '重击', type: 'melee', range: 98, mult: 1.25,
+      windup: 560, active: 120, recover: 520, cd: [1500, 2300], tell: '#ff7a4a', shake: 5 },
+    sweep: { key: 'sweep', name: '横扫', type: 'melee', range: 134, mult: 1.1,
+      windup: 470, active: 140, recover: 470, cd: [1700, 2500], tell: '#ffa94a', shake: 4 },
+    charge: { key: 'charge', name: '冲撞', type: 'dash', range: [140, 430], mult: 1.4, speed: 560,
+      windup: 620, active: 420, recover: 560, cd: [2600, 3600], tell: '#ff5e5e', shake: 6 },
+    quake: { key: 'quake', name: '震地', type: 'aoe', range: [0, 200], radius: 200, mult: 1.2,
+      windup: 700, active: 170, recover: 620, cd: [3000, 4200], tell: '#ffd479', shake: 10 },
+    volley: { key: 'volley', name: '妖火', type: 'shot', range: [130, 540], mult: 1.0,
+      windup: 640, active: 110, recover: 520, cd: [2200, 3000], tell: '#ff9a5e', shake: 3,
+      proj: { speed: 340, vy: -90, gravity: 340, r: 9, color: '#ff9a5e', life: 3, count: 2, gap: 140 } },
+    summon: { key: 'summon', name: '召妖', type: 'summon', range: [40, 620], mult: 0,
+      windup: 760, active: 110, recover: 620, cd: [6200, 8200], tell: '#9ad0ff',
+      count: 2, summonKind: 'imp' },
+  };
+  XY.movesFor = function (kind) {
+    const list = (XY.ENEMY_MOVES && XY.ENEMY_MOVES[kind]) || [];
+    return list.map((m) => Object.assign({}, m));
+  };
+  XY.bossMoves = function (keys) {
+    const out = [];
+    for (const k of (keys || [])) {
+      const def = XY.BOSS_MOVES[k];
+      if (def) out.push(Object.assign({}, def));
+    }
+    return out;
+  };
+
+  // ===== 首领：12 关各一只 =====
+  // art.kind 决定 art.js 用哪套骨架画：bull/bear/bone/demon/beast/dragon/queen
+  // art 里其余字段是同骨架的参数（颜色、披风、角、武器、口鼻）
+  const bossDrop = (soul, a, b) => [
+    { itemId: 'mat_soul', weight: 1, chance: 1, min: soul[0], max: soul[1] },
+    { itemId: a[0], weight: 1, chance: a[2] === undefined ? 0.8 : a[2], min: a[1], max: a[1] + 1 },
+    { itemId: b[0], weight: 1, chance: b[2] === undefined ? 0.7 : b[2], min: b[1], max: b[1] + 1 } ];
+  XY.BOSSES = {
+    mowang: { name: '混世魔王', title: '占山为王', hp: 430, attack: 15, defense: 8, moveSpeed: 84, aggroRange: 640,
+      moves: ['slam', 'quake', 'summon'],
+      art: { kind: 'demon', skin: '#5d6b52', cloth: '#3b2f24', horn: true, weapon: 'blade', plume: '#c0392b' },
+      dropTable: bossDrop([2, 3], ['mat_stone', 2, 0.9], ['mat_wood', 2]) },
+    dragon: { name: '毒龙', title: '涧底沉鳞', hp: 520, attack: 18, defense: 9, moveSpeed: 92, aggroRange: 640,
+      moves: ['charge', 'volley', 'sweep'],
+      art: { kind: 'dragon', scale: '#2f7d6b', belly: '#d9e8a8', horn: '#e6dcc4', eye: '#ffd479' },
+      dropTable: bossDrop([2, 4], ['mat_herb', 2], ['mat_fire', 1]) },
+    bear: { name: '黑熊精', title: '黑风大王', hp: 560, attack: 20, defense: 14, moveSpeed: 66, aggroRange: 640,
+      moves: ['slam', 'charge', 'quake'],
+      art: { kind: 'bear' },
+      dropTable: bossDrop([2, 4], ['mat_stone', 2, 0.9], ['mat_herb', 1, 0.6]) },
+    pig: { name: '猪妖王', title: '高老庄女婿', hp: 560, attack: 20, defense: 12, moveSpeed: 96, aggroRange: 640,
+      moves: ['slam', 'charge', 'summon'],
+      art: { kind: 'beast', fur: '#6b5442', furDark: '#493729', snout: 'pig', tusk: true, mane: '#c9a24a', scale: 1.05 },
+      dropTable: bossDrop([2, 4], ['mat_wood', 3], ['mat_herb', 2]) },
+    queen: { name: '蜘蛛精', title: '七情丝主', hp: 500, attack: 19, defense: 8, moveSpeed: 88, aggroRange: 640,
+      moves: ['volley', 'summon', 'slam'],
+      art: { kind: 'queen', skin: '#8a4bb0', cloth: '#3a1746' },
+      dropTable: bossDrop([2, 4], ['mat_fire', 2], ['mat_soul', 1, 0.5]) },
+    ape: { name: '河妖', title: '八百里流沙', hp: 590, attack: 21, defense: 13, moveSpeed: 78, aggroRange: 640,
+      moves: ['sweep', 'charge', 'quake'],
+      art: { kind: 'beast', fur: '#3f6b52', furDark: '#2a4a38', snout: 'ape', mane: null, scale: 1.12 },
+      dropTable: bossDrop([2, 4], ['mat_herb', 3], ['mat_stone', 2]) },
+    yellow: { name: '黄袍怪', title: '波月洞主', hp: 620, attack: 22, defense: 11, moveSpeed: 92, aggroRange: 640,
+      moves: ['slam', 'charge', 'volley'],
+      art: { kind: 'demon', skin: '#c9b48a', cloth: '#c9a03a', horn: false, weapon: 'spear', plume: '#e8e0c0' },
+      dropTable: bossDrop([3, 5], ['mat_stone', 3], ['mat_herb', 2]) },
+    bone: { name: '白骨精', title: '白骨夫人', hp: 540, attack: 24, defense: 7, moveSpeed: 104, aggroRange: 640,
+      moves: ['sweep', 'volley', 'summon'],
+      art: { kind: 'bone' },
+      dropTable: bossDrop([3, 6], ['mat_wood', 2], ['mat_fire', 1, 0.6]) },
+    lion: { name: '青狮', title: '狮驼岭大魔王', hp: 700, attack: 24, defense: 15, moveSpeed: 96, aggroRange: 640,
+      moves: ['charge', 'slam', 'quake'],
+      art: { kind: 'beast', fur: '#3f7f6a', furDark: '#2a5a4a', snout: 'lion', tusk: true, mane: '#1f4a3a', scale: 1.16 },
+      dropTable: bossDrop([3, 5], ['mat_fire', 2], ['mat_stone', 3]) },
+    redboy: { name: '红孩儿', title: '圣婴大王', hp: 640, attack: 26, defense: 9, moveSpeed: 104, aggroRange: 640,
+      moves: ['slam', 'volley', 'quake'],
+      art: { kind: 'demon', skin: '#e8b48a', cloth: '#c0392b', horn: false, weapon: 'spear', flame: true, small: true, plume: '#ff8a3a' },
+      dropTable: bossDrop([3, 5], ['mat_fire', 3], ['mat_soul', 1, 0.5]) },
+    fish: { name: '灵感大王', title: '通天河神', hp: 660, attack: 23, defense: 12, moveSpeed: 90, aggroRange: 640,
+      moves: ['volley', 'charge', 'sweep'],
+      art: { kind: 'beast', fur: '#c9762f', furDark: '#8a4a1a', snout: 'fish', mane: null, scale: 1.1, fin: '#e8b48a' },
+      dropTable: bossDrop([3, 5], ['mat_herb', 3], ['mat_soul', 1, 0.5]) },
+    bull: { name: '牛魔王', title: '平天大圣', hp: 760, attack: 26, defense: 16, moveSpeed: 76, aggroRange: 640,
+      moves: ['slam', 'charge', 'quake', 'volley'],
+      art: { kind: 'bull' },
+      dropTable: bossDrop([3, 5], ['mat_fire', 2], ['mat_stone', 2]) },
+  };
+  XY.BOSS_ORDER = ['mowang', 'dragon', 'bear', 'pig', 'queen', 'ape', 'yellow', 'bone', 'lion', 'redboy', 'fish', 'bull'];
   XY.BOSS_BASE = XY.BOSSES.bull;
 
   // ===== 关卡（横版卷动）=====
@@ -266,7 +365,8 @@
       spawns: [
         { type: 'imp', x: 520, y: 460, level: 1 }, { type: 'imp', x: 900, y: 460, level: 1 },
         { type: 'wolf', x: 1300, y: 460, level: 2 }, { type: 'imp', x: 1700, y: 460, level: 1 },
-        { type: 'wolf', x: 2100, y: 460, level: 2 } ],
+        { type: 'wolf', x: 1880, y: 460, level: 2 },
+        { type: 'boss', boss: 'mowang', x: 2120, y: 380, level: 1 } ],
       goal: { x: 2330, y: 440 },
       intro: ['五百年后，五行山崩，猴王重回花果山。',
         '故地已荒，小妖占山为王，水帘洞前一片狼藉。',
@@ -283,7 +383,8 @@
       spawns: [
         { type: 'wolf', x: 420, y: 460, level: 2 }, { type: 'spider', x: 820, y: 460, level: 2 },
         { type: 'wolf', x: 1180, y: 460, level: 3 }, { type: 'spider', x: 1520, y: 460, level: 3 },
-        { type: 'wolf', x: 1900, y: 460, level: 3 }, { type: 'imp', x: 2250, y: 460, level: 2 } ],
+        { type: 'wolf', x: 1900, y: 460, level: 3 }, { type: 'imp', x: 2150, y: 460, level: 2 },
+        { type: 'boss', boss: 'dragon', x: 2330, y: 380, level: 2 } ],
       goal: { x: 2530, y: 440 },
       intro: ['涧水森寒，白雾贴着水面走。',
         '传说涧里藏着一条犯了天条的龙，吞过取经人的白马。',
@@ -317,7 +418,8 @@
       spawns: [
         { type: 'imp', x: 430, y: 460, level: 3 }, { type: 'wolf', x: 800, y: 460, level: 4 },
         { type: 'imp', x: 1180, y: 460, level: 3 }, { type: 'wolf', x: 1600, y: 460, level: 4 },
-        { type: 'imp', x: 2000, y: 460, level: 4 } ],
+        { type: 'imp', x: 2000, y: 460, level: 4 },
+        { type: 'boss', boss: 'pig', x: 2320, y: 380, level: 4 } ],
       goal: { x: 2530, y: 440 },
       intro: ['高老庄的灯还亮着，庄丁却不敢出门。',
         '三年前招了个女婿，能吃能喝，喝多了会现出猪相。',
@@ -334,7 +436,8 @@
       spawns: [
         { type: 'spider', x: 460, y: 460, level: 4 }, { type: 'spider', x: 780, y: 460, level: 4 },
         { type: 'spider', x: 1120, y: 460, level: 4 }, { type: 'spider', x: 1470, y: 460, level: 5 },
-        { type: 'spider', x: 1820, y: 460, level: 5 }, { type: 'spider', x: 2150, y: 460, level: 5 } ],
+        { type: 'spider', x: 1820, y: 460, level: 5 }, { type: 'spider', x: 1930, y: 460, level: 5 },
+        { type: 'boss', boss: 'queen', x: 2120, y: 380, level: 4 } ],
       goal: { x: 2330, y: 440 },
       require: 3,
       intro: ['洞口垂着七色丝线，一根一根缠在骨头上。',
@@ -352,7 +455,8 @@
       spawns: [
         { type: 'wolf', x: 560, y: 460, level: 4 }, { type: 'spider', x: 950, y: 460, level: 4 },
         { type: 'imp', x: 1300, y: 460, level: 5 }, { type: 'wolf', x: 1700, y: 460, level: 4 },
-        { type: 'spider', x: 2100, y: 460, level: 5 }, { type: 'wolf', x: 2500, y: 460, level: 5 } ],
+        { type: 'spider', x: 2100, y: 460, level: 5 }, { type: 'wolf', x: 2500, y: 460, level: 5 },
+        { type: 'boss', boss: 'ape', x: 2700, y: 380, level: 5 } ],
       goal: { x: 2930, y: 440 },
       intro: ['八百里流沙，鹅毛飘不起，芦花定底沉。',
         '河心立着一块界碑，碑后有人影，脖子上挂九个骷髅。',
@@ -369,7 +473,8 @@
       spawns: [
         { type: 'imp', x: 480, y: 460, level: 5 }, { type: 'wolf', x: 900, y: 460, level: 5 },
         { type: 'imp', x: 1330, y: 460, level: 5 }, { type: 'wolf', x: 1720, y: 460, level: 6 },
-        { type: 'imp', x: 2150, y: 460, level: 5 } ],
+        { type: 'imp', x: 2150, y: 460, level: 5 },
+        { type: 'boss', boss: 'yellow', x: 2320, y: 380, level: 5 } ],
       goal: { x: 2530, y: 440 },
       require: 5,
       intro: ['波月洞里有月亮，是人造的那种——一面铜镜吊在洞顶。',
@@ -404,7 +509,8 @@
       spawns: [
         { type: 'wolf', x: 520, y: 460, level: 6 }, { type: 'imp', x: 900, y: 460, level: 6 },
         { type: 'wolf', x: 1280, y: 460, level: 6 }, { type: 'imp', x: 1680, y: 460, level: 6 },
-        { type: 'wolf', x: 2050, y: 460, level: 7 }, { type: 'imp', x: 2450, y: 460, level: 6 } ],
+        { type: 'wolf', x: 2050, y: 460, level: 7 }, { type: 'imp', x: 2450, y: 460, level: 6 },
+        { type: 'boss', boss: 'lion', x: 2700, y: 380, level: 6 } ],
       goal: { x: 2930, y: 440 },
       require: 7,
       intro: ['狮驼岭上四万八千小妖，旌旗遮天。',
@@ -422,7 +528,8 @@
       spawns: [
         { type: 'spider', x: 600, y: 460, level: 6 }, { type: 'imp', x: 1000, y: 460, level: 6 },
         { type: 'spider', x: 1400, y: 460, level: 6 }, { type: 'wolf', x: 1800, y: 460, level: 7 },
-        { type: 'imp', x: 2200, y: 460, level: 6 }, { type: 'spider', x: 2600, y: 460, level: 7 } ],
+        { type: 'imp', x: 2200, y: 460, level: 6 }, { type: 'spider', x: 2600, y: 460, level: 7 },
+        { type: 'boss', boss: 'redboy', x: 2900, y: 380, level: 6 } ],
       goal: { x: 3130, y: 440 },
       intro: ['火云洞终年不熄，洞口的热浪能把人推回去。',
         '红孩儿会三昧真火，一口火喷出来，连石头都烧成琉璃。',
@@ -439,7 +546,8 @@
       spawns: [
         { type: 'spider', x: 550, y: 460, level: 7 }, { type: 'wolf', x: 950, y: 460, level: 7 },
         { type: 'spider', x: 1350, y: 460, level: 7 }, { type: 'wolf', x: 1750, y: 460, level: 7 },
-        { type: 'spider', x: 2150, y: 460, level: 7 }, { type: 'wolf', x: 2550, y: 460, level: 7 } ],
+        { type: 'spider', x: 2150, y: 460, level: 7 }, { type: 'wolf', x: 2300, y: 460, level: 7 },
+        { type: 'boss', boss: 'fish', x: 2500, y: 380, level: 7 } ],
       goal: { x: 2730, y: 440 },
       require: 9,
       intro: ['通天河结了冰，冰下有东西在游，一路跟着你。',
