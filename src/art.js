@@ -1079,10 +1079,26 @@
   }
   Art.pixelMode = true;
   Art.drawCharacter = function (ctx, cx, footY, scale, charId, pose) {
+    // 落地压扁回弹：0.17s 内把身体往脚下压（横宽竖短），打击感全在这一下
+    if (pose.landP !== undefined) {
+      const sq = Math.sin(Math.min(1, pose.landP) * Math.PI) * 0.14;
+      if (sq > 0.01) {
+        ctx.save();
+        ctx.translate(cx, footY);
+        ctx.scale(1 + sq * 0.8, 1 - sq);
+        ctx.translate(-cx, -footY);
+        drawCharacterInner(ctx, cx, footY, scale, charId, pose);
+        ctx.restore();
+        return;
+      }
+    }
+    return drawCharacterInner(ctx, cx, footY, scale, charId, pose);
+  };
+  function drawCharacterInner(ctx, cx, footY, scale, charId, pose) {
     // pose.vector 可以强制走矢量（过场剪影这类大倍率场景用）
     if (Art.pixelMode && !pose.vector && canPixel()) return drawCharacterPx(ctx, cx, footY, scale, charId, pose);
     return drawCharVector(ctx, cx, footY, scale, charId, pose);
-  };
+  }
   Art.PX_UNIT = PX_UNIT;
   // 像素层对外开放一点，测试和调试页都要用（矢量层仍是兜底）
   Art.PX = {

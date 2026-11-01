@@ -1562,6 +1562,16 @@
         }
         ctx.fillRect(0, 0, W, H);
       }
+      // 常驻暗角：边缘压暗一档，视线收向画面中间（受击红晕是另一层）
+      if (ctx.createRadialGradient) {
+        const vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.42, W / 2, H / 2, H * 0.92);
+        if (vg && vg.addColorStop) {
+          vg.addColorStop(0, 'rgba(10,8,5,0)');
+          vg.addColorStop(1, 'rgba(10,8,5,0.34)');
+          ctx.fillStyle = vg;
+          ctx.fillRect(0, 0, W, H);
+        }
+      }
       XY.UI.drawHUD(ctx, this);
       XY.UI.drawBossBar(ctx, this);
       XY.UI.drawToast(ctx, this);

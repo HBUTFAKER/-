@@ -185,6 +185,7 @@
       this.level = 1; this.exp = 0;
       // —— 动画状态 ——
       this.animT = 0;
+      this.landT = -9999;           // 最近一次落地时刻（落地压扁动画用）
       this.attackStart = -9999; this.attackUntil = -9999;
       this.castStart = -9999; this.castUntil = -9999;
       // 挨打：受击后短暂失衡（表现层据此做后仰、护痛、踉跄）
@@ -272,6 +273,8 @@
       if (this.onGround) this.jumpsLeft = this.maxJumps;
       // 从高处砸下来：落地扬尘 + 闷响
       if (this.onGround && !wasGround && fallVy > 520) this.emitFx('land', { vy: fallVy });
+      // 任何落地都记时刻：压扁回弹全靠它
+      if (this.onGround && !wasGround) this.landT = now;
 
       // 奔跑扬尘
       if (sprinting && this.onGround && Math.abs(this.vx) > 60) {
@@ -297,6 +300,7 @@
           attackPath: this._dbgAtk.path, attackBody: this._dbgAtk.body,
           castP: undefined, hurtP: undefined, castId: null,
           noWeapon: false, combo: this._dbgAtk.k, sprint: false,
+          landP: undefined,
         };
       }
       const atk = now < this.attackUntil ? (now - this.attackStart) / Math.max(1, this.attackUntil - this.attackStart) : undefined;
@@ -317,6 +321,7 @@
         castId: now < this.castUntil ? this.castSkillId : null,
         noWeapon: now < this.noWeaponUntil,
         combo: this.combo,
+        landP: (now - this.landT) < 170 ? (now - this.landT) / 170 : undefined,
         sprint: this.runDir !== 0 && state === 'run',
       };
     }

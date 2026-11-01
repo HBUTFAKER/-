@@ -2519,10 +2519,26 @@
   }
   Art.pixelMode = true;
   Art.drawCharacter = function (ctx, cx, footY, scale, charId, pose) {
+    // 落地压扁回弹：0.17s 内把身体往脚下压（横宽竖短），打击感全在这一下
+    if (pose.landP !== undefined) {
+      const sq = Math.sin(Math.min(1, pose.landP) * Math.PI) * 0.14;
+      if (sq > 0.01) {
+        ctx.save();
+        ctx.translate(cx, footY);
+        ctx.scale(1 + sq * 0.8, 1 - sq);
+        ctx.translate(-cx, -footY);
+        drawCharacterInner(ctx, cx, footY, scale, charId, pose);
+        ctx.restore();
+        return;
+      }
+    }
+    return drawCharacterInner(ctx, cx, footY, scale, charId, pose);
+  };
+  function drawCharacterInner(ctx, cx, footY, scale, charId, pose) {
     // pose.vector 可以强制走矢量（过场剪影这类大倍率场景用）
     if (Art.pixelMode && !pose.vector && canPixel()) return drawCharacterPx(ctx, cx, footY, scale, charId, pose);
     return drawCharVector(ctx, cx, footY, scale, charId, pose);
-  };
+  }
   Art.PX_UNIT = PX_UNIT;
   // 像素层对外开放一点，测试和调试页都要用（矢量层仍是兜底）
   Art.PX = {
@@ -5655,6 +5671,7 @@
       this.level = 1; this.exp = 0;
       // —— 动画状态 ——
       this.animT = 0;
+      this.landT = -9999;           // 最近一次落地时刻（落地压扁动画用）
       this.attackStart = -9999; this.attackUntil = -9999;
       this.castStart = -9999; this.castUntil = -9999;
       // 挨打：受击后短暂失衡（表现层据此做后仰、护痛、踉跄）
@@ -5742,6 +5759,8 @@
       if (this.onGround) this.jumpsLeft = this.maxJumps;
       // 从高处砸下来：落地扬尘 + 闷响
       if (this.onGround && !wasGround && fallVy > 520) this.emitFx('land', { vy: fallVy });
+      // 任何落地都记时刻：压扁回弹全靠它
+      if (this.onGround && !wasGround) this.landT = now;
 
       // 奔跑扬尘
       if (sprinting && this.onGround && Math.abs(this.vx) > 60) {
@@ -5767,6 +5786,7 @@
           attackPath: this._dbgAtk.path, attackBody: this._dbgAtk.body,
           castP: undefined, hurtP: undefined, castId: null,
           noWeapon: false, combo: this._dbgAtk.k, sprint: false,
+          landP: undefined,
         };
       }
       const atk = now < this.attackUntil ? (now - this.attackStart) / Math.max(1, this.attackUntil - this.attackStart) : undefined;
@@ -5787,6 +5807,7 @@
         castId: now < this.castUntil ? this.castSkillId : null,
         noWeapon: now < this.noWeaponUntil,
         combo: this.combo,
+        landP: (now - this.landT) < 170 ? (now - this.landT) / 170 : undefined,
         sprint: this.runDir !== 0 && state === 'run',
       };
     }
@@ -9481,6 +9502,16 @@
           ctx.fillStyle = 'rgba(180,20,20,' + (0.22 * this.hurtFlash) + ')';
         }
         ctx.fillRect(0, 0, W, H);
+      }
+      // 常驻暗角：边缘压暗一档，视线收向画面中间（受击红晕是另一层）
+      if (ctx.createRadialGradient) {
+        const vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.42, W / 2, H / 2, H * 0.92);
+        if (vg && vg.addColorStop) {
+          vg.addColorStop(0, 'rgba(10,8,5,0)');
+          vg.addColorStop(1, 'rgba(10,8,5,0.34)');
+          ctx.fillStyle = vg;
+          ctx.fillRect(0, 0, W, H);
+        }
       }
       XY.UI.drawHUD(ctx, this);
       XY.UI.drawBossBar(ctx, this);
