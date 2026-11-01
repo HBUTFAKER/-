@@ -172,6 +172,8 @@ src/logic.js      纯函数逻辑：伤害、掉落、成长、商店定价、�
 src/audio.js      WebAudio 合成：七首循环曲 + 二十多种音效，无音频文件
 src/engine.js     游戏主循环、物理、碰撞、角色动作状态机
 src/art.js        角色美术：像素栅格层（人物）+ 矢量层（怪物/场景道具/兜底）
+src/portraits.js  角色立绘加载（AI 生成，双通道：单文件内嵌 base64 / 开发模式读 assets）
+assets/portraits/ 五张角色立绘 JPEG（标题 / 选角 / 过场用，打包时内嵌）
 src/fx.js         特效层：刀光、火花、冲击环、巨棒、祥云
 src/scenery.js    三套主题背景立绘与视差（按关卡的 theme 取）
 src/ui.js         HUD、背包、商店、技能、锻造、过关结算、菜单

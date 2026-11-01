@@ -721,17 +721,33 @@
   UI.drawTitle = function (ctx, t) {
     UI.drawBackground(ctx, 0, t);
 
-    // 右侧：大圣立绘（标题页的视觉主角）
-    const ax = W * 0.795, ay = H - 26;
-    ctx.save();
-    ctx.fillStyle = 'rgba(0,0,0,0.34)';
-    ctx.beginPath();
-    if (ctx.ellipse) ctx.ellipse(ax, ay + 6, 92, 15, 0, 0, Math.PI * 2);
-    else ctx.arc(ax, ay, 62, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalAlpha = 0.97;
-    Art().drawCharacter(ctx, ax, ay, 2.45, 'wukong', { t: t, state: 'idle', facing: 1 });
-    ctx.restore();
+    // 右侧：大圣立绘（标题页的视觉主角）——AI 立绘，没加载出来退回像素大圣
+    const ax = W * 0.795;
+    const pw0 = 296, ph0 = 444;
+    // 立绘自带玄墨深底，先在右侧垫一片暗池 + 暖光晕，不然深图直接压在亮天空上就是一块硬贴图
+    const rg = ctx.createLinearGradient(W * 0.52, 0, W, 0);
+    rg.addColorStop(0, 'rgba(16,12,7,0)');
+    rg.addColorStop(1, 'rgba(16,12,7,0.62)');
+    ctx.fillStyle = rg; ctx.fillRect(W * 0.52, 0, W * 0.48, H);
+    if (ctx.createRadialGradient) {
+      const glow = ctx.createRadialGradient(ax, 58 + ph0 * 0.42, 40, ax, 58 + ph0 * 0.42, 310);
+      glow.addColorStop(0, 'rgba(255,196,110,0.16)');
+      glow.addColorStop(1, 'rgba(255,196,110,0)');
+      ctx.fillStyle = glow; ctx.fillRect(ax - 320, 40, 640, 620);
+    }
+    const artOk = !!(XY.Portraits && XY.Portraits.draw(ctx, 'wukong', ax - pw0 / 2, 58, pw0, ph0, { fade: 100 }));
+    if (!artOk) {
+      const ay = H - 26;
+      ctx.save();
+      ctx.fillStyle = 'rgba(0,0,0,0.34)';
+      ctx.beginPath();
+      if (ctx.ellipse) ctx.ellipse(ax, ay + 6, 92, 15, 0, 0, Math.PI * 2);
+      else ctx.arc(ax, ay, 62, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 0.97;
+      Art().drawCharacter(ctx, ax, ay, 2.45, 'wukong', { t: t, state: 'idle', facing: 1 });
+      ctx.restore();
+    }
 
     // 左侧压暗，保证文字可读
     const vg = ctx.createLinearGradient(0, 0, W * 0.8, 0);
@@ -822,14 +838,17 @@
         rrect(ctx, x, y, cardW, L.h, 12); ctx.stroke();
         ctx.restore();
       }
-      // 立绘
+      // 立绘：AI 立绘优先，没加载出来退回像素小人
       ctx.save();
       rrect(ctx, x + 6, y + 6, cardW - 12, 172, 8); ctx.clip();
-      const bgG = ctx.createLinearGradient(x, y, x, y + 180);
-      bgG.addColorStop(0, 'rgba(255,255,255,0.06)'); bgG.addColorStop(1, 'rgba(0,0,0,0.25)');
-      ctx.fillStyle = bgG; ctx.fillRect(x + 6, y + 6, cardW - 12, 172);
       const bounce = sel ? Math.sin(game.uiTime / 420) * 3 : 0;
-      Art().drawCharacter(ctx, x + cardW / 2, y + 168 + bounce, 1.55, c.id, { t: game.uiTime, state: 'idle', facing: 1 });
+      const artOk = !!(XY.Portraits && XY.Portraits.draw(ctx, c.id, x + 6, y + 6 + bounce * 0.4, cardW - 12, 172, { bias: 0.02, fade: 46 }));
+      if (!artOk) {
+        const bgG = ctx.createLinearGradient(x, y, x, y + 180);
+        bgG.addColorStop(0, 'rgba(255,255,255,0.06)'); bgG.addColorStop(1, 'rgba(0,0,0,0.25)');
+        ctx.fillStyle = bgG; ctx.fillRect(x + 6, y + 6, cardW - 12, 172);
+        Art().drawCharacter(ctx, x + cardW / 2, y + 168 + bounce, 1.55, c.id, { t: game.uiTime, state: 'idle', facing: 1 });
+      }
       ctx.restore();
 
       ctx.textAlign = 'center';
@@ -1075,8 +1094,9 @@
     }
     ctx.globalAlpha = 1;
 
-    // 角色立绘：半透明剪影，缓缓呼吸起伏——每一幕都得有"人在场"的分量
-    if (charId && XY.Art && XY.Art.drawCharacter) {
+    // 角色立绘：AI 立绘，缓缓呼吸起伏——每一幕都得有"人在场"的分量
+    let artShown = false;
+    if (charId) {
       const bob = Math.sin(t / 1400) * 2.6;
       ctx.save();
       // 脚下光晕：三层同心圆堆叠代替径向渐变，测试桩里也安全
@@ -1089,9 +1109,14 @@
         ctx.fill();
       }
       ctx.restore();
-      ctx.globalAlpha = 0.36;
-      // 剪影走矢量：3.15 倍下像素块会大到糊成一坨，剪影要的是轮廓不是颗粒
-      XY.Art.drawCharacter(ctx, W / 2, 398 + bob, 3.15, charId, { state: 'idle', t, facing: 1, vector: true });
+      const ph = 434, pw = ph * (512 / 768);
+      artShown = !!(XY.Portraits && XY.Portraits.draw(ctx, charId, W / 2 - pw / 2, 46 + bob, pw, ph, { fade: 120 }));
+      const artOk = artShown;
+      if (!artOk && XY.Art && XY.Art.drawCharacter) {
+        ctx.globalAlpha = 0.36;
+        // 剪影走矢量：3.15 倍下像素块会大到糊成一坨，剪影要的是轮廓不是颗粒
+        XY.Art.drawCharacter(ctx, W / 2, 398 + bob, 3.15, charId, { state: 'idle', t, facing: 1, vector: true });
+      }
       ctx.restore();
     }
 
@@ -1102,7 +1127,7 @@
     shade.addColorStop(1, 'rgba(0,0,0,0.84)');
     ctx.fillStyle = shade; ctx.fillRect(0, 318, W, H - 318);
 
-    center(ctx, beat.glyph, 152, '26px serif', 'rgba(255,255,255,0.85)');
+    if (!artShown) center(ctx, beat.glyph, 152, '26px serif', 'rgba(255,255,255,0.85)');
     center(ctx, beat.title, 406, 'bold 29px serif', '#ffd479');
     for (let i = 0; i < beat.lines.length; i++) center(ctx, beat.lines[i], 446 + i * 29, '17px "PingFang SC", sans-serif', '#eae4d8');
 
