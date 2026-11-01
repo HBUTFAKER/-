@@ -187,7 +187,7 @@
       this.animT = 0;
       this.landT = -9999;           // 最近一次落地时刻（落地压扁动画用）
       this.attackStart = -9999; this.attackUntil = -9999;
-      this.castStart = -9999; this.castUntil = -9999;
+      this.castStart = -9999; this.castUntil = -9999; this.castStrikeAt = -9999;
       // 挨打：受击后短暂失衡（表现层据此做后仰、护痛、踉跄）
       this.hurtStart = -9999; this.hurtUntil = -9999;
       this.combo = 0; this.lastAttackAt = -9999;
@@ -368,9 +368,12 @@
       if (this.energy < sk.cost) return null;
       this.energy -= sk.cost;
       this.skillCd[sid] = now + sk.cooldown;
-      this.castStart = now; this.castUntil = now + 340;
+      // 施法时长由技能自己的动作模组决定（重劈要比戳慢，诵经要比护体慢）
+      const cast = sk.cast || 340;
+      this.castStart = now; this.castUntil = now + cast;
       this.castSkillId = sid;
-      return Object.assign({ hitKey: sid + now }, sk);
+      this.castStrikeAt = now + cast * (sk.strike === undefined ? 0.45 : sk.strike);
+      return Object.assign({ hitKey: sid + now, castMs: cast, strikeAt: this.castStrikeAt }, sk);
     }
     tryTreasure(i, now) {
       const tid = this.treasures[i];
@@ -477,6 +480,9 @@
       this.moveDir = -1;      // 起手时锁定的方向
       this.tele = 0;          // 起手进度 0..1（美术层画预警用）
       this.actK = 0;          // 出手进度 0..1
+      this.last = null;       // 上一招（收招阶段造型层用）
+      this.recStart = 0;      // 收招开始时间
+      this.recLen = 400;      // 收招时长
       this.cds = {};          // 每招独立冷却
       this.gapUntil = 0;      // 两招之间的最小间隔
       this.strike = null;     // 一次性交给 game 结算的攻击
@@ -549,7 +555,12 @@
     endMove(now) {
       const m = this.cur;
       this.state = 'recover';
-      this.stateUntil = now + ((m && m.recover) || 400) * (this.enraged ? 0.85 : 1);
+      const rec = ((m && m.recover) || 400) * (this.enraged ? 0.85 : 1);
+      this.stateUntil = now + rec;
+      // 收招阶段 cur 会清空，但造型层还要按这一招的姿势退回去
+      this.last = m;
+      this.recStart = now;
+      this.recLen = rec;
       this.gapUntil = now + 200;
       if (m) this.cds[m.key] = now + randBetween(m.cd, 1400, 2200) * (this.enraged ? 0.72 : 1);
       this.cur = null;

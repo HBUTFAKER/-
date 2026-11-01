@@ -584,6 +584,12 @@ test.it('定海神针：掷棒空中旋转，插地后产生冲击波并结算�
   assert.strictEqual(a.anim, 'throw', '定海神针应走掷棒分支');
   const hp0 = e.hp;
   g.act(a);
+  // 动作模组：先演"后仰蓄力 → 甩臂"，到出手帧棒子才离手
+  assert.strictEqual(g.specials.length, 0, '起手阶段棒子还在手上');
+  assert.ok(g.pending.length > 0, '应挂着"甩臂出手"的待结算');
+  let lead = 0;
+  while (!g.specials.length && lead < 60) { g.now += 16; g.update(0.016); lead++; }
+  assert.ok(lead > 3, '应有可见的蓄力前摇，实际 ' + lead + ' 帧');
   assert.strictEqual(g.specials.length, 1, '应掷出一根棒子');
   assert.strictEqual(g.specials[0].state, 'fly', '棒子先在空中飞');
   assert.strictEqual(pl.pose(g.now).noWeapon, true, '棒子离手，角色应空手');

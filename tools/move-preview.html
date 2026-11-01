@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh">
+<head><meta charset="utf-8"><title>动作模组预览</title></head>
+<body style="margin:0;background:#1b2028">
+<canvas id="c" width="1280" height="420"></canvas>
+<script src="../src/data.js"></script>
+<script src="../src/moves.js"></script>
+<script src="../src/toon.js"></script>
+<script>
+  const q = new URLSearchParams(location.search);
+  const c = document.getElementById('c'), ctx = c.getContext('2d');
+  const W = c.width, H = c.height;
+  const bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, '#243040'); bg.addColorStop(1, '#151a20');
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+
+  const char = q.get('char') || 'wukong';
+  const basic = q.get('move');        // 普攻 path 名
+  const skill = q.get('skill');       // 技能 id
+  const N = +(q.get('n') || 6);
+  const s = +(q.get('s') || 2.0);
+  const baseY = H - 70;
+  const colW = W / N;
+
+  // 普攻 kind → path 表里的序号（动作层兜底用）
+  const KIND = { arc: 0, thrust: 1, lift: 2, sweep: 3, smash: 0, reel: 1, ram: 2, spin: 3,
+    palm: 0, sleeve: 1, kick: 2, pray: 3, scoop: 0, sweepLow: 1, butt: 2, press: 3,
+    thrust2: 0, lift2: 1, parry: 2, back: 3 };
+
+  for (let i = 0; i < N; i++) {
+    const p = N === 1 ? 0.5 : i / (N - 1);
+    const cx = colW * (i + 0.5);
+    let pose;
+    if (skill) {
+      pose = { t: 800, state: 'idle', castP: p, castId: skill, facing: 1 };
+    } else {
+      pose = { t: 800, state: 'attack', attackP: p, attackPath: basic || 'arc',
+        attackKind: KIND[basic || 'arc'] || 0, facing: 1 };
+    }
+    // 影子
+    ctx.save();
+    ctx.globalAlpha = 0.3; ctx.fillStyle = '#0a0705';
+    ctx.beginPath(); ctx.ellipse(cx, baseY - 1, 17 * s, 5 * s, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    XY.Toon.drawCharacter(ctx, cx, baseY, s, char, pose);
+    ctx.fillStyle = '#7f93a8'; ctx.font = '13px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(p.toFixed(2), cx, baseY + 30);
+  }
+  ctx.strokeStyle = 'rgba(255,120,120,0.28)'; ctx.lineWidth = 1;
+  for (let i = 1; i < N; i++) {
+    ctx.beginPath(); ctx.moveTo(colW * i, 20); ctx.lineTo(colW * i, H - 40); ctx.stroke();
+  }
+  ctx.beginPath(); ctx.moveTo(0, baseY + 1); ctx.lineTo(W, baseY + 1); ctx.stroke();
+  ctx.fillStyle = '#9fb0c4'; ctx.font = '15px sans-serif'; ctx.textAlign = 'left';
+  ctx.fillText((skill ? 'skill ' : 'basic ') + (skill || basic || 'arc') + ' · ' + char, 14, 24);
+</script>
+</body>
+</html>

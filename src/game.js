@@ -905,6 +905,18 @@
     act(a) {
       if (!a) return;
       const now = this.now, pl = this.player;
+      // —— 技能：先演完起手，到 strike 那一帧才真正出手 ——
+      // 之前是按下即结算，动作还没抬起来伤害就跳完了，所以看着"只有特效没有动作"。
+      // dash 例外：位移要立刻开始，伤害靠身体碰撞结算。
+      if (a.kind && a.kind !== 'melee' && a.kind !== 'dash' && a.kind !== 'treasure' && !a._fired) {
+        const castMs = a.castMs || a.cast || 340;
+        const at = now + castMs * (a.strike === undefined ? 0.45 : a.strike);
+        const lv0 = this.level;
+        const a2 = Object.assign({}, a, { _fired: true });
+        this.pending.push({ at: at, run: () => { if (this.level !== lv0) return; this.act(a2); } });
+        if (XY.Audio) XY.Audio.sfx('charge');
+        return;
+      }
       const cx = pl.x + pl.w / 2, cy = pl.y + pl.h / 2;
       // 普攻用 mult，技能数据用 multiplier —— 统一取一次，避免 undefined 传进伤害公式变成 NaN
       const mult = Number.isFinite(a.multiplier) ? a.multiplier
@@ -929,6 +941,11 @@
               this.fx.ring(tipX, tipY, 2, 42, '#ffffff', 0.22, 14);
               this.fx.spark(tipX, tipY, 26, '#fff0b8', { speed: 380, spread: 1.8, angle: dir > 0 ? 0 : Math.PI, gravity: 640, jitter: 10 });
               this.fx.dust(tipX, tipY, 20, '#c9a06a', 80, 48);
+              // 天雷引下来 + 尘浪 + 火星：这一棒是"砸穿地面"的量级
+              this.fx.bolt(tipX, tipY - 300, tipX, tipY, { color: '#ffe9a8', wide: 1.8, life: 0.3 });
+              this.fx.bolt(tipX + dir * 40, tipY - 220, tipX + dir * 12, tipY, { color: '#fff4cf', wide: 1.1, life: 0.22 });
+              this.fx.smoke(tipX, tipY, 18, { color: '#c9a06a', r: 15, speed: 140 });
+              this.fx.fire(tipX, tipY - 10, 14, { r: 12, spread: 64 });
               this.shake = Math.min(18, this.shake + 14);
             },
           });
@@ -966,6 +983,20 @@
               // 甩：身后再补一道反手刀光，读得出"这一下是抽了一圈"
               this.fx.slashStyle(mx - dirNow * 16, fxY - 2, -dirNow, '#ffb648', 1.1, 0.24, 'sweep');
             }
+            // 兵器带什么元素，打在空气里也看得见（雷/水/沙/土/佛光）
+            const elX = fxX + dirNow * 20;
+            if (me.char.id === 'wukong') {
+              this.fx.bolt(elX, fxY - 46, elX + dirNow * 8, fxY + 14, { color: '#ffe08a', wide: a.heavy ? 0.9 : 0.6, life: 0.15 });
+            } else if (me.char.id === 'bailongma') {
+              this.fx.splash(elX, fxY + 6, a.heavy ? 9 : 6, { dir: dirNow, color: '#a9e4ff' });
+            } else if (me.char.id === 'shaseng') {
+              this.fx.smoke(elX, fxY + 12, a.heavy ? 7 : 4, { color: '#d8c08a', speed: 54, r: 6 });
+            } else if (me.char.id === 'bajie') {
+              this.fx.smoke(elX, fxY + 14, a.heavy ? 8 : 5, { color: '#c9a87c', speed: 60, r: 7 });
+            } else {
+              // 唐僧：佛光金粉
+              this.fx.spark(elX, fxY, 6, '#ffe9a8', { speed: 150, spread: 1.1, angle: dirNow > 0 ? 0 : Math.PI, gravity: 260 });
+            }
             let hits = this.meleeHit(a.range, mult, a.heavy, dirNow);
             if (a.backRange > 0) hits += this.meleeHit(a.backRange, mult * 0.72, false, -dirNow);
             if (hits > 0) {
@@ -997,17 +1028,23 @@
         if (a.id === 'ss_quicksand') {
           // 流沙卷：沙纹漩涡卷起敌人
           this.fx.sandWave(cx + pl.facing * 40, pl.y + pl.h - 6, a.radius || 120, pl.facing);
+          this.fx.smoke(cx + pl.facing * 30, pl.y + pl.h - 8, 18, { color: '#d9bd8a', r: 11, speed: 120, lift: 40 });
           if (XY.Audio) XY.Audio.sfx('aoe');
         } else if (a.id === 'bl_breath') {
-          // 龙息：从口中喷出的锥形寒气
+          // 龙息：从口中喷出的锥形寒气 + 一路水花
           this.fx.coneBreath(cx + pl.facing * 20, cy, pl.facing, '#9be7ff', a.radius ? a.radius * 1.3 : 190);
           this.fx.ring(cx + pl.facing * 20, cy, 4, 40, '#cdeeff', 0.3, 3);
+          for (let i = 1; i <= 4; i++) {
+            this.fx.splash(cx + pl.facing * (20 + i * 46), cy + 6 + i * 4, 6, { dir: pl.facing, color: '#bdeaff', r: 26 });
+          }
+          this.fx.smoke(cx + pl.facing * 40, cy, 8, { color: '#cfeaff', r: 10, speed: 60, lift: 6 });
           if (XY.Audio) XY.Audio.sfx('shoot');
         } else if (a.id === 'bl_tail') {
-          // 龙尾扫：前后两道弧形尾浪交叠
+          // 龙尾扫：前后两道弧形尾浪交叠，尾梢甩出一圈水
           this.fx.slashStyle(cx, cy, pl.facing, '#9be7ff', 1.6, 0.3, 'sweep');
           this.fx.slashStyle(cx - pl.facing * 18, cy + 6, -pl.facing, '#cdeeff', 1.3, 0.26, 'sweep');
           this.fx.ring(cx, cy, 10, a.radius || 140, '#9be7ff', 0.4, 6);
+          this.fx.splash(cx + pl.facing * 34, cy + 10, 12, { dir: pl.facing, color: '#bfe9ff', r: 46 });
           if (XY.Audio) XY.Audio.sfx('aoe');
         } else {
           this.fx.ring(cx, cy, 10, a.radius || 140, pl.char.color, 0.42, 6);
@@ -1201,6 +1238,12 @@
       if (s.type === 'melee') {
         this.fx.slash(s.box.x + s.box.w * 0.5, s.box.y + s.box.h * 0.45, s.dir,
           tell, Math.max(0.55, s.box.w / 78), 0.2);
+        // 招式本身的元素：毒牙溅毒、重击起尘、妖爪带火
+        const gx = s.box.x + s.box.w * 0.78, gy = s.box.y + s.box.h * 0.5;
+        if (m.dot) this.fx.splash(gx, gy, 8, { dir: s.dir, color: '#b06bff', r: 30 });
+        else if (m.key === 'slam') this.fx.smoke(gx, gy + 22, 10, { color: '#c9a06a', r: 9, speed: 80 });
+        else if (e.isBoss) this.fx.fire(gx, gy, 5, { r: 6, spread: 22 });
+        else this.fx.smoke(gx, gy + 16, 5, { color: '#bda98a', r: 5, speed: 50 });
         if (XY.aabb(s.box, pl)) {
           this.hurtPlayerBy(e, s.mult, { tag: m.dot ? 'slow' : 'hit' });
           if (m.dot) {
@@ -1211,12 +1254,16 @@
         }
       } else if (s.type === 'dash') {
         this.fx.dust(e.x + e.w / 2, e.y + e.h, 12, '#c9a06a', 70, 45);
+        this.fx.smoke(e.x + e.w / 2 - s.dir * 20, e.y + e.h - 6, 10, { color: '#c9a06a', r: 10, speed: 90 });
         this.fx.slash(e.x + e.w / 2 + s.dir * e.w * 0.4, e.y + e.h * 0.45, s.dir, tell, 1.1, 0.24);
         this.shake = Math.min(14, this.shake + (m.shake || 4));
       } else if (s.type === 'aoe') {
         this.fx.ring(s.x, s.y, 10, s.radius, tell, 0.5, 9);
         this.fx.ring(s.x, s.y, 4, s.radius * 0.62, '#fff6cc', 0.38, 5);
         this.fx.dust(s.x, s.y, 20, '#c9a06a', 110, 55);
+        this.fx.smoke(s.x, s.y - 4, 16, { color: '#c9a06a', r: 13, speed: 120 });
+        this.fx.bolt(s.x, s.y - 210, s.x, s.y - 6, { color: tell, wide: 1.4, life: 0.26 });
+        this.fx.fire(s.x, s.y - 10, 8, { r: 8, spread: 46 });
         this.shake = Math.min(20, this.shake + (m.shake || 8));
         const dx = Math.abs((pl.x + pl.w / 2) - s.x);
         const feet = pl.y + pl.h;
@@ -1237,6 +1284,10 @@
           this.projectiles.push(p);
         }
         this.fx.spark(s.x, s.y, 8, pdef.color || tell, { speed: 160, angle: s.dir > 0 ? 0 : Math.PI, spread: 0.8 });
+        // 弹道带元素：妖火是火焰、蛛丝是黏丝、掷石是土渣
+        if (m.key === 'volley') this.fx.fire(s.x, s.y, 7, { r: 6, spread: 20, vx: s.dir * 60 });
+        else if (m.slow) this.fx.splash(s.x, s.y, 7, { dir: s.dir, color: '#c9a6ff', r: 26 });
+        else this.fx.smoke(s.x, s.y, 6, { color: '#c9a06a', r: 6, speed: 60 });
       } else if (s.type === 'summon') {
         this.summonMinions(e, s);
       }
@@ -1543,6 +1594,20 @@
         const px0 = parseFloat(params.get('px'));
         const lim = (XY.LEVELS[this.levelIndex] || XY.LEVELS[0]).width - 90;
         if (Number.isFinite(px0)) this.player.x = clamp(px0, 20, lim);
+      }
+      // 怪物招式定格：?foe=slam&foep=0.6 把场上怪物钉在指定招式进度（校验怪物动作/特效）
+      if (params.get('foe')) {
+        this.foePin = { key: params.get('foe'), p: Math.min(0.99, Math.max(0, parseFloat(params.get('foep') || '0.6') || 0.6)) };
+      }
+      // 技能定格：?cast=wk_smash&castp=0.5 把技能动作钉在指定进度（校验动作模组用）
+      if (params.get('cast')) {
+        const sid = params.get('cast');
+        const cp = Math.min(0.99, Math.max(0, parseFloat(params.get('castp') || '0.5') || 0.5));
+        if (XY.getSkill(sid)) {
+          this.player.castSkillId = sid;
+          this.player.castStart = this.now - 1000 * cp;
+          this.player.castUntil = this.now + 1000 * (1 - cp);
+        }
       }
       // 招式定格：?atk=0..3&atkp=0.5 把普攻定格在指定进度，方便看动作
       // 走 pose() 的调试分支，而不是伪造 attackStart/attackUntil——后者算出来的

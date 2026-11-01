@@ -240,25 +240,25 @@
 
   // ===== 技能（每位 ≥3）=====
   XY.SKILLS = {
-    wk_smash: { id: 'wk_smash', name: '如意棒击', characterId: 'wukong', kind: 'melee', anim: 'giantChop', multiplier: 1.55, cooldown: 1300, cost: 16, range: 168, description: '金箍棒骤然暴涨十丈，自天而降一记重劈。' },
-    wk_dash: { id: 'wk_dash', name: '筋斗云突', characterId: 'wukong', kind: 'dash', anim: 'cloudDash', multiplier: 0.85, cooldown: 1500, cost: 22, range: 320, dashMul: 3.9, dashMs: 340, cloud: true, description: '踏筋斗云疾突，祥云缠身，一撞丈外。' },
-    wk_spin: { id: 'wk_spin', name: '定海神针', characterId: 'wukong', kind: 'aoe', anim: 'throw', multiplier: 1.45, cooldown: 3800, cost: 46, range: 0, radius: 132, description: '掷出金箍棒，棒身空中急旋，插入大地激起冲击波。' },
+    wk_smash: { id: 'wk_smash', name: '如意棒击', characterId: 'wukong', kind: 'melee', anim: 'giantChop', cast: 640, strike: 0.66, multiplier: 1.55, cooldown: 1300, cost: 16, range: 168, description: '金箍棒骤然暴涨十丈，自天而降一记重劈。' },
+    wk_dash: { id: 'wk_dash', name: '筋斗云突', characterId: 'wukong', kind: 'dash', anim: 'cloudDash', cast: 380, strike: 0.14, multiplier: 0.85, cooldown: 1500, cost: 22, range: 320, dashMul: 3.9, dashMs: 340, cloud: true, description: '踏筋斗云疾突，祥云缠身，一撞丈外。' },
+    wk_spin: { id: 'wk_spin', name: '定海神针', characterId: 'wukong', kind: 'aoe', anim: 'throw', cast: 520, strike: 0.5, multiplier: 1.45, cooldown: 3800, cost: 46, range: 0, radius: 132, description: '掷出金箍棒，棒身空中急旋，插入大地激起冲击波。' },
 
-    bj_rake: { id: 'bj_rake', name: '九齿钉耙', characterId: 'bajie', kind: 'melee', multiplier: 1.4, cooldown: 650, cost: 10, range: 80, description: '钉耙前捣，势大力沉。' },
-    bj_counter: { id: 'bj_counter', name: '倒打一耙', characterId: 'bajie', kind: 'dash', multiplier: 0.9, cooldown: 1500, cost: 20, range: 200, description: '回身突进，耙击退敌。' },
-    bj_eat: { id: 'bj_eat', name: '贪吃回元', characterId: 'bajie', kind: 'heal', multiplier: 0, cooldown: 6000, cost: 0, range: 0, healPct: 0.3, description: '吞下灵食，回复气血。' },
+    bj_rake: { id: 'bj_rake', name: '九齿钉耙', characterId: 'bajie', kind: 'melee', anim: 'rakeDown', cast: 460, strike: 0.52, multiplier: 1.4, cooldown: 650, cost: 10, range: 80, description: '钉耙前捣，势大力沉。' },
+    bj_counter: { id: 'bj_counter', name: '倒打一耙', characterId: 'bajie', kind: 'dash', anim: 'counterDash', cast: 380, strike: 0.22, multiplier: 0.9, cooldown: 1500, cost: 20, range: 200, description: '回身突进，耙击退敌。' },
+    bj_eat: { id: 'bj_eat', name: '贪吃回元', characterId: 'bajie', kind: 'heal', anim: 'eat', cast: 700, strike: 0.62, multiplier: 0, cooldown: 6000, cost: 0, range: 0, healPct: 0.3, description: '吞下灵食，回复气血。' },
 
-    ts_zeal: { id: 'ts_zeal', name: '紧箍真言', characterId: 'tangseng', kind: 'ranged', multiplier: 0.6, cooldown: 1100, cost: 14, range: 320, description: '真言遥击，克制妖邪。' },
-    ts_sutra: { id: 'ts_sutra', name: '大乘真经', characterId: 'tangseng', kind: 'buff', multiplier: 0, cooldown: 8000, cost: 30, range: 0, description: '诵经增益，攻速与攻击提升。' },
-    ts_kasaya: { id: 'ts_kasaya', name: '袈裟护体', characterId: 'tangseng', kind: 'buff', multiplier: 0, cooldown: 6000, cost: 20, range: 0, description: '金襕袈裟护身，防御大增。' },
+    ts_zeal: { id: 'ts_zeal', name: '紧箍真言', characterId: 'tangseng', kind: 'ranged', anim: 'finger', cast: 400, strike: 0.46, multiplier: 0.6, cooldown: 1100, cost: 14, range: 320, description: '真言遥击，克制妖邪。' },
+    ts_sutra: { id: 'ts_sutra', name: '大乘真经', characterId: 'tangseng', kind: 'buff', anim: 'chant', cast: 760, strike: 0.56, multiplier: 0, cooldown: 8000, cost: 30, range: 0, description: '诵经增益，攻速与攻击提升。' },
+    ts_kasaya: { id: 'ts_kasaya', name: '袈裟护体', characterId: 'tangseng', kind: 'buff', anim: 'kasaya', cast: 620, strike: 0.52, multiplier: 0, cooldown: 6000, cost: 20, range: 0, description: '金襕袈裟护身，防御大增。' },
 
-    ss_staff: { id: 'ss_staff', name: '降妖宝杖', characterId: 'shaseng', kind: 'melee', multiplier: 1.45, cooldown: 600, cost: 10, range: 82, description: '宝杖砸落，稳如泰山。' },
-    ss_quicksand: { id: 'ss_quicksand', name: '流沙卷', characterId: 'shaseng', kind: 'aoe', multiplier: 1.15, cooldown: 2800, cost: 35, range: 0, radius: 135, description: '卷起流沙，绞杀四周。' },
-    ss_bind: { id: 'ss_bind', name: '降妖缚', characterId: 'shaseng', kind: 'ranged', multiplier: 1.0, cooldown: 1400, cost: 18, range: 300, description: '抛出缚妖索，遥击敌人。' },
+    ss_staff: { id: 'ss_staff', name: '降妖宝杖', characterId: 'shaseng', kind: 'melee', anim: 'staffSlam', cast: 480, strike: 0.54, multiplier: 1.45, cooldown: 600, cost: 10, range: 82, description: '宝杖砸落，稳如泰山。' },
+    ss_quicksand: { id: 'ss_quicksand', name: '流沙卷', characterId: 'shaseng', kind: 'aoe', anim: 'sandSwirl', cast: 620, strike: 0.58, multiplier: 1.15, cooldown: 2800, cost: 35, range: 0, radius: 135, description: '卷起流沙，绞杀四周。' },
+    ss_bind: { id: 'ss_bind', name: '降妖缚', characterId: 'shaseng', kind: 'ranged', anim: 'bindCast', cast: 420, strike: 0.48, multiplier: 1.0, cooldown: 1400, cost: 18, range: 300, description: '抛出缚妖索，遥击敌人。' },
 
-    bl_tail: { id: 'bl_tail', name: '龙尾扫', characterId: 'bailongma', kind: 'aoe', multiplier: 1.2, cooldown: 800, cost: 12, range: 0, radius: 95, description: '龙尾横扫身周。' },
-    bl_charge: { id: 'bl_charge', name: '化龙击', characterId: 'bailongma', kind: 'dash', multiplier: 0.95, cooldown: 1500, cost: 22, range: 240, description: '化龙疾冲，撞飞来敌。' },
-    bl_breath: { id: 'bl_breath', name: '龙息', characterId: 'bailongma', kind: 'aoe', multiplier: 1.15, cooldown: 2600, cost: 35, range: 260, radius: 120, description: '喷吐龙息，焚敌一片。' },
+    bl_tail: { id: 'bl_tail', name: '龙尾扫', characterId: 'bailongma', kind: 'aoe', anim: 'tailSweep', cast: 480, strike: 0.52, multiplier: 1.2, cooldown: 800, cost: 12, range: 0, radius: 95, description: '龙尾横扫身周。' },
+    bl_charge: { id: 'bl_charge', name: '化龙击', characterId: 'bailongma', kind: 'dash', anim: 'dragonDash', cast: 380, strike: 0.18, multiplier: 0.95, cooldown: 1500, cost: 22, range: 240, description: '化龙疾冲，撞飞来敌。' },
+    bl_breath: { id: 'bl_breath', name: '龙息', characterId: 'bailongma', kind: 'aoe', anim: 'breath', cast: 780, strike: 0.62, multiplier: 1.15, cooldown: 2600, cost: 35, range: 260, radius: 120, description: '喷吐龙息，焚敌一片。' },
   };
   XY.getSkill = (id) => XY.SKILLS[id];
   XY.skillsOf = (cid) => Object.values(XY.SKILLS).filter((s) => s.characterId === cid);
@@ -1332,6 +1332,11 @@
       noise(c, d, t, 0.36, 0.17, 'bandpass', 280, 1.1, 2600);
       noise(c, d, t + 0.07, 0.24, 0.1, 'bandpass', 1100, 1.5, 1700);
       blip(c, d, t, { type: 'sine', f0: 180, f1: 90, dur: 0.3, gain: 0.09 });
+    },
+    // 蓄力：一口吸气 + 低鸣上扬（技能起手用，让人知道"这一下要来了"）
+    charge(c, t, d) {
+      noise(c, d, t, 0.3, 0.075, 'bandpass', 240, 0.7, 900);
+      blip(c, d, t, { type: 'sine', f0: 120, f1: 250, dur: 0.28, gain: 0.075 });
     },
     hit(c, t, d) {
       blip(c, d, t, { type: 'sine', f0: 175, f1: 58, glide: 0.07, dur: 0.12, gain: 0.36 });
@@ -4888,6 +4893,1049 @@
 
 </script>
     <script>
+/* ===== moves.js ===== */
+// ============================================================
+// 动作模组层：把「招式」翻译成一副骨架
+//   —— 之前所有普攻都是"抬手挥两下"，技能只有特效没有动作。
+//      这里给每一式一套独立的关键帧：重心、躯干倾角、腿、双手、
+//      兵器角度全部随时间变化，所以劈/戳/挑/甩/砸/扫看起来不一样。
+//   约定：手的位置以「肩」为原点（单位与 toon 层一致，头半径 14）；
+//        wa = 兵器绝对角（0 竖直向上，正 = 棒头往前倒）；
+//        1 rad ≈ 57°，动作幅度一般落在 -2 ~ 2.6。
+// ============================================================
+(function () {
+  const XY = (window.XY = window.XY || {});
+
+  const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+
+  // 关键帧插值：frames = [[p, v], [p, v, ease], ...]
+  // ease: 's' 平滑（默认）/ 'i' 慢起快收（蓄力）/ 'o' 快起慢收（出手）
+  function kf(p, frames) {
+    if (!frames || !frames.length) return 0;
+    if (p <= frames[0][0]) return frames[0][1];
+    const last = frames[frames.length - 1];
+    if (p >= last[0]) return last[1];
+    for (let i = 1; i < frames.length; i++) {
+      const a = frames[i - 1], b = frames[i];
+      if (p <= b[0]) {
+        const span = b[0] - a[0];
+        let k = span <= 1e-6 ? 1 : (p - a[0]) / span;
+        const e = b[2] || 's';
+        if (e === 'i') k = k * k;
+        else if (e === 'o') k = 1 - (1 - k) * (1 - k);
+        else if (e !== 'l') k = k * k * (3 - 2 * k);
+        return a[1] + (b[1] - a[1]) * k;
+      }
+    }
+    return last[1];
+  }
+
+  // 五帧时间轴：蓄 → 满蓄 → 出手 → 过冲 → 收势
+  const T5 = [0, 0.24, 0.5, 0.74, 1];
+  // 短促招：起手快、出手猛
+  const TQ = [0, 0.16, 0.42, 0.7, 1];
+  // 重招：蓄得久、收得慢
+  const TH = [0, 0.3, 0.56, 0.8, 1];
+
+  function frames(values, t) {
+    const tt = t || T5;
+    const out = [];
+    for (let i = 0; i < values.length && i < tt.length; i++) {
+      // 出手那一帧（第 3 帧）用快起慢收，读起来"唰"一下
+      out.push([tt[i], values[i], i === 2 ? 'o' : (i === 1 ? 'i' : 's')]);
+    }
+    return out;
+  }
+
+  // 从紧凑表取一副骨架：表里只写变化了的字段
+  function sample(tbl, p) {
+    const out = {};
+    for (const k in tbl) {
+      if (k === 't') continue;
+      out[k] = kf(p, frames(tbl[k], tbl.t));
+    }
+    return out;
+  }
+
+  // ============================================================
+  // 普攻动作表：key 与 data.js 的 path 一一对应
+  // 每个条目就是一段独立的动作，不是"同一挥手换个颜色"
+  // ============================================================
+  const BASIC = {
+    // —— 悟空的四式 ——
+    // 劈：举棒过顶（后仰踮脚）→ 斜劈到前下方（蹲成马步）
+    arc: {
+      ln: [-0.16, -0.34, 0.62, 0.44, 0.1],
+      cr: [0, -3, 9, 6, 2],
+      lf: [0.16, 0.34, -0.9, -0.5, 0.1],
+      lb: [-0.1, -0.44, 0.6, 0.28, -0.14],
+      hx: [-3, 7, 15, 12, 5],
+      hy: [-5, -19, 9, 5, 8],
+      bx: [-5, -6, 1, -1, -4],
+      by: [10, 14, 18, 16, 14],
+      wa: [-0.2, -1.4, 2.3, 2.0, 1.15],
+      wg: [0, -5, 8, 6, 0],
+      hd: [0, 2, 5, 3, 1],
+    },
+    // 戳：沉腰后坐 → 弓步捅出去，身体几乎不上下
+    thrust: {
+      t: TQ,
+      ln: [-0.1, -0.26, 0.42, 0.34, 0.08],
+      cr: [2, 5, 2, 2, 1],
+      lf: [0.2, 0.5, -1.0, -0.8, 0.12],
+      lb: [-0.1, -0.55, 0.45, 0.3, -0.14],
+      hx: [0, -8, 19, 17, 5],
+      hy: [1, 2, -2, -1, 8],
+      bx: [-4, -7, -11, -9, -3],
+      by: [13, 11, 6, 8, 14],
+      wa: [1.1, 0.85, 1.6, 1.58, 1.15],
+      wg: [0, -4, 6, 4, 0],
+    },
+    // 挑：先蹲到底 → 拔身撩起，整个人往上"长"
+    lift: {
+      ln: [0.22, 0.34, -0.4, -0.28, 0.06],
+      cr: [11, 14, -4, -2, 2],
+      lf: [-0.5, -0.7, 0.5, 0.4, 0.1],
+      lb: [0.55, 0.8, -0.35, -0.3, -0.13],
+      hx: [2, -2, 12, 10, 5],
+      hy: [12, 15, -9, -7, 8],
+      bx: [-2, -1, -6, -5, -3],
+      by: [15, 18, 11, 12, 14],
+      wa: [2.2, 2.45, -0.55, -0.7, 1.15],
+      wg: [0, 3, -5, -4, 0],
+      hd: [3, 4, -4, -3, 0],
+    },
+    // 甩：拧腰蓄到身后 → 一圈横抽 → 收势拖在后
+    sweep: {
+      ln: [-0.2, -0.4, 0.5, 0.34, 0.06],
+      cr: [3, 5, 8, 6, 2],
+      lf: [-0.3, -0.5, 0.4, 0.3, 0.1],
+      lb: [0.35, 0.55, -0.2, -0.14, -0.13],
+      hx: [-4, -12, 17, 13, 4],
+      hy: [2, 0, -5, -3, 8],
+      bx: [2, 6, -7, -5, -3],
+      by: [12, 9, 16, 15, 14],
+      wa: [-0.9, -1.75, 1.5, 1.25, 1.15],
+      wg: [0, -4, 6, 4, 0],
+      wb: [1, 1, 0, 0, 0],
+      rot: [0.12, 0.28, -0.3, -0.2, 0],
+    },
+
+    // —— 八戒的四式 ——
+    // 筑：双手举过头顶 → 整个人压下去，蹲得最深
+    smash: {
+      t: TH,
+      ln: [-0.14, -0.42, 0.72, 0.52, 0.1],
+      cr: [0, -6, 14, 10, 2],
+      lf: [0.2, 0.5, -1.0, -0.6, 0.1],
+      lb: [-0.14, -0.55, 0.7, 0.4, -0.14],
+      hx: [-2, -4, 9, 7, 4],
+      hy: [-4, -15, 9, 5, 8],
+      bx: [-4, -6, 2, 0, -3],
+      by: [10, 14, 18, 16, 14],
+      wa: [-0.4, -0.9, 2.7, 2.5, 1.2],
+      wg: [0, -3, 8, 6, 0],
+      hd: [0, 2, 5, 4, 1],
+    },
+    // 搂：耙子探出去 → 整个人往后坐、往回拽
+    reel: {
+      ln: [0.2, 0.3, -0.5, -0.34, 0.04],
+      cr: [2, 4, 8, 6, 2],
+      lf: [0.1, -0.3, 0.6, 0.4, 0.1],
+      lb: [-0.1, 0.2, -0.4, -0.3, -0.13],
+      hx: [8, 14, -4, -2, 4],
+      hy: [2, 2, -1, 0, 8],
+      bx: [0, 2, -5, -4, -3],
+      by: [14, 15, 12, 13, 14],
+      wa: [1.2, 1.5, -1.5, -1.2, 1.15],
+      wg: [0, 2, -5, -3, 0],
+    },
+    // 撞：低头压低 → 整个人前倾顶出去（耙子架在身前当盾）
+    ram: {
+      t: TQ,
+      ln: [0.1, 0.34, 0.62, 0.5, 0.08],
+      cr: [2, 8, 4, 4, 2],
+      lf: [0.2, 0.5, -0.75, -0.55, 0.1],
+      lb: [-0.1, -0.6, 0.65, 0.45, -0.13],
+      hx: [2, -1, 12, 11, 4],
+      hy: [3, 0, 1, 2, 8],
+      bx: [-2, -4, 4, 3, -3],
+      by: [14, 16, 15, 15, 14],
+      wa: [1.3, 0.9, 1.5, 1.45, 1.15],
+      hd: [1, 4, 6, 5, 1],
+    },
+    // 抡：原地抡一圈 —— 手绕头画圆、兵器绕手转满一圈
+    spin: {
+      t: [0, 0.2, 0.46, 0.72, 1],
+      ln: [-0.1, -0.3, 0.4, 0.28, 0.04],
+      cr: [0, -4, 8, 5, 2],
+      lf: [0.1, 0.3, -0.4, -0.3, 0.1],
+      lb: [-0.1, -0.4, 0.3, 0.2, -0.13],
+      hx: [0, 7, 13, 4, 3],
+      hy: [-9, -3, 3, -7, 8],
+      bx: [-5, -3, -7, -6, -3],
+      by: [12, 14, 10, 12, 14],
+      wa: [-1.4, 0.4, 2.6, -1.2, 1.15],
+      wg: [0, 2, 6, -2, 0],
+      rot: [0, 0.5, 0.9, 0.4, 0],
+    },
+
+    // —— 唐僧的四式（空手）——
+    // 推掌：收掌于腰 → 一掌推出，脚下扎稳
+    palm: {
+      t: TQ,
+      bh: [1, 1, 1, 1, 1],
+      ln: [-0.06, -0.24, 0.34, 0.26, 0.04],
+      cr: [1, 4, 2, 2, 1],
+      lf: [0.16, 0.44, -0.8, -0.6, 0.12],
+      lb: [-0.1, -0.5, 0.4, 0.26, -0.13],
+      hx: [1, -3, 14, 13, 4],
+      hy: [2, 3, -2, -1, 8],
+      bx: [-4, -7, -9, -8, -3],
+      by: [13, 12, 8, 9, 14],
+      hd: [0, 1, 3, 2, 0],
+    },
+    // 拂袖：侧身让开 → 大袖横扫，身体跟着转半圈
+    sleeve: {
+      ln: [-0.12, -0.28, 0.3, 0.2, 0.04],
+      cr: [1, 3, 6, 4, 1],
+      lf: [-0.2, -0.4, 0.35, 0.24, 0.1],
+      lb: [0.25, 0.45, -0.25, -0.16, -0.13],
+      bh: [1, 1, 1, 1, 1],
+      hx: [-5, -9, 13, 10, 4],
+      hy: [1, -1, -5, -4, 8],
+      bx: [3, 6, -6, -5, -3],
+      by: [12, 10, 14, 13, 14],
+      rot: [0.1, 0.26, -0.34, -0.2, 0],
+      hd: [-1, -2, 3, 2, 0],
+    },
+    // 侧踢：抬膝 → 侧踢出去，上身反着后仰
+    kick: {
+      ln: [0.1, 0.2, -0.42, -0.3, 0.04],
+      cr: [2, 6, -1, 1, 1],
+      lf: [0.2, -1.05, -1.95, -1.1, 0.1],
+      lb: [-0.14, -0.1, 0.24, 0.12, -0.13],
+      bh: [1, 1, 1, 1, 1],
+      hx: [3, 5, -6, -4, 4],
+      hy: [6, 4, 6, 5, 8],
+      bx: [-3, -2, 7, 5, -3],
+      by: [14, 12, 8, 10, 14],
+      hd: [-1, -2, 3, 1, 0],
+    },
+    // 金刚掌：双手胸前合十 → 缓缓前推（不靠身体靠气势）
+    pray: {
+      t: TH,
+      ln: [0.02, 0.06, 0.2, 0.16, 0.02],
+      cr: [1, 2, 5, 4, 1],
+      lf: [0.24, 0.34, -0.2, -0.16, 0.1],
+      lb: [-0.3, -0.4, 0.14, 0.1, -0.13],
+      bh: [1, 1, 1, 1, 1],
+      hx: [3, 2, 13, 12, 4],
+      hy: [4, -1, -2, -1, 8],
+      bx: [-1, 0, -8, -7, -3],
+      by: [10, 2, 4, 6, 14],
+      hd: [0, -1, 2, 1, 0],
+    },
+
+    // —— 沙僧的四式 ——
+    // 铲：沉到最低 → 从下往上铲（走的是"撬"不是"劈"）
+    scoop: {
+      ln: [0.18, 0.34, -0.32, -0.22, 0.06],
+      cr: [10, 13, -2, 0, 2],
+      lf: [-0.44, -0.66, 0.48, 0.36, 0.1],
+      lb: [0.5, 0.74, -0.3, -0.22, -0.13],
+      hx: [1, -2, 9, 7, 5],
+      hy: [11, 13, -8, -7, 8],
+      bx: [-2, -1, -5, -4, -3],
+      by: [16, 18, 11, 12, 14],
+      wa: [2.3, 2.55, -0.8, -1.05, 1.2],
+      wg: [0, 3, -5, -4, 0],
+      hd: [2, 3, -2, -1, 0],
+    },
+    // 扫：整个人压到最低，兵器贴着地面横抽（专门打脚下的）
+    sweepLow: {
+      ln: [0.16, 0.3, 0.5, 0.36, 0.08],
+      cr: [10, 13, 15, 12, 3],
+      lf: [-0.5, -0.7, 0.4, 0.28, 0.1],
+      lb: [0.52, 0.76, -0.25, -0.18, -0.13],
+      hx: [-1, -7, 12, 10, 5],
+      hy: [8, 9, 5, 5, 8],
+      bx: [1, 4, -6, -5, -3],
+      by: [14, 12, 16, 15, 14],
+      wa: [1.65, 1.9, 1.86, 1.72, 1.2],
+      wg: [0, -3, 6, 4, 0],
+      wb: [1, 1, 0, 0, 0],
+      rot: [0.1, 0.24, -0.26, -0.16, 0],
+    },
+    // 顶：短促前顶（杖尾那一头砸出去）
+    butt: {
+      t: TQ,
+      ln: [0.06, -0.16, 0.4, 0.3, 0.04],
+      cr: [2, 4, 1, 1, 1],
+      lf: [0.16, 0.4, -0.72, -0.5, 0.1],
+      lb: [-0.1, -0.46, 0.4, 0.26, -0.13],
+      hx: [2, 0, 12, 11, 4],
+      hy: [3, 4, 1, 2, 8],
+      bx: [-3, -5, -7, -6, -3],
+      by: [13, 12, 9, 11, 14],
+      wa: [1.5, 1.2, -1.5, -1.4, 1.15],
+      wg: [0, -2, 5, 4, 0],
+    },
+    // 压顶：举到最高 → 直上直下砸
+    press: {
+      t: TH,
+      ln: [-0.1, -0.36, 0.66, 0.46, 0.08],
+      cr: [0, -5, 12, 9, 2],
+      lf: [0.2, 0.46, -0.9, -0.55, 0.1],
+      lb: [-0.14, -0.5, 0.6, 0.36, -0.13],
+      hx: [-1, -5, 9, 7, 4],
+      hy: [-3, -16, 8, 4, 8],
+      bx: [-3, -7, 2, 0, -3],
+      by: [11, 15, 18, 16, 14],
+      wa: [-0.2, -0.7, 2.85, 2.6, 1.2],
+      wg: [0, -4, 8, 6, 0],
+      hd: [0, 2, 5, 4, 1],
+    },
+
+    // —— 白龙马的四式 ——
+    // 刺：抬手压枪 → 一枪平捅到最远
+    thrust2: {
+      t: TQ,
+      ln: [-0.08, -0.24, 0.46, 0.36, 0.06],
+      cr: [2, 5, 3, 2, 1],
+      lf: [0.2, 0.5, -1.02, -0.82, 0.12],
+      lb: [-0.1, -0.55, 0.5, 0.32, -0.13],
+      hx: [2, -4, 17, 16, 5],
+      hy: [1, 2, -2, -1, 8],
+      bx: [-4, -7, -10, -9, -3],
+      by: [13, 11, 7, 9, 14],
+      wa: [0.95, 0.55, 1.61, 1.6, 1.15],
+      wg: [0, -5, 6, 5, 0],
+    },
+    // 撩：枪尖点地 → 一路撩到头顶（比悟空的挑更"直"）
+    lift2: {
+      ln: [0.16, 0.28, -0.36, -0.24, 0.05],
+      cr: [7, 10, -3, -1, 2],
+      lf: [-0.36, -0.56, 0.42, 0.3, 0.1],
+      lb: [0.42, 0.66, -0.26, -0.18, -0.13],
+      hx: [3, 1, 8, 7, 5],
+      hy: [10, 12, -12, -9, 8],
+      bx: [-2, -1, -6, -5, -3],
+      by: [15, 17, 10, 12, 14],
+      wa: [2.05, 2.35, -1.4, -1.55, 1.2],
+      wg: [0, 2, -5, -4, 0],
+    },
+    // 压杆：横杆上架 → 往下压住（防守反击感）
+    parry: {
+      t: TQ,
+      ln: [-0.06, -0.2, 0.34, 0.24, 0.04],
+      cr: [2, 4, 9, 7, 2],
+      lf: [0.14, 0.3, -0.4, -0.3, 0.1],
+      lb: [-0.1, -0.3, 0.3, 0.2, -0.13],
+      hx: [1, -3, 10, 9, 4],
+      hy: [0, -8, 8, 6, 8],
+      bx: [-3, -5, -4, -4, -3],
+      by: [13, 10, 13, 13, 14],
+      wa: [0.9, 0.2, 2.0, 1.9, 1.15],
+      wg: [0, -3, 6, 5, 0],
+    },
+    // 回马枪：整个人转半身，枪从腋下往身后扎
+    back: {
+      ln: [0.08, -0.2, -0.34, -0.26, 0.04],
+      cr: [2, 4, 7, 5, 2],
+      lf: [0.2, -0.3, 0.55, 0.4, 0.1],
+      lb: [-0.14, 0.3, -0.4, -0.3, -0.13],
+      hx: [0, -8, -13, -12, 4],
+      hy: [2, 1, 3, 2, 8],
+      bx: [1, 4, 7, 6, -3],
+      by: [14, 13, 12, 13, 14],
+      wa: [1.2, -0.6, -1.6, -1.45, 1.15],
+      wg: [0, -2, -5, -4, 0],
+      rot: [0, 0.22, 0.44, 0.36, 0],
+      wb: [0, 1, 1, 1, 0],
+    },
+  };
+
+  // ============================================================
+  // 技能动作模组：每个技能一个 anim，各有各的起手/发力/收势
+  //   castP 0→1 走完整个动作；出手点由 data.js 的 strike 决定
+  // ============================================================
+  const SKILL = {
+    // 如意棒击：举棒过顶 → 棒子暴涨 → 砸进地里
+    giantChop: {
+      t: [0, 0.34, 0.62, 0.8, 1],
+      ln: [-0.1, -0.5, 0.78, 0.6, 0.12],
+      cr: [0, -8, 15, 11, 3],
+      lf: [0.14, 0.5, -1.05, -0.65, 0.12],
+      lb: [-0.14, -0.6, 0.75, 0.45, -0.14],
+      hx: [-2, 7, 12, 10, 4],
+      hy: [-6, -20, 8, 5, 8],
+      bx: [-4, -6, 1, 0, -3],
+      by: [10, 15, 19, 17, 14],
+      wa: [-0.35, -1.2, 2.4, 2.15, 1.15],
+      wg: [0, -5, 9, 7, 0],
+      ws: [1, 1.05, 1.12, 1.06, 1],
+      hd: [0, 3, 6, 4, 1],
+      cape: [0.5, 1.2, 1.6, 1.2, 0.5],
+    },
+    // 筋斗云突：压低身子，棒子拖在身后，整个人往前窜
+    cloudDash: {
+      t: [0, 0.2, 0.55, 0.8, 1],
+      ln: [0.1, 0.34, 0.48, 0.32, 0.05],
+      cr: [2, 7, 5, 3, 1],
+      lf: [0.2, 0.62, -0.7, -0.4, 0.1],
+      lb: [-0.14, -0.72, 0.5, 0.3, -0.13],
+      hx: [0, -6, -8, -6, 4],
+      hy: [4, 6, 2, 4, 8],
+      bx: [-4, 3, 6, 4, -3],
+      by: [14, 10, 8, 11, 14],
+      wa: [1.4, 2.5, 2.9, 2.6, 1.15],
+      wb: [0, 1, 1, 1, 0],
+      hd: [1, 4, 5, 3, 0],
+      cape: [0.8, 2.2, 2.6, 1.8, 0.6],
+    },
+    // 定海神针：后仰蓄力 → 转身甩臂把棒子掷出去（掷完空手）
+    throw: {
+      t: [0, 0.3, 0.5, 0.68, 1],
+      ln: [-0.1, -0.34, 0.46, 0.3, 0.06],
+      cr: [1, 4, 2, 2, 1],
+      lf: [0.16, 0.4, -0.5, -0.3, 0.1],
+      lb: [-0.12, -0.42, 0.4, 0.26, -0.13],
+      hx: [-4, -9, 14, 12, 3],
+      hy: [-2, -6, -6, -2, 8],
+      bx: [-2, 2, -8, -6, -3],
+      by: [13, 11, 15, 14, 14],
+      wa: [-0.4, -1.3, 1.5, 1.9, 1.15],
+      wg: [0, -4, 5, 4, 0],
+      rot: [0, 0.16, -0.2, -0.12, 0],
+      cape: [0.4, 0.9, 1.2, 0.8, 0.4],
+    },
+    // 九齿钉耙：耙子高举 → 两段发力砸下
+    rakeDown: {
+      t: [0, 0.28, 0.52, 0.74, 1],
+      ln: [0.06, -0.24, 0.52, 0.38, 0.08],
+      cr: [1, 4, 7, 5, 2],
+      lf: [0.16, 0.42, -0.86, -0.58, 0.1],
+      lb: [-0.14, -0.5, 0.58, 0.38, -0.14],
+      hx: [-1, -7, 17, 15, 4],
+      hy: [2, 3, 4, 4, 8],
+      bx: [-3, -6, -9, -8, -3],
+      by: [12, 11, 7, 9, 14],
+      wa: [0.9, 0.4, 1.85, 1.75, 1.15],
+      wg: [0, -4, 8, 6, 0],
+      ws: [1, 1.06, 1.16, 1.1, 1],
+      hd: [0, -1, 3, 2, 0],
+    },
+    // 倒打一耙：先侧身让开 → 反手冲出去（背对敌）
+    counterDash: {
+      t: [0, 0.22, 0.5, 0.76, 1],
+      ln: [-0.2, 0.4, 0.55, 0.34, 0.06],
+      cr: [3, 8, 6, 4, 1],
+      lf: [-0.3, 0.55, -0.6, -0.35, 0.1],
+      lb: [0.36, -0.6, 0.4, 0.24, -0.13],
+      hx: [-6, -2, 10, 8, 4],
+      hy: [2, 5, 0, 3, 8],
+      bx: [2, -3, -7, -5, -3],
+      by: [13, 12, 15, 14, 14],
+      wa: [-1.2, 1.4, 1.9, 1.6, 1.15],
+      rot: [0.16, -0.28, -0.24, -0.12, 0],
+      wb: [1, 0, 0, 0, 0],
+    },
+    // 贪吃回元：掏袖子 → 塞进嘴里 → 挺着肚子打个饱嗝
+    eat: {
+      t: [0, 0.22, 0.46, 0.72, 1],
+      ln: [0.04, 0.24, -0.06, -0.12, 0.02],
+      cr: [2, 6, 3, -2, 1],
+      lf: [0.14, 0.32, 0.1, 0.06, 0.1],
+      lb: [-0.12, -0.3, -0.08, -0.06, -0.13],
+      bh: [1, 1, 1, 1, 1],
+      hx: [0, 4, 7, 6, 4],
+      hy: [7, 5, -9, -10, 8],
+      bx: [3, -4, -3, -2, -3],
+      by: [9, 11, 11, 12, 14],
+      hd: [1, 3, -2, -3, 0],
+    },
+    // 紧箍真言：竖指结印 → 遥遥一指（指尖放光）
+    finger: {
+      t: [0, 0.26, 0.5, 0.74, 1],
+      ln: [-0.04, -0.2, 0.24, 0.16, 0.02],
+      cr: [1, 3, 1, 1, 1],
+      lf: [0.14, 0.3, -0.34, -0.24, 0.1],
+      lb: [-0.12, -0.36, 0.26, 0.18, -0.13],
+      bh: [1, 1, 1, 1, 1],
+      hx: [0, -3, 13, 11, 4],
+      hy: [-7, -15, -11, -10, 8],
+      bx: [-2, -1, -4, -4, -3],
+      by: [12, 4, 5, 7, 14],
+      hd: [0, -2, 2, 1, 0],
+      cape: [0.3, 0.6, 0.9, 0.6, 0.3],
+    },
+    // 大乘真经：盘膝坐地、双手合十、垂首诵经（金页从天而降）
+    chant: {
+      t: [0, 0.2, 0.44, 0.8, 1],
+      ln: [0.04, 0.1, 0.12, 0.1, 0.02],
+      cr: [1, 9, 13, 13, 2],
+      lf: [0.14, -0.5, -0.62, -0.6, 0.1],
+      lb: [-0.12, 0.5, 0.62, 0.6, -0.13],
+      bh: [1, 1, 1, 1, 1],
+      hx: [2, 3, 5, 5, 4],
+      hy: [2, 4, 6, 6, 8],
+      bx: [-2, -2, -4, -4, -3],
+      by: [10, 6, 5, 5, 14],
+      hd: [0, 1, 3, 3, 0],
+      cape: [0.2, 0.5, 0.8, 0.7, 0.3],
+    },
+    // 袈裟护体：双臂展开、袈裟鼓起 → 收拢护身
+    kasaya: {
+      t: [0, 0.3, 0.56, 0.8, 1],
+      ln: [-0.06, -0.24, 0.1, 0.06, 0.02],
+      cr: [1, 3, 5, 4, 1],
+      lf: [0.2, 0.4, -0.2, -0.14, 0.1],
+      lb: [-0.2, -0.4, 0.16, 0.12, -0.13],
+      bh: [1, 1, 1, 1, 1],
+      hx: [2, -4, 9, 7, 4],
+      hy: [4, -10, -8, -2, 8],
+      bx: [-2, 6, -8, -6, -3],
+      by: [10, -8, 0, 6, 14],
+      hd: [-1, -3, 0, 1, 0],
+      cape: [0.3, 1.4, 2.2, 1.6, 0.5],
+    },
+    // 降妖宝杖：横杖下压 → 杖尾顿地（震出一道气浪）
+    staffSlam: {
+      t: [0, 0.3, 0.54, 0.76, 1],
+      ln: [0.1, -0.18, 0.46, 0.3, 0.06],
+      cr: [2, 5, 12, 8, 2],
+      lf: [0.16, 0.4, -0.8, -0.5, 0.1],
+      lb: [-0.14, -0.46, 0.55, 0.36, -0.14],
+      hx: [0, -6, 16, 13, 4],
+      hy: [1, -2, 9, 6, 8],
+      bx: [-4, -8, 2, 0, -3],
+      by: [12, 15, 19, 17, 14],
+      wa: [1.1, 2.4, 3.0, 2.7, 1.15],
+      wg: [0, -3, 9, 6, 0],
+      rot: [0, 0.26, 0.34, 0.2, 0],
+      hd: [0, 2, 5, 4, 1],
+    },
+    // 流沙卷：沉身 → 整个人带着兵器旋一圈，把沙搅起来
+    sandSwirl: {
+      t: [0, 0.24, 0.5, 0.78, 1],
+      ln: [0.08, 0.3, 0.34, 0.2, 0.04],
+      cr: [3, 10, 12, 8, 2],
+      lf: [-0.24, -0.5, 0.4, 0.24, 0.1],
+      lb: [0.28, 0.54, -0.3, -0.2, -0.13],
+      hx: [-3, -8, 9, 6, 4],
+      hy: [5, 7, 4, 6, 8],
+      bx: [2, 5, -6, -4, -3],
+      by: [12, 10, 13, 13, 14],
+      wa: [1.7, 3.1, 4.6, 5.4, 7.43],
+      rot: [0, 0.24, 0.4, 0.3, 0],
+      wb: [1, 1, 0, 0, 0],
+    },
+    // 降妖缚：手探到身后 → 一索甩出（手臂拉成一条直线）
+    bindCast: {
+      t: [0, 0.26, 0.5, 0.74, 1],
+      ln: [-0.06, -0.28, 0.36, 0.24, 0.04],
+      cr: [1, 3, 2, 2, 1],
+      lf: [0.14, 0.34, -0.42, -0.3, 0.1],
+      lb: [-0.12, -0.38, 0.3, 0.2, -0.13],
+      hx: [-2, -7, 15, 13, 4],
+      hy: [3, 1, -2, 0, 8],
+      bx: [-2, 2, -8, -6, -3],
+      by: [13, 11, 14, 14, 14],
+      wa: [1.3, 2.2, 2.9, 2.5, 1.15],
+      rot: [0, 0.14, -0.16, -0.1, 0],
+    },
+    // 龙尾扫：整个身子拧成一张弓 → 甩尾扫一圈
+    tailSweep: {
+      t: [0, 0.26, 0.52, 0.78, 1],
+      ln: [-0.06, -0.3, 0.42, 0.3, 0.04],
+      cr: [2, 7, 10, 7, 2],
+      lf: [-0.3, -0.6, 0.5, 0.3, 0.1],
+      lb: [0.34, 0.62, -0.4, -0.24, -0.13],
+      hx: [-3, -9, 12, 9, 4],
+      hy: [3, 1, 2, 4, 8],
+      bx: [2, 6, -7, -5, -3],
+      by: [12, 9, 13, 13, 14],
+      wa: [1.2, 2.8, 4.4, 5.6, 7.43],
+      rot: [0, 0.3, 0.52, 0.34, 0],
+      wb: [1, 1, 0, 0, 0],
+      cape: [0.4, 1, 1.8, 1.2, 0.4],
+    },
+    // 化龙击：伏身蓄势 → 贴着地面窜出去，双手化作龙爪
+    dragonDash: {
+      t: [0, 0.2, 0.52, 0.8, 1],
+      ln: [0.1, 0.36, 0.5, 0.32, 0.05],
+      cr: [2, 8, 6, 3, 1],
+      lf: [0.2, 0.66, -0.72, -0.42, 0.1],
+      lb: [-0.14, -0.76, 0.52, 0.3, -0.13],
+      hx: [2, -4, 13, 10, 4],
+      hy: [4, 0, -2, 2, 8],
+      bx: [-2, 4, -8, -6, -3],
+      by: [14, 9, 12, 13, 14],
+      wa: [1.3, 2.4, 1.3, 1.5, 1.15],
+      wb: [0, 1, 0, 0, 0],
+      cape: [0.8, 2.2, 2.6, 1.8, 0.6],
+    },
+    // 龙息：仰头深吸（胸口鼓起）→ 低头喷出去
+    breath: {
+      t: [0, 0.34, 0.58, 0.8, 1],
+      ln: [-0.18, -0.34, 0.4, 0.3, 0.06],
+      cr: [1, -4, 6, 4, 2],
+      lf: [0.14, 0.32, -0.5, -0.34, 0.1],
+      lb: [-0.12, -0.44, 0.4, 0.26, -0.13],
+      hx: [0, -4, 12, 10, 4],
+      hy: [2, -2, 0, 2, 8],
+      bx: [-3, -6, -8, -7, -3],
+      by: [13, 10, 12, 13, 14],
+      wa: [1.3, 1.9, 2.3, 2.1, 1.15],
+      wb: [1, 1, 1, 1, 0],
+      hd: [-1, -5, 2, 3, 0],
+      cape: [0.4, 1.2, 1.8, 1.3, 0.4],
+    },
+  };
+
+  // ============================================================
+  // 三头身手臂短，原本按"写实比例"给的手部位移在 60px 的屏幕上
+  // 读不出差别。这里按动作的发力特点把位移拉开（默认手位是基准点，
+  // 只放大"离待机有多远"，不会让待机姿势变形）。
+  // ============================================================
+  const HAND_BASE = { hx: 4.5, hy: 8.5, bx: -3, by: 14 };
+  function ampHand(tbl, k) {
+    if (!tbl) return;
+    for (const f in HAND_BASE) {
+      const arr = tbl[f];
+      if (!arr) continue;
+      const b = HAND_BASE[f];
+      tbl[f] = arr.map((v) => b + (v - b) * k);
+    }
+  }
+  // 重家伙（八戒/沙僧）大开大合，轻兵器（唐僧/白龙马）舒展快
+  const AMP = {
+    smash: 1.3, reel: 1.3, ram: 1.25, spin: 1.25,
+    palm: 1.3, sleeve: 1.3, kick: 1.3, pray: 1.25,
+    scoop: 1.3, sweepLow: 1.3, butt: 1.3, press: 1.3,
+    thrust2: 1.3, lift2: 1.3, parry: 1.25, back: 1.3,
+    giantChop: 1.2, cloudDash: 1.2, throw: 1.2,
+    rakeDown: 1.2, counterDash: 1.2, eat: 1.2,
+    finger: 1.2, chant: 1.15, kasaya: 1.2,
+    staffSlam: 1.2, sandSwirl: 1.2, bindCast: 1.2,
+    tailSweep: 1.2, dragonDash: 1.2, breath: 1.2,
+  };
+  // 腿的符号：骨架里「正 = 这只脚往前」，表里按"发力方向"写，
+  // 出手时前腿要迈出去、后腿往后撑，所以统一取反更符合直觉。
+  function flipLegs(tbl) {
+    if (!tbl) return;
+    if (tbl.lf) tbl.lf = tbl.lf.map((v) => -v);
+    if (tbl.lb) tbl.lb = tbl.lb.map((v) => -v);
+  }
+  for (const k in AMP) {
+    ampHand(BASIC[k], AMP[k]);
+    ampHand(SKILL[k], AMP[k]);
+  }
+  for (const k in BASIC) flipLegs(BASIC[k]);
+  for (const k in SKILL) flipLegs(SKILL[k]);
+
+  // ============================================================
+  // 招式 → 骨架
+  // ============================================================
+  const PATH_BY_KIND = ['arc', 'thrust', 'lift', 'sweep'];
+  const CHAR_KIND = {
+    // 每个角色的普攻默认顺序（pose 没给 path 时的兜底）
+    wukong: ['arc', 'thrust', 'lift', 'sweep'],
+    bajie: ['smash', 'reel', 'ram', 'spin'],
+    tangseng: ['palm', 'sleeve', 'kick', 'pray'],
+    shaseng: ['scoop', 'sweepLow', 'butt', 'press'],
+    bailongma: ['thrust2', 'lift2', 'parry', 'back'],
+  };
+
+  // 拳脚类招式：手上不拿兵器
+  const BARE = { palm: 1, sleeve: 1, kick: 1, pray: 1, finger: 1, chant: 1, kasaya: 1 };
+
+  // 技能 anim 兜底：没写 anim 的技能按 kind 分配
+  function animForSkill(sk) {
+    if (!sk) return null;
+    if (sk.anim) return sk.anim;
+    const byId = {
+      bj_rake: 'rakeDown', bj_counter: 'counterDash', bj_eat: 'eat',
+      ts_zeal: 'finger', ts_sutra: 'chant', ts_kasaya: 'kasaya',
+      ss_staff: 'staffSlam', ss_quicksand: 'sandSwirl', ss_bind: 'bindCast',
+      bl_tail: 'tailSweep', bl_charge: 'dragonDash', bl_breath: 'breath',
+      wk_smash: 'giantChop', wk_dash: 'cloudDash', wk_spin: 'throw',
+    };
+    return byId[sk.id] || null;
+  }
+
+  const IDLE = {
+    ln: 0, cr: 0, lf: 0.13, lb: -0.13,
+    hx: 4.5, hy: 8.5, bx: -3, by: 14,
+    wa: 1.15, wg: 0, ws: 1, wb: 0, bh: 0,
+    rot: 0, up: 0, hd: 0, cape: 0.5,
+  };
+
+  function blank() {
+    const o = {};
+    for (const k in IDLE) o[k] = IDLE[k];
+    return o;
+  }
+
+  // 角度字段：混合时走最短路径，避免"收势时反向转一整圈"
+  const ANGLE_KEY = { wa: 1, rot: 1 };
+
+  function blend(base, over, k) {
+    if (!over) return base;
+    const o = {};
+    for (const key in base) {
+      const v = over[key];
+      if (v === undefined) { o[key] = base[key]; continue; }
+      if (ANGLE_KEY[key]) {
+        let d = v - base[key];
+        d = ((d + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
+        o[key] = base[key] + d * k;
+      } else {
+        o[key] = base[key] + (v - base[key]) * k;
+      }
+    }
+    return o;
+  }
+
+  // ============================================================
+  // 怪物动作模组
+  //   敌人没有"按下按键"的瞬间，只有三段状态：windup → active → recover。
+  //   统一折算成一条进度轴：
+  //     0     待机 → 0.5 满蓄（起手结束）→ 0.6 打完（出手结束）
+  //     → 0.78 过冲落定 → 1 回到待机
+  //   表里只写这一招和待机不一样的地方，没写的量按 base 走。
+  // ============================================================
+  const F6 = [0, 0.26, 0.5, 0.6, 0.78, 1];
+
+  // 六帧的缓动：抬起来要慢（压住劲）、打出去要快（唰一下）、回弹顺手
+  function frames6(v) {
+    const out = [];
+    for (let i = 0; i < v.length && i < F6.length; i++) {
+      out.push([F6[i], v[i], i === 1 ? 'i' : i === 3 ? 'o' : 's']);
+    }
+    return out;
+  }
+
+  // 小怪：lean 整体前倾 / crouch 下沉 / sq 纵向挤压
+  //       hdx,hdy 头偏移 / jaw 张嘴 / armF,armB 两臂抬角
+  //       lunge 前冲位移 / tail 尾摆
+  const FOE_BASE = { lean: 0, crouch: 0, sq: 1, hdx: 0, hdy: 0, jaw: 0, armF: 0, armB: 0, lunge: 0, tail: 0 };
+  const FOE_MOVE = {
+    // 小妖·抓挠：爪子抡到脑后 → 狠狠挠下来
+    claw: {
+      t: F6,
+      lean: [0, -0.2, -0.28, 0.34, 0.16, 0],
+      crouch: [0, 2.5, 3.5, 1, 1.5, 0],
+      armF: [0, 1.15, 1.4, -0.75, -0.2, 0],
+      armB: [0, -0.5, -0.7, 0.5, 0.2, 0],
+      hdx: [0, -1.5, -2, 3.5, 1.5, 0],
+      hdy: [0, -2, -2.5, 1.5, 0.5, 0],
+      jaw: [0, 0.4, 0.5, 0.9, 0.3, 0],
+      lunge: [0, -1.5, -2.5, 4, 1.5, 0],
+      tail: [0, -1, -1.5, 1, 0.5, 0],
+    },
+    // 小妖·掷石：后手抡到背后 → 甩出去
+    rock: {
+      t: F6,
+      lean: [0, -0.26, -0.4, 0.42, 0.16, 0],
+      armB: [0, -1.3, -1.75, 1.45, 0.55, 0],
+      armF: [0, 0.9, 1.25, -0.45, 0.1, 0],
+      hdx: [0, -2.5, -3.5, 3.5, 1, 0],
+      hdy: [0, 2, 3, -1.5, 0, 0],
+      jaw: [0, 0.15, 0.2, 0.8, 0.2, 0],
+      lunge: [0, -2, -3.5, 5, 1.5, 0],
+      crouch: [0, -2, -3, 1, 1, 0],
+      tail: [0, -2, -3, 2, 0.5, 0],
+    },
+    // 狼·撕咬：头往后缩、张开血口 → 脖子弹出去咬合
+    bite: {
+      t: F6,
+      lean: [0, -0.12, -0.18, 0.26, 0.12, 0],
+      hdx: [0, -4, -5.5, 6, 2.5, 0],
+      hdy: [0, -1, -1.5, 2, 0.8, 0],
+      jaw: [0, 0.8, 1, 0.05, 0.15, 0],
+      crouch: [0, 2, 2.6, 0, 0.8, 0],
+      armF: [0, -0.3, -0.45, 0.35, 0.1, 0],
+      lunge: [0, -1, -2, 3, 1, 0],
+      tail: [0, 2, 3, -1.5, 0.5, 0],
+    },
+    // 狼·扑击：伏低身子蓄力 → 前腿蹬直弹出去
+    pounce: {
+      t: F6,
+      lean: [0, -0.14, -0.2, 0.34, 0.26, 0],
+      crouch: [0, 5, 6.5, -2, 1, 0],
+      sq: [1, 0.9, 0.87, 1.06, 1.02, 1],
+      hdx: [0, -3, -4, 5, 3, 0],
+      jaw: [0, 0.5, 0.7, 0.4, 0.1, 0],
+      armF: [0, -0.6, -0.8, 0.9, 0.4, 0],
+      lunge: [0, -2, -3, 6, 2.5, 0],
+    },
+    // 蜘蛛·毒牙：前半身高高抬起 → 猛压下去
+    fangs: {
+      t: F6,
+      lean: [0, -0.16, -0.24, 0.3, 0.14, 0],
+      hdy: [0, -3, -4, 3, 1, 0],
+      hdx: [0, -1, -1.5, 3, 1, 0],
+      crouch: [0, 1, 1.5, 2, 1, 0],
+      jaw: [0, 0.6, 0.9, 1, 0.4, 0],
+      lunge: [0, -1, -1.5, 3.5, 1.2, 0],
+      tail: [0, -2, -3, 2, 0.5, 0],
+    },
+    // 蜘蛛·吐丝：腹下压、头胸上抬 → 口器前顶
+    web: {
+      t: F6,
+      lean: [0, -0.2, -0.28, 0.22, 0.1, 0],
+      crouch: [0, 3, 4, 0.5, 1.5, 0],
+      hdy: [0, -2, -2.5, 1, 0.5, 0],
+      hdx: [0, -2, -3, 4, 1.5, 0],
+      jaw: [0, 0.9, 1.2, 1.4, 0.6, 0],
+      lunge: [0, -2, -3, 2, 0.8, 0],
+      tail: [0, 1, 2, -2, 0, 0],
+    },
+    // 兜底：认不出来的招式就往前顶一步，至少不是站桩
+    _any: {
+      t: F6,
+      lean: [0, -0.12, -0.16, 0.24, 0.1, 0],
+      crouch: [0, 2, 3, 0.5, 1, 0],
+      lunge: [0, -1, -2, 3, 1, 0],
+      jaw: [0, 0.3, 0.4, 0.6, 0.2, 0],
+    },
+  };
+
+  // 首领：额外带两条手臂的位置（相对肩点）与兵器绝对角
+  //   hx,hy 前手 / bx,by 后手 / wa 兵器角（0 竖直向上，正 = 往前倒）
+  const BOSS_BASE = { lean: 0, crouch: 0, sq: 1, hdx: 0, hdy: 0, jaw: 0, hx: 10, hy: 2, bx: -5, by: 24, wa: 0.9, wg: 0, lunge: 0 };
+  const BOSS_MOVE = {
+    // 重击：双手把兵器举过头顶 → 全身压上去砸
+    slam: {
+      t: F6,
+      lean: [0, -0.14, -0.22, 0.32, 0.18, 0],
+      crouch: [0, -2, -3, 6, 3, 0],
+      hx: [10, 14, 16, 17, 13, 10],
+      hy: [2, -6, -14, 13, 8, 2],
+      bx: [-5, 3, 5, -12, -8, -5],
+      by: [24, 12, 14, 10, 18, 24],
+      wa: [0.9, 0.5, -0.35, 2.75, 2.3, 0.9],
+      wg: [0, -10, -22, 6, 3, 0],
+      hdy: [0, -3, -4, 4, 2, 0],
+      jaw: [0, 0.3, 0.5, 0.8, 0.3, 0],
+      lunge: [0, -2, -3, 4, 1.5, 0],
+    },
+    // 横扫：拧腰把兵器拖到身后 → 一整圈横抽
+    sweep: {
+      t: F6,
+      lean: [0, -0.2, -0.3, 0.26, 0.12, 0],
+      crouch: [0, 3, 4, 2, 1, 0],
+      hx: [10, -6, -13, 17, 13, 10],
+      hy: [2, 3, 4, -5, -1, 2],
+      bx: [-5, 6, 10, -10, -6, -5],
+      by: [24, 15, 11, 17, 22, 24],
+      wa: [0.9, -1.5, -2.3, 1.75, 1.35, 0.9],
+      wg: [0, -3, -10, 2, 1, 0],
+      hdx: [0, -2, -3, 3, 1, 0],
+      jaw: [0, 0.2, 0.4, 0.7, 0.2, 0],
+      lunge: [0, -1, -2, 3, 1, 0],
+    },
+    // 冲撞：低头沉肩、兵器后拖 → 整个人撞出去
+    charge: {
+      t: F6,
+      lean: [0, -0.1, -0.18, 0.36, 0.28, 0],
+      crouch: [0, 5, 7, -2, 1, 0],
+      sq: [1, 0.97, 0.95, 1.03, 1.01, 1],
+      hx: [10, 3, 2, 6, 8, 10],
+      hy: [2, 9, 8, 10, 4, 2],
+      bx: [-5, -2, 0, -12, -7, -5],
+      by: [24, 26, 28, 14, 20, 24],
+      wa: [0.9, -1.9, -2.4, -2.5, -2.1, 0.9],
+      wg: [0, -6, -8, -6, -3, 0],
+      hdx: [0, -2, -3, 4, 2, 0],
+      lunge: [0, -2, -3, 6, 2, 0],
+    },
+    // 震地：不是再劈一刀，而是"空手那只拳砸进地里"——一手举拳蓄力，
+    //       砸下去时蹲到最低、兵器顺势拄在身边，和"重击"的斜劈完全两种剪影
+    quake: {
+      t: F6,
+      lean: [0, -0.16, -0.26, 0.32, 0.18, 0],
+      crouch: [0, 1, 2, 15, 7, 0],
+      sq: [1, 1.02, 1.04, 0.84, 0.93, 1],
+      hx: [10, 8, 6, 3, 7, 10],
+      hy: [2, 0, -2, 9, 7, 2],
+      bx: [-5, 4, 10, 24, 15, -5],
+      by: [24, 4, -8, 38, 26, 24],
+      wa: [0.9, 1.25, 1.55, 2.95, 2.3, 0.9],
+      wg: [0, -6, -14, 8, 4, 0],
+      hdy: [0, -4, -5, 5, 2, 0],
+      jaw: [0, 0.5, 0.85, 1.2, 0.5, 0],
+      lunge: [0, -1, -2, 4, 1, 0],
+    },
+    // 妖火：后手（空手那只）推出 → 甩出一团火
+    volley: {
+      t: F6,
+      lean: [0, -0.12, -0.2, 0.18, 0.08, 0],
+      crouch: [0, 1, 2, -1, 0, 0],
+      hx: [10, 9, 10, 12, 11, 10],
+      hy: [2, 0, 2, 0, 1, 2],
+      bx: [-5, 3, 7, 13, 8, -5],
+      by: [24, 4, -3, -9, 2, 24],
+      wa: [0.9, 0.55, 0.35, 0.95, 0.92, 0.9],
+      wg: [0, -6, -10, 0, 0, 0],
+      hdx: [0, -1, -2, 3, 1, 0],
+      jaw: [0, 0.4, 0.6, 0.9, 0.3, 0],
+    },
+    // 召妖：双臂张开上举 → 把妖气拉下来
+    summon: {
+      t: F6,
+      lean: [0, -0.16, -0.24, -0.12, -0.05, 0],
+      crouch: [0, -3, -4, -2, 0, 0],
+      hx: [10, 12, 13, 14, 11, 10],
+      hy: [2, -12, -16, -12, -4, 2],
+      bx: [-5, 2, 6, 5, -2, -5],
+      by: [24, -14, -20, -16, 4, 24],
+      wa: [0.9, -0.1, -0.4, -0.3, 0.3, 0.9],
+      wg: [0, -18, -26, -20, -6, 0],
+      hdy: [0, -3, -4, -3, -1, 0],
+      jaw: [0, 0.5, 0.7, 0.5, 0.2, 0],
+    },
+    _any: {
+      t: F6,
+      lean: [0, -0.1, -0.16, 0.2, 0.08, 0],
+      crouch: [0, 1, 2, 0, 0, 0],
+      lunge: [0, -1, -2, 2, 1, 0],
+      jaw: [0, 0.2, 0.3, 0.5, 0.2, 0],
+    },
+  };
+
+  // 当前这一招（收招阶段 cur 已经清空，靠 engine 记的 last 接上）
+  function activeKey(e) {
+    if (!e) return null;
+    if (e.state === 'recover') return e.last && e.last.key;
+    return e.cur && e.cur.key;
+  }
+
+  // 出招进度 0..1；不在出招时返回 -1
+  function moveP(e, t) {
+    if (!e) return -1;
+    if (e.state === 'windup') return clamp01(e.tele || 0) * 0.5;
+    if (e.state === 'active') return 0.5 + clamp01(e.actK || 0) * 0.26;
+    if (e.state === 'recover') {
+      const len = Math.max(1, e.recLen || 400);
+      return 0.76 + 0.24 * clamp01(((t || 0) - (e.recStart || 0)) / len);
+    }
+    return -1;
+  }
+
+  function foeSample(e, t, tbl, base) {
+    const p = moveP(e, t);
+    if (p < 0) return base;
+    const key = activeKey(e);
+    const row = (key && tbl[key]) || tbl._any;
+    if (!row) return base;
+    const out = {};
+    for (const k in row) {
+      if (k === 't') continue;
+      out[k] = kf(p, frames6(row[k]));
+    }
+    return Object.assign({}, base, out);
+  }
+
+  // 给 toon 层用的完整骨架
+  //   pose: engine 给的姿态（含 state / attackP / attackPath / castP / castId …）
+  //   t: 动画时钟（ms）
+  XY.Moves = {
+    kf,
+    BASIC,
+    SKILL,
+    animForSkill,
+    CHARS: CHAR_KIND,
+
+    // —— 怪物 ——
+    FOE_MOVE,
+    BOSS_MOVE,
+    FOE_BASE,
+    BOSS_BASE,
+    foePose(e, t) { return foeSample(e, t, FOE_MOVE, FOE_BASE); },
+    bossPose(e, t) { return foeSample(e, t, BOSS_MOVE, BOSS_BASE); },
+
+    // 普攻这一式用的动作名
+    basicName(pose) {
+      const path = pose.attackPath;
+      if (typeof path === 'string' && BASIC[path]) return path;
+      if (path && BASIC[path]) return path;
+      const k = pose.attackKind | 0;
+      const list = CHAR_KIND[pose.charId] || PATH_BY_KIND;
+      return list[k] || PATH_BY_KIND[k] || 'arc';
+    },
+
+    // 技能这一招用的动作名
+    skillName(pose) {
+      if (!pose || !pose.castId) return null;
+      const sk = XY.getSkill ? XY.getSkill(pose.castId) : null;
+      const nm = animForSkill(sk || { id: pose.castId });
+      return nm && SKILL[nm] ? nm : null;
+    },
+
+    rig(pose, t) {
+      const p = pose || {};
+      const state = p.state || 'idle';
+      const base = blank();
+      // —— 基础待机 / 跑动 ——
+      const ph = (t || 0) / 82;
+      const run = state === 'run';
+      if (run) {
+        base.lf = Math.sin(ph) * 0.78;
+        base.lb = -Math.sin(ph) * 0.78;
+        base.ln = 0.1;
+        base.hx = 4.5 - Math.sin(ph) * 3;
+        base.hy = 8.5 - Math.abs(Math.sin(ph)) * 2;
+        base.bx = -3 + Math.sin(ph) * 4;
+      } else if (state === 'jump' || state === 'dash') {
+        base.lf = 0.5; base.lb = -0.42;
+        base.hx = 3; base.hy = 4;
+        base.wa = 1.5;
+      }
+
+      let over = null;
+      // 受击：后仰、缩脖
+      if (p.hurtP !== undefined) {
+        const k = Math.sin(Math.min(1, p.hurtP * 1.2) * Math.PI);
+        over = { ln: -0.5 * k, cr: 3 * k, hd: 3 * k, wa: 1.15 + 0.4 * k, hx: 2 - 4 * k, hy: 8.5 + 2 * k };
+      }
+      // 技能优先于普攻（施法时不会同时有 attackP）
+      if (p.castP !== undefined && p.castId) {
+        const nm = XY.Moves.skillName(p);
+        if (nm) {
+          const tbl = SKILL[nm];
+          const p2 = clamp01(p.castP);
+          const s = sample(tbl, p2);
+          // 起手/收势各留 12% 回到待机，避免生硬跳变
+          const w = Math.min(1, p2 / 0.1, (1 - p2) / 0.12);
+          over = Object.assign(s, { _w: Math.max(0, w) });
+          if (BARE[nm]) over.bh = 1;
+        }
+      } else if (p.attackP !== undefined) {
+        const nm = XY.Moves.basicName(p);
+        const tbl = BASIC[nm] || BASIC.arc;
+        const p2 = clamp01(p.attackP);
+        const s = sample(tbl, p2);
+        const w = Math.min(1, p2 / 0.08, (1 - p2) / 0.1);
+        over = Object.assign(s, { _w: Math.max(0, w) });
+        if (BARE[nm]) over.bh = 1;
+      }
+      if (!over) return base;
+      const w = over._w === undefined ? 1 : over._w;
+      delete over._w;
+      const out = blend(base, over, w);
+      // 布尔/标记字段不走混合，直接取招式值
+      for (const f of ['wb', 'bh']) if (over[f] !== undefined) out[f] = over[f] > 0.5 ? 1 : 0;
+      if (p.noWeapon) out.bh = 1;     // 掷出兵器后手上是空的
+      return out;
+    },
+  };
+})();
+
+</script>
+    <script>
 /* ===== toon.js ===== */
 // ============================================================
 // 卡通 Q 版层：造梦西游式的三头身 / 粗描边 / 双色平涂
@@ -4985,7 +6033,7 @@
       fur: '#f2d3b0', furD: '#cbab86', skin: '#fae2c8', skinD: '#dcbb9a',
       cloth: '#e8dcc0', clothD: '#c0b094', trim: '#c8452e', trimD: '#922a18',
       hair: '#2a2018', eye: '#2b1a10', iris: '#7a5a3a',
-      weapon: 'khakkhara', cape: true, crown: false,
+      weapon: 'khakkhara', cape: true, crown: false, sleeve: true,
     },
     bailongma: {
       fur: '#dfe8f2', furD: '#a9b8c8', skin: '#f2f6fb', skinD: '#c8d4e0',
@@ -4997,95 +6045,136 @@
 
   // ============================================================
   // 人形主体：三头身
-  //   总高 72：腿 18 / 躯干 22 / 头 32(直径)
+  // 人形主体：三头身，动作全部由 XY.Moves 给的骨架驱动
+  //   总高 74：腿 19 / 躯干 18 / 头 28(直径)
+  //   骨架字段：ln 躯干倾角 / cr 下蹲 / lf,lb 两腿 / hx,hy 前手（相对前肩）
+  //            bx,by 后手 / wa 兵器角 / wg 握点滑动 / ws 兵器缩放
+  //            wb 兵器在身后 / bh 空手 / rot 拧身 / up 上抬 / hd 头偏移 / cape 披风
   // ============================================================
+  const DEF_RIG = {
+    ln: 0, cr: 0, lf: 0.13, lb: -0.13,
+    hx: 4.5, hy: 8.5, bx: -3, by: 14,
+    wa: 1.15, wg: 0, ws: 1, wb: 0, bh: 0,
+    rot: 0, up: 0, hd: 0, cape: 0.5,
+  };
   function humanoid(ctx, L, charId, pose, t) {
     const state = pose.state || 'idle';
     const run = state === 'run';
-    const air = state === 'jump' || state === 'dash';
+    const rig = (XY.Moves && XY.Moves.rig) ? XY.Moves.rig(pose, t) : DEF_RIG;
     const hurtK = pose.hurtP === undefined ? 0 : Math.sin(Math.min(1, 0.24 + pose.hurtP * 0.76) * Math.PI);
-    const atk = pose.attackP;
-    const cast = pose.castP;
     const ph = t / 82;
     const bob = run ? Math.abs(Math.sin(ph)) * 2.2 : Math.sin(t / 420) * 1.1;
-    const lean = run ? 4.5 : (pose.sprint ? 7 : 0);
 
-    const hipY = -22 + bob * 0.3;
-    const shY = -40 + bob;
-    const headY = shY - 14;
+    const hipY = -22 + rig.cr + bob * 0.3;
+    const shY = hipY - 18 + bob * 0.7;
+    const headY = shY - 14 + rig.hd;
     const headR = 14;
+    const legA = rig.lf;
+    const legB = rig.lb;
 
-    // 步态
-    let legA = run ? Math.sin(ph) * 0.78 : 0.13;
-    let legB = run ? -Math.sin(ph) * 0.78 : -0.13;
-    if (air) { legA = 0.5; legB = -0.42; }
-    if (hurtK) { legA += 0.22 * hurtK; legB -= 0.26 * hurtK; }
+    // 前手 / 后手（相对肩），肘部按"略向后下弯"求解
+    const shFY = shY + 4;
+    const SHX = 11.2;                                  // 前肩位置（手从这里长出去）
+    const handF = [SHX + rig.hx, shFY + rig.hy];
+    const elbowF = [SHX + rig.hx * 0.5 - 1.6, shFY + rig.hy * 0.5 + 2.4];
+    const handB = [-9 + rig.bx, shFY + rig.by];
+    const elbowB = [-9 + rig.bx * 0.5, shFY + rig.by * 0.5 + 2.6];
+    // 下蹲时两脚往外撑（不然腿被压短，读不出"扎马步"）
+    const stance = Math.max(0, rig.cr) / 13;
+
+    ctx.save();
+    // 拧身（横扫/回马枪这类"整个人转过去"的招）
+    if (rig.rot) { ctx.translate(0, -34); ctx.rotate(rig.rot); ctx.translate(0, 34); }
+    if (rig.up) ctx.translate(0, -rig.up);
 
     // —— 后腿（暗一档，压在后面）——
-    const backFoot = [Math.sin(legB) * 11 - 2, -3];
-    limb2(ctx, [-3.5, hipY], [-3.5 + Math.sin(legB) * 6, hipY + 9], backFoot, 7.2, L.clothD);
+    const backFoot = [Math.sin(legB) * 11 - 2 - stance * 7, -3];
+    limb2(ctx, [-3.5, hipY], [-3.5 + Math.sin(legB) * 6 - stance * 4, hipY + 9], backFoot, 7.2, L.clothD);
     ellipse(ctx, backFoot[0] + 1.6, backFoot[1] + 1, 5.4, 3.2, L.skinD);
 
-    // —— 披风（在身后飘）——
-    if (L.cape) {
-      const sway = Math.sin(t / 260) * 2 + (run ? -5 : 0);
+    // —— 上半身：绕髋部旋转（前倾/后仰/拧腰）——
+    const upper = (draw) => {
+      ctx.save();
+      ctx.translate(0, hipY);
+      ctx.rotate(rig.ln);
+      ctx.translate(0, -hipY);
+      draw();
+      ctx.restore();
+    };
+
+    upper(() => {
+      // 披风（在身后飘；挥击时被带起来）
+      if (L.cape) {
+        const capeK = rig.cape === undefined ? 0.5 : rig.cape;
+        const sway = Math.sin(t / 260) * 2 + (run ? -5 : 0) - capeK * 4;
+        curveShape(ctx, [
+          [-3, shY - 5],
+          [-13 + sway * 0.3, shY + 4], [-19 + sway - capeK * 3, hipY + 2 - capeK * 4],
+          [-13 + sway * 0.5, hipY + 16 - capeK * 5], [-5, hipY + 6],
+        ], L.clothD);
+      }
+      // 兵器先画（这一下是抡到身后去的）
+      if (rig.wb) drawWeapon(ctx, L, handF[0], handF[1], rig, t);
+
+      // 下摆（虎皮裙 / 战裙）
       curveShape(ctx, [
-        [-3, shY - 5],
-        [-13 + sway * 0.3, shY + 4], [-19 + sway, hipY],
-        [-13 + sway * 0.5, hipY + 16], [-5, hipY + 6],
-      ], L.clothD);
-    }
+        [-10, hipY + 1],
+        [-13.5, hipY + 6], [-11.5, hipY + 8.5],
+        [0, hipY + 9.5], [11.5, hipY + 8.5],
+        [13.5, hipY + 6], [10, hipY + 1],
+      ], L.cloth);
+      // 上衣（肩宽、腰收）
+      poly(ctx, [
+        [-11, shY + 1], [-12.5, shY + 7], [-9.5, hipY - 1],
+        [9.5, hipY - 1], [12.5, shY + 7], [11, shY + 1],
+      ], L.cloth);
+      // 胸口暗面
+      poly(ctx, [
+        [-1.5, shY + 2], [-9, shY + 4], [-9, hipY - 2], [-0.5, hipY - 2],
+      ], L.clothD, 0);
+      // 护肩
+      ellipse(ctx, -11, shY + 3.5, 5.6, 4.4, L.trim, -0.3, LW - 0.6);
+      ellipse(ctx, 11.5, shY + 3.5, 5.6, 4.4, L.trim, 0.3, LW - 0.6);
+      // 金腰带
+      poly(ctx, [[-10.6, hipY - 4], [10.6, hipY - 4], [10.2, hipY + 1.6], [-10.2, hipY + 1.6]], L.trim);
+      ellipse(ctx, 0, hipY - 1.2, 3, 2.3, L.trimD, 0, 1.2);
 
-    // —— 躯干：上衣 + 腰带 + 下摆 ——
-    ctx.save();
-    ctx.translate(lean * 0.35, 0);
-    // 下摆（虎皮裙 / 战裙）
-    curveShape(ctx, [
-      [-10, hipY + 1],
-      [-13.5, hipY + 6], [-11.5, hipY + 8.5],
-      [0, hipY + 9.5], [11.5, hipY + 8.5],
-      [13.5, hipY + 6], [10, hipY + 1],
-    ], L.cloth);
-    // 上衣（肩宽、腰收）
-    poly(ctx, [
-      [-11, shY + 1], [-12.5, shY + 7], [-9.5, hipY - 1],
-      [9.5, hipY - 1], [12.5, shY + 7], [11, shY + 1],
-    ], L.cloth);
-    // 胸口亮面
-    poly(ctx, [
-      [-1.5, shY + 2], [-9, shY + 4], [-9, hipY - 2], [-0.5, hipY - 2],
-    ], L.clothD, 0);
-    // 肩线（左右两片护肩）
-    ellipse(ctx, -10.5, shY + 3.5, 5.4, 4.2, L.trim, -0.3, LW - 0.6);
-    ellipse(ctx, 10.5, shY + 3.5, 5.4, 4.2, L.trim, 0.3, LW - 0.6);
-    // 金腰带
-    poly(ctx, [[-10.6, hipY - 4], [10.6, hipY - 4], [10.2, hipY + 1.6], [-10.2, hipY + 1.6]], L.trim);
-    ellipse(ctx, 0, hipY - 1.2, 3, 2.3, L.trimD, 0, 1.2);
-    ctx.restore();
+      // —— 后臂（跟着招式摆，双手举棒时才撑得住）——
+      limb2(ctx, [-8, shFY], elbowB, handB, 5.4, L.clothD);
+      ball(ctx, handB[0], handB[1], 3.3, L.skinD);
 
-    // —— 前腿 ——
-    const frontFoot = [Math.sin(legA) * 11 + 2.5, -3];
-    limb2(ctx, [2, hipY], [2.5 + Math.sin(legA) * 6, hipY + 9], frontFoot, 7.4, L.cloth);
+      // —— 脖子 + 头 ——
+      limb(ctx, [0, shY + 1], [0, headY + headR * 0.75], 7.4, L.skinD);
+      drawHead(ctx, L, charId, 0, headY, headR, t, pose, hurtK);
+    });
+
+    // —— 前腿（压在最前面，盖住裙摆下缘）——
+    // 抬得越高说明这一下是"踢"：脚离开地面，膝盖跟着提起来
+    const kickLift = Math.max(0, Math.abs(legA) - 1.1) * 30;
+    const frontFoot = [Math.sin(legA) * 11 + 2.5 + stance * 9, -3 - kickLift];
+    limb2(ctx, [2, hipY], [2.5 + Math.sin(legA) * 7 + stance * 5, hipY + 9 - kickLift * 0.55], frontFoot, 7.4, L.cloth);
     ellipse(ctx, frontFoot[0] + 1.8, frontFoot[1] + 1, 5.8, 3.4, L.skin);
 
-    // —— 后臂 ——
-    const armSw = run ? -Math.sin(ph) * 12 : 0;
-    limb2(ctx, [-8, shY + 4], [-13, shY + 11], [-11 + armSw * 0.3, shY + 18], 5.4, L.clothD);
-    ball(ctx, -11 + armSw * 0.3, shY + 18, 3.3, L.skinD);
-
-    // —— 脖子 ——
-    limb(ctx, [0, shY + 1], [0, headY + headR * 0.75], 7.4, L.skinD);
-    // —— 头 ——
-    drawHead(ctx, L, charId, 0, headY, headR, t, pose, hurtK);
-
-    // —— 前臂 + 兵器 ——
-    const swing = atk !== undefined ? Math.sin(Math.min(1, atk) * Math.PI) : 0;
-    const handX = 15 + swing * 6 + (cast !== undefined ? 3 : 0);
-    const handY = shY + 12 - swing * 9 + armSw * 0.2;
-    limb2(ctx, [9, shY + 4], [14, shY + 9], [handX, handY], 5.6, L.clothD);
-    ball(ctx, 14.6, shY + 9.6, 3.6, L.trim, 1.6);
-    drawWeapon(ctx, L, handX, handY, swing, t, pose);
-    ball(ctx, handX, handY, 3.4, L.skin);
+    upper(() => {
+      // —— 前臂 + 兵器 ——
+      limb2(ctx, [SHX - 1.5, shFY], elbowF, handF, 5.6, L.clothD);
+      if (rig.bh && L.sleeve) {
+        // 宽袍大袖：从肘到手张成一只喇叭袖，空手招式全靠它撑剪影
+        const dx = handF[0] - elbowF[0], dy = handF[1] - elbowF[1];
+        const ln = Math.hypot(dx, dy) || 1;
+        const nx = -dy / ln, ny = dx / ln;
+        poly(ctx, [
+          [elbowF[0] - nx * 5.2, elbowF[1] - ny * 5.2],
+          [handF[0] - nx * 8.2, handF[1] - ny * 8.2],
+          [handF[0] + nx * 8.2, handF[1] + ny * 8.2],
+          [elbowF[0] + nx * 5.2, elbowF[1] + ny * 5.2],
+        ], L.cloth, LW - 0.8);
+      }
+      ball(ctx, elbowF[0], elbowF[1], 3.4, L.trim, 1.6);   // 护腕
+      if (!rig.wb) drawWeapon(ctx, L, handF[0], handF[1], rig, t);
+      ball(ctx, handF[0], handF[1], 3.4, L.skin);
+    });
+    ctx.restore();
     return { headY, headR, hipY, shY };
   }
 
@@ -5192,34 +6281,38 @@
     }
   }
 
-  // —— 兵器 ——
-  function drawWeapon(ctx, L, hx, hy, swing, t, pose) {
+  // —— 兵器（角度与握点由骨架给，所以同一根棒子能劈/戳/挑/甩）——
+  function drawWeapon(ctx, L, hx, hy, rig, t) {
+    if (rig.bh) return;                       // 拳脚招式：空手
     ctx.save();
     ctx.translate(hx + 5, hy);
-    ctx.rotate(1.15 - swing * 1.9);
+    const wa = rig.wa === undefined ? 1.15 : rig.wa;
+    ctx.rotate(wa);
+    if (rig.ws !== undefined && rig.ws !== 1) ctx.scale(rig.ws, rig.ws);
+    if (rig.wg) ctx.translate(0, rig.wg);     // 握点沿兵器滑动（正=握尾端，棒头伸更远）
     if (L.weapon === 'staff') {
       // 金箍棒：红杆 + 两端金箍
-      limb(ctx, [-2, 20], [-2, -30], 4.6, '#c8402a');
-      ball(ctx, -2, -30, 3.6, L.trim, 2);
-      ball(ctx, -2, 20, 3.6, L.trim, 2);
+      limb(ctx, [-2, 17], [-2, -27], 4.6, '#c8402a');
+      ball(ctx, -2, -27, 3.6, L.trim, 2);
+      ball(ctx, -2, 17, 3.6, L.trim, 2);
       // 棒身高光
       ctx.beginPath();
-      ctx.moveTo(-3.4, 16); ctx.lineTo(-3.4, -24);
+      ctx.moveTo(-3.4, 14); ctx.lineTo(-3.4, -22);
       ctx.strokeStyle = 'rgba(255,220,180,0.55)'; ctx.lineWidth = 1.4; ctx.stroke();
     } else if (L.weapon === 'rake') {
-      limb(ctx, [0, 18], [0, -22], 4.2, '#8a6a3a');
-      poly(ctx, [[-9, -22], [9, -22], [7, -30], [-7, -30]], '#c9cfd6');
-      for (let i = 0; i < 4; i++) limb(ctx, [-6 + i * 4, -29], [-6 + i * 4, -22], 1.6, '#e8eef4');
+      limb(ctx, [0, 16], [0, -20], 4.2, '#8a6a3a');
+      poly(ctx, [[-9, -20], [9, -20], [7, -28], [-7, -28]], '#c9cfd6');
+      for (let i = 0; i < 4; i++) limb(ctx, [-6 + i * 4, -27], [-6 + i * 4, -20], 1.6, '#e8eef4');
     } else if (L.weapon === 'spade') {
-      limb(ctx, [0, 20], [0, -18], 4.2, '#7a5a34');
-      ellipse(ctx, 0, -22, 6, 7.5, '#c9cfd6', 0, 2);
+      limb(ctx, [0, 17], [0, -16], 4.2, '#7a5a34');
+      ellipse(ctx, 0, -20, 6, 7.5, '#c9cfd6', 0, 2);
     } else if (L.weapon === 'spear') {
-      limb(ctx, [-1, 22], [-1, -26], 3.2, '#d8e2ee');
-      poly(ctx, [[-6, -26], [4, -26], [-1, -36]], '#e8f2ff');
+      limb(ctx, [-1, 18], [-1, -23], 3.2, '#d8e2ee');
+      poly(ctx, [[-6, -23], [4, -23], [-1, -33]], '#e8f2ff');
     } else {
       // 九环锡杖
-      limb(ctx, [0, 22], [0, -24], 3.6, '#c8a45a');
-      for (let i = 0; i < 3; i++) ball(ctx, 0, -12 + i * 7, 2.6, '#e8c878', 1.2);
+      limb(ctx, [0, 19], [0, -21], 3.6, '#c8a45a');
+      for (let i = 0; i < 3; i++) ball(ctx, 0, -10 + i * 6.5, 2.6, '#e8c878', 1.2);
     }
     ctx.restore();
   }
@@ -5236,117 +6329,164 @@
     spider: { skin: '#6a3380', dark: '#3f1a4c', eye: '#ff6b6b', eye2: '#ffb0b0' },
   };
 
-  function foeImp(ctx, L, t, e) {
-    const ph = t / 110;
-    const bob = Math.sin(ph) * 1.1;
-    const hurt = e.hitFlash > 0;
-    const body = hurt ? '#f5f2ea' : L.body;
-    // 腿
-    limb(ctx, [-4.5, -11 + bob], [-5.5 - Math.sin(ph) * 2.4, -1], 5, L.dark);
-    limb(ctx, [4.5, -11 + bob], [5.5 + Math.sin(ph) * 2.4, -1], 5, L.dark);
-    ellipse(ctx, -6, -0.5, 4, 2.3, L.dark, 0, LW - 0.6);
-    ellipse(ctx, 6, -0.5, 4, 2.3, L.dark, 0, LW - 0.6);
-    // 身体（梨形）
-    ellipse(ctx, 0, -16 + bob, 10.5, 9.4, body);
-    ellipse(ctx, 0.5, -13.5 + bob, 6.4, 5, L.belly, 0, 0);
-    // 手臂
-    limb(ctx, [-8, -19 + bob], [-12.5, -13 + bob], 4, body);
-    limb(ctx, [8, -19 + bob], [12.5, -13 + bob], 4, body);
-    ball(ctx, -12.5, -13 + bob, 2.8, L.belly, LW - 0.8);
-    ball(ctx, 12.5, -13 + bob, 2.8, L.belly, LW - 0.8);
-    // 头（比身体大，Q 版）
-    ellipse(ctx, 1, -27 + bob, 11.4, 10.4, body);
-    // 角
-    limb(ctx, [-6, -34 + bob], [-10, -41 + bob], 3.6, L.horn);
-    limb(ctx, [7, -34.5 + bob], [11, -41.5 + bob], 3.6, L.horn);
-    // 眼睛
-    ellipse(ctx, -3.6, -28 + bob, 3.1, 3.6, L.eye, 0, 0);
-    ellipse(ctx, 5.2, -28 + bob, 3.3, 3.8, L.eye, 0, 0);
-    ball(ctx, -4.4, -29.4 + bob, 1.2, '#fff', 0);
-    ball(ctx, 4.4, -29.4 + bob, 1.3, '#fff', 0);
-    // 嘴 + 獠牙
-    ctx.beginPath();
-    ctx.arc(1, -23.5 + bob, 2.6, Math.PI * 0.12, Math.PI * 0.88);
-    ctx.strokeStyle = OUT; ctx.lineWidth = 1.7; ctx.stroke();
-    poly(ctx, [[-1.4, -22.4 + bob], [0.4, -22.4 + bob], [-0.6, -19.6 + bob]], L.fang, 1.1);
-    poly(ctx, [[2.4, -22.4 + bob], [4.2, -22.4 + bob], [3.3, -19.8 + bob]], L.fang, 1.1);
+  // 手臂/腿：极坐标，正角 = 往前抡（三头身短肢，用角度比用位移读得清）
+  function armPt(sx, sy, len, base, a) {
+    const ang = base + (a || 0);
+    return [sx + Math.sin(ang) * len, sy + Math.cos(ang) * len];
+  }
+  // 肘：肩手连线的中点往外顶一段，抬手时自然拐弯
+  function elbowFor(sx, sy, hx, hy, bend) {
+    const mx = (sx + hx) / 2, my = (sy + hy) / 2;
+    const dx = hx - sx, dy = hy - sy;
+    const len = Math.hypot(dx, dy) || 1;
+    return [mx - (dy / len) * bend, my + (dx / len) * bend];
   }
 
-  function foeWolf(ctx, L, t, e) {
+  function foeImp(ctx, L, t, e, P) {
+    const ph = t / 110;
+    const bob = Math.sin(ph) * 1.1;
+    const cr = P.crouch;
+    const hurt = e.hitFlash > 0;
+    const body = hurt ? '#f5f2ea' : L.body;
+    const hipY = -11 + bob + cr;
+    const shY = -19 + bob + cr * 0.95;
+    const hx = 1 + P.hdx, hy = -27 + bob + cr + P.hdy;
+    // 腿：脚钉在地上，蹲下去腿自然压短、两脚外撇
+    const sp = 4.5 + cr * 0.3;
+    limb(ctx, [-sp, hipY], [-5.5 - Math.sin(ph) * 2.4 - cr * 0.26, -1], 5, L.dark);
+    limb(ctx, [sp, hipY], [5.5 + Math.sin(ph) * 2.4 + cr * 0.26, -1], 5, L.dark);
+    ellipse(ctx, -6 - cr * 0.2, -0.5, 4, 2.3, L.dark, 0, LW - 0.6);
+    ellipse(ctx, 6 + cr * 0.2, -0.5, 4, 2.3, L.dark, 0, LW - 0.6);
+    // 身体（梨形）
+    ellipse(ctx, 0, -16 + bob + cr, 10.5, 9.4, body);
+    ellipse(ctx, 0.5, -13.5 + bob + cr, 6.4, 5, L.belly, 0, 0);
+    // 手臂：后手先画
+    const bh = armPt(-8, shY, 7.5, -0.64, P.armB);
+    const fh = armPt(8, shY, 7.5, 0.64, P.armF);
+    limb(ctx, [-8, shY], bh, 4, body);
+    limb(ctx, [8, shY], fh, 4, body);
+    ball(ctx, bh[0], bh[1], 2.8, L.belly, LW - 0.8);
+    ball(ctx, fh[0], fh[1], 2.8, L.belly, LW - 0.8);
+    // 头（比身体大，Q 版）
+    ellipse(ctx, hx, hy, 11.4, 10.4, body);
+    // 角
+    limb(ctx, [hx - 7, hy - 7], [hx - 11, hy - 14], 3.6, L.horn);
+    limb(ctx, [hx + 6, hy - 7.5], [hx + 10, hy - 14.5], 3.6, L.horn);
+    // 眼睛
+    ellipse(ctx, hx - 4.6, hy - 1, 3.1, 3.6, L.eye, 0, 0);
+    ellipse(ctx, hx + 4.2, hy - 1, 3.3, 3.8, L.eye, 0, 0);
+    ball(ctx, hx - 5.4, hy - 2.4, 1.2, '#fff', 0);
+    ball(ctx, hx + 3.4, hy - 2.4, 1.3, '#fff', 0);
+    // 嘴 + 獠牙：jaw 张开时露出黑洞，獠牙跟着分开
+    const my = hy + 3.5, jw = P.jaw;
+    if (jw > 0.06) {
+      ellipse(ctx, hx, my + jw * 1.1, 3.2, 1.0 + jw * 2.4, '#40141a', 0, 1.2);
+    } else {
+      ctx.beginPath();
+      ctx.arc(hx, my - 1, 2.6, Math.PI * 0.12, Math.PI * 0.88);
+      ctx.strokeStyle = OUT; ctx.lineWidth = 1.7; ctx.stroke();
+    }
+    const open = jw * 2.2;
+    poly(ctx, [[hx - 2.4, my - 1.2], [hx - 0.6, my - 1.2], [hx - 1.6, my + 1.9 + open]], L.fang, 1.1);
+    poly(ctx, [[hx + 1.4, my - 1.2], [hx + 3.2, my - 1.2], [hx + 2.3, my + 1.7 + open]], L.fang, 1.1);
+  }
+
+  function foeWolf(ctx, L, t, e, P) {
     const ph = t / 105;
     const g = Math.sin(ph);
     const hurt = e.hitFlash > 0;
     const fur = hurt ? '#f5f2ea' : L.fur;
+    const cr = P.crouch;
+    const legF = (P.armF || 0) * 5;      // 前腿蹬出去
+    const tailW = g + (P.tail || 0) * 0.6;
     // 远侧腿
-    limb(ctx, [-11, -13], [-12 - g * 3, -1], 4.4, L.dark);
-    limb(ctx, [10, -13], [11 + g * 3, -1], 4.4, L.dark);
+    limb(ctx, [-11, -13 + cr], [-12 - g * 3, -1], 4.4, L.dark);
+    limb(ctx, [10, -13 + cr], [11 + g * 3 + legF, -1], 4.4, L.dark);
     // 尾
     ctx.beginPath();
-    ctx.moveTo(-15, -19);
-    ctx.quadraticCurveTo(-24, -26, -21, -33 + g * 2);
+    ctx.moveTo(-15, -19 + cr);
+    ctx.quadraticCurveTo(-24, -26 + cr, -21 - tailW * 2, -33 + cr + tailW * 2);
     ctx.strokeStyle = OUT; ctx.lineWidth = 8; ctx.lineCap = 'round'; ctx.stroke();
     ctx.strokeStyle = fur; ctx.lineWidth = 4.6; ctx.stroke();
     // 躯干
-    ellipse(ctx, -4, -19, 13.5, 10, fur);
+    ellipse(ctx, -4, -19 + cr, 13.5, 10, fur);
     // 高光脊线
     ctx.save(); ctx.globalAlpha = 0.3;
-    ellipse(ctx, -5, -25, 9, 3, '#fff', 0, 0);
+    ellipse(ctx, -5, -25 + cr, 9, 3, '#fff', 0, 0);
     ctx.restore();
     // 近侧腿
-    limb(ctx, [-8, -14], [-9 + g * 3, -1], 5, fur);
-    limb(ctx, [7, -14], [8 - g * 3, -1], 5, fur);
+    limb(ctx, [-8, -14 + cr], [-9 + g * 3, -1], 5, fur);
+    limb(ctx, [7, -14 + cr], [8 - g * 3 + legF, -1], 5, fur);
     ellipse(ctx, -9 + g * 3, -0.5, 4, 2.2, fur, 0, LW - 0.8);
-    ellipse(ctx, 8 - g * 3, -0.5, 4, 2.2, fur, 0, LW - 0.8);
-    // 头
-    ellipse(ctx, 12, -27, 9.6, 8.6, fur);
-    // 长吻
-    poly(ctx, [[16, -30], [26, -26.5], [26, -20], [16, -21]], fur);
-    ellipse(ctx, 24.5, -23, 2.4, 1.9, L.nose, 0, 1.2);
+    ellipse(ctx, 8 - g * 3 + legF, -0.5, 4, 2.2, fur, 0, LW - 0.8);
+    // 头（撕咬时整颗头往前弹）
+    const hx0 = 12 + P.hdx, hy0 = -27 + cr + P.hdy;
+    ellipse(ctx, hx0, hy0, 9.6, 8.6, fur);
+    // 上吻
+    poly(ctx, [[hx0 + 4, hy0 - 3], [hx0 + 14, hy0 + 0.5], [hx0 + 14, hy0 + 7], [hx0 + 4, hy0 + 6]], fur);
+    ellipse(ctx, hx0 + 12.5, hy0 + 4, 2.4, 1.9, L.nose, 0, 1.2);
+    // 下颌 / 口腔：张嘴时下颌绕吻根转下去
+    const jw = P.jaw;
+    if (jw > 0.04) {
+      poly(ctx, [[hx0 + 4, hy0 + 5], [hx0 + 14, hy0 + 5.5], [hx0 + 12, hy0 + 9 + jw * 3], [hx0 + 4, hy0 + 8 + jw * 2]], '#5a1a20', 1.1);
+      ctx.save();
+      ctx.translate(hx0 + 4, hy0 + 8);
+      ctx.rotate(jw * 0.42);
+      poly(ctx, [[0, -1], [10.5, 1], [9.6, 4.4], [0, 3.4]], fur, LW - 0.4);
+      poly(ctx, [[7.6, -0.4], [9.4, -0.4], [8.4, 3.6]], L.fang, 1);
+      ctx.restore();
+    }
     // 尖耳
-    poly(ctx, [[6, -33], [4, -43], [13, -35]], L.dark);
-    poly(ctx, [[13, -34.5], [16, -43.5], [19, -33]], fur);
+    poly(ctx, [[hx0 - 6, hy0 - 6], [hx0 - 8, hy0 - 16], [hx0 + 1, hy0 - 8]], L.dark);
+    poly(ctx, [[hx0 + 1, hy0 - 7.5], [hx0 + 4, hy0 - 16.5], [hx0 + 7, hy0 - 6]], fur);
     // 眼
-    ellipse(ctx, 15.5, -29, 2.5, 2.9, L.eye, 0, 0);
-    ball(ctx, 15, -30, 1, '#fff', 0);
-    // 獠牙
-    poly(ctx, [[23, -20.4], [25, -20.4], [24, -17.6]], L.fang, 1);
+    ellipse(ctx, hx0 + 3.5, hy0 - 2, 2.5, 2.9, L.eye, 0, 0);
+    ball(ctx, hx0 + 3, hy0 - 3, 1, '#fff', 0);
+    // 上獠牙
+    poly(ctx, [[hx0 + 11, hy0 + 6.4], [hx0 + 13, hy0 + 6.4], [hx0 + 12, hy0 + 10 + jw * 1.6]], L.fang, 1);
   }
 
-  function foeSpider(ctx, L, t, e) {
+  function foeSpider(ctx, L, t, e, P) {
     const ph = t / 120;
     const hurt = e.hitFlash > 0;
     const skin = hurt ? '#f5f2ea' : L.skin;
-    // 八条腿：四对，带相位
-    for (let i = 0; i < 4; i++) {
-      const bx = -6 + i * 5.5;
-      const a1 = Math.sin(ph + i * 0.9) * 0.3;
-      const far = i % 2 === 0;
-      const kneeX = bx - 6 - i * 1.2;
-      const kneeY = -24 - (far ? 3 : 0);
-      const footX = kneeX - 4 + a1 * 3;
-      limb2(ctx, [bx, -16], [kneeX, kneeY], [footX, -1], far ? 3.2 : 3.8, far ? L.dark : skin);
-      // 右侧对称
-      limb2(ctx, [bx + 1, -16], [bx + 12 + i * 1.4, kneeY], [bx + 16 + a1 * 3, -1], far ? 3 : 3.6, far ? L.dark : skin);
+    const cr = P.crouch;
+    const hdx = P.hdx, hdy = P.hdy;
+    // 八条腿：膝节拱到身体上方再踩下去（侧视蜘蛛的招牌剪影）
+    const LEGS = [
+      { f: -33, k: -16, ky: -33, w: 4.2, far: 1 },
+      { f: -22, k: -11, ky: -40, w: 4.6, far: 0 },
+      { f: 24, k: 16, ky: -39, w: 4.2, far: 1 },
+      { f: 32, k: 22, ky: -32, w: 4.6, far: 0 },
+    ];
+    for (let i = 0; i < LEGS.length; i++) {
+      const lg = LEGS[i];
+      const sw = Math.sin(ph + i * 0.9) * 2.6;
+      const sx = 1 - lg.far * 3, sy = -16 + cr - lg.far * 2;
+      limb2(ctx, [sx, sy], [lg.k - lg.far * 2 + sw, lg.ky + cr * 0.6],
+        [lg.f - lg.far * 3 + sw * 1.5, -1], lg.w, lg.far ? L.dark : skin);
     }
     // 腹
-    ellipse(ctx, -10, -18, 12, 10, skin);
+    ellipse(ctx, -10, -18 + cr, 12, 10, skin);
     // 背纹
     ctx.save(); ctx.globalAlpha = 0.5;
-    ellipse(ctx, -11, -21, 5, 3.2, L.dark, 0, 0);
-    ellipse(ctx, -13, -15, 3, 2, L.dark, 0, 0);
+    ellipse(ctx, -11, -21 + cr, 5, 3.2, L.dark, 0, 0);
+    ellipse(ctx, -13, -15 + cr, 3, 2, L.dark, 0, 0);
     ctx.restore();
-    // 头胸
-    ellipse(ctx, 6, -19, 9, 7.6, skin);
+    // 头胸（毒牙/吐丝时前半身高高抬起再压下）
+    const tx = 6 + hdx, ty = -19 + cr + hdy;
+    ellipse(ctx, tx, ty, 9, 7.6, skin);
     // 眼（四只）
-    ellipse(ctx, 6, -22, 2.2, 2.4, L.eye, 0, 0);
-    ellipse(ctx, 11, -22, 2, 2.2, L.eye, 0, 0);
-    ellipse(ctx, 3, -21, 1.6, 1.8, L.eye2, 0, 0);
-    ellipse(ctx, 13, -20.5, 1.4, 1.6, L.eye2, 0, 0);
-    ball(ctx, 5.4, -22.8, 0.8, '#fff', 0);
-    ball(ctx, 10.6, -22.8, 0.7, '#fff', 0);
-    // 螯
-    limb(ctx, [12, -16], [16, -11], 2.6, L.dark);
-    limb(ctx, [10, -15], [13, -10], 2.2, L.dark);
+    ellipse(ctx, tx, ty - 3, 2.2, 2.4, L.eye, 0, 0);
+    ellipse(ctx, tx + 5, ty - 3, 2, 2.2, L.eye, 0, 0);
+    ellipse(ctx, tx - 3, ty - 2, 1.6, 1.8, L.eye2, 0, 0);
+    ellipse(ctx, tx + 7, ty - 1.5, 1.4, 1.6, L.eye2, 0, 0);
+    ball(ctx, tx - 0.6, ty - 3.8, 0.8, '#fff', 0);
+    ball(ctx, tx + 4.6, ty - 3.8, 0.7, '#fff', 0);
+    // 螯：jaw 越大张得越开
+    const op = 1 + P.jaw * 0.8;
+    limb(ctx, [tx + 6, ty + 3], [tx + 10 + op * 1.6, ty + 8 - op * 1.4], 2.6, L.dark);
+    limb(ctx, [tx + 4, ty + 4], [tx + 7 + op * 1.2, ty + 9 + op * 0.8], 2.2, L.dark);
   }
 
 
@@ -5354,24 +6494,32 @@
   // 首领：Q 版放大版（体量压人、头大、角夸张）
   // 人形模板覆盖 demon/bear/bone/bull 四套；queen/dragon/beast 单独画
   // ============================================================
-  function bossHumanoid(ctx, o, t, e) {
+  function bossHumanoid(ctx, o, t, e, P) {
     const hurt = e.hitFlash > 0;
     const W = (c) => (hurt ? '#f5f2ea' : c);
     const skin = W(o.skin), cloth = W(o.cloth), clothD = W(o.clothD);
     const trim = W(o.trim || '#c9a24a'), metal = W(o.metal || '#8e939e');
     const ph = t / 150;
     const bob = Math.sin(ph * 2) * 1.5;
-    const hipY = -30 + bob * 0.3;
-    const shY = -56 + bob;
-    const headY = shY - 19;
+    const cr = P.crouch;
+    const hipY = -30 + bob * 0.3 + cr;
+    const shY = -56 + bob + cr;
+    const headY = shY - 19 + P.hdy;
     const headR = o.headR || 17;
 
-    // 腿 + 靴
+    // 腿 + 靴：脚钉在地上，蹲下去腿压短、两脚外撑
     const legCol = o.skull ? '#ddd0b4' : cloth;
-    limb2(ctx, [-8, hipY], [-10, hipY + 15], [-9, -4], o.skull ? 7.4 : 11.5, o.skull ? '#c8b998' : clothD);
-    limb2(ctx, [8, hipY], [10, hipY + 15], [9, -4], o.skull ? 7.4 : 11.5, legCol);
-    ellipse(ctx, -10, -2.5, o.skull ? 5.6 : 7.5, 4, o.skull ? '#ddd0b4' : metal, 0, LW);
-    ellipse(ctx, 10, -2.5, o.skull ? 5.6 : 7.5, 4, metal, 0, LW);
+    const spread = cr * 0.18;
+    limb2(ctx, [-8 - spread, hipY], [-10 - spread * 1.4, hipY + 15], [-9 - spread * 1.6, -4], o.skull ? 7.4 : 11.5, o.skull ? '#c8b998' : clothD);
+    limb2(ctx, [8 + spread, hipY], [10 + spread * 1.4, hipY + 15], [9 + spread * 1.6, -4], o.skull ? 7.4 : 11.5, legCol);
+    ellipse(ctx, -9 - spread * 1.6, -2.5, o.skull ? 5.6 : 7.5, 4, o.skull ? '#ddd0b4' : metal, 0, LW);
+    ellipse(ctx, 9 + spread * 1.6, -2.5, o.skull ? 5.6 : 7.5, 4, metal, 0, LW);
+
+    // 上身绕胯转：前倾 / 后仰 / 砸下去，整个人跟着动
+    ctx.save();
+    ctx.translate(0, hipY);
+    ctx.rotate(P.lean);
+    ctx.translate(0, -hipY);
 
     // 披风 / 背后红缨
     if (o.plume) {
@@ -5382,6 +6530,17 @@
         [-25 + sw * 0.5, hipY + 24], [-8, hipY + 8],
       ], W(o.plume));
     }
+
+    // 后臂：手往前甩的时候要画在身前，否则整条手臂都被躯干盖住
+    const bsx = -14, bsy = shY + 6;
+    const bhx = bsx + P.bx, bhy = bsy + P.by;
+    const backArm = () => {
+      const be = elbowFor(bsx, bsy, bhx, bhy, 6.5);
+      limb2(ctx, [bsx, bsy], be, [bhx, bhy], 7, clothD);
+      ball(ctx, bhx, bhy, 4.4, skin);
+    };
+    const backFront = P.bx > 2;
+    if (!backFront) backArm();
 
     if (o.skull) {
       // 白骨：脊柱 + 肋骨 + 盆腔
@@ -5415,24 +6574,28 @@
     ellipse(ctx, -16, shY + 4, 7.4, 5.6, trim, -0.3, LW);
     ellipse(ctx, 16, shY + 4, 7.4, 5.6, trim, 0.3, LW);
 
-    // 后臂
-    limb2(ctx, [-14, shY + 6], [-22, shY + 18], [-19, shY + 30], 7, clothD);
-    ball(ctx, -19, shY + 30, 4.4, skin);
-
+    // 前手位置（兵器与手都要用）
+    const fsx = 14, fsy = shY + 6;
+    const fhx = fsx + P.hx, fhy = fsy + P.hy;
+    // 脖子（压在头下面）
+    limb(ctx, [0, shY + 2], [P.hdx * 0.6, headY + headR * 0.8], 9.5, skin);
     // 头
-    drawBossHead(ctx, o, headY, headR, t, hurt, skin, trim);
-    // 脖子
-    limb(ctx, [0, shY + 2], [0, headY + headR * 0.8], 9.5, skin);
-
-    // 前臂 + 兵器
-    const atk = e.atkUntil > 0 && e.atkUntil > t ? 0 : 0;
-    const swing = e.state === 'windup' ? -(e.tele || 0) : 0;
-    limb2(ctx, [14, shY + 6], [22, shY + 16], [24, shY + 8], 7.4, cloth);
-    ball(ctx, 24, shY + 8, 4.6, skin);
-    drawBossWeapon(ctx, o, 26, shY + 8, swing, t);
+    ctx.save();
+    ctx.translate(P.hdx, 0);
+    drawBossHead(ctx, o, headY, headR, t, hurt, skin, trim, P.jaw);
+    ctx.restore();
+    if (backFront) backArm();
+    // 前臂 + 手压在兵器上（握得住）
+    const fe = elbowFor(fsx, fsy, fhx, fhy, 6.5);
+    limb2(ctx, [fsx, fsy], fe, [fhx, fhy], 7.4, cloth);
+    ball(ctx, fhx, fhy, 4.6, skin);
+    // 兵器最后画（压在手上），举起来时才不会被身子吃掉
+    drawBossWeapon(ctx, o, fhx, fhy, P.wa, P.wg || 0);
+    ctx.restore();
   }
 
-  function drawBossHead(ctx, o, y, r, t, hurt, skin, trim) {
+  function drawBossHead(ctx, o, y, r, t, hurt, skin, trim, jaw) {
+    const jw = jaw || 0;
     // 熊耳（画在头后面）
     if (o.bearHead) {
       ball(ctx, -r * 0.8, y - r * 0.8, r * 0.36, skin, LW - 0.5);
@@ -5500,6 +6663,7 @@
       ellipse(ctx, r * 0.06, y + r * 0.5, r * 0.5, r * 0.34, '#c2685e', 0, LW - 0.6);
       ball(ctx, -r * 0.12, y + r * 0.48, r * 0.07, '#4a1a1a', 0);
       ball(ctx, r * 0.26, y + r * 0.48, r * 0.07, '#4a1a1a', 0);
+      if (jw > 0.08) ellipse(ctx, r * 0.08, y + r * 0.72, r * 0.3, r * 0.1 + jw * r * 0.14, '#40141a', 0, 1.4);
       ctx.beginPath();
       ctx.arc(r * 0.08, y + r * 0.62, r * 0.16, 0, Math.PI);
       ctx.strokeStyle = '#ffd479'; ctx.lineWidth = 2.6; ctx.stroke();
@@ -5507,18 +6671,31 @@
       // 熊：长口鼻 + 黑鼻头
       ellipse(ctx, r * 0.08, y + r * 0.44, r * 0.46, r * 0.34, '#b9946a', 0, LW - 0.7);
       ball(ctx, r * 0.08, y + r * 0.36, r * 0.16, '#1a1210', 0);
-      ctx.beginPath();
-      ctx.arc(r * 0.08, y + r * 0.56, r * 0.18, Math.PI * 0.1, Math.PI * 0.9);
-      ctx.strokeStyle = '#2b1a10'; ctx.lineWidth = 2.4; ctx.stroke();
-      poly(ctx, [[-r * 0.16, y + r * 0.66], [r * 0.02, y + r * 0.66], [-r * 0.07, y + r * 0.86]], '#fff8e6', 1.1);
-      poly(ctx, [[r * 0.16, y + r * 0.66], [r * 0.34, y + r * 0.66], [r * 0.26, y + r * 0.86]], '#fff8e6', 1.1);
+      if (jw > 0.08) {
+        // 张嘴咆哮
+        ellipse(ctx, r * 0.08, y + r * (0.62 + jw * 0.06), r * 0.26, r * 0.06 + jw * r * 0.16, '#40141a', 0, 1.4);
+        poly(ctx, [[-r * 0.18, y + r * 0.6], [-r * 0.02, y + r * 0.6], [-r * 0.09, y + r * (0.8 + jw * 0.1)]], '#fff8e6', 1.1);
+        poly(ctx, [[r * 0.18, y + r * 0.6], [r * 0.34, y + r * 0.6], [r * 0.27, y + r * (0.8 + jw * 0.1)]], '#fff8e6', 1.1);
+      } else {
+        ctx.beginPath();
+        ctx.arc(r * 0.08, y + r * 0.56, r * 0.18, Math.PI * 0.1, Math.PI * 0.9);
+        ctx.strokeStyle = '#2b1a10'; ctx.lineWidth = 2.4; ctx.stroke();
+        poly(ctx, [[-r * 0.16, y + r * 0.66], [r * 0.02, y + r * 0.66], [-r * 0.07, y + r * 0.86]], '#fff8e6', 1.1);
+        poly(ctx, [[r * 0.16, y + r * 0.66], [r * 0.34, y + r * 0.66], [r * 0.26, y + r * 0.86]], '#fff8e6', 1.1);
+      }
     } else {
-      // 咧嘴 + 双獠牙
-      ctx.beginPath();
-      ctx.arc(0, y + r * 0.34, r * 0.36, Math.PI * 0.12, Math.PI * 0.88);
-      ctx.strokeStyle = '#2b1a10'; ctx.lineWidth = 3; ctx.stroke();
-      poly(ctx, [[-r * 0.34, y + r * 0.5], [-r * 0.12, y + r * 0.5], [-r * 0.24, y + r * 0.78]], '#fff8e6', 1.2);
-      poly(ctx, [[r * 0.34, y + r * 0.5], [r * 0.12, y + r * 0.5], [r * 0.24, y + r * 0.78]], '#fff8e6', 1.2);
+      // 咧嘴 + 双獠牙：出招时张口怒吼
+      if (jw > 0.1) {
+        ellipse(ctx, 0, y + r * (0.46 + jw * 0.08), r * (0.3 + jw * 0.06), r * 0.06 + jw * r * 0.2, '#40141a', 0, 1.6);
+        poly(ctx, [[-r * 0.34, y + r * 0.34], [-r * 0.12, y + r * 0.34], [-r * 0.24, y + r * (0.62 + jw * 0.1)]], '#fff8e6', 1.2);
+        poly(ctx, [[r * 0.34, y + r * 0.34], [r * 0.12, y + r * 0.34], [r * 0.24, y + r * (0.62 + jw * 0.1)]], '#fff8e6', 1.2);
+      } else {
+        ctx.beginPath();
+        ctx.arc(0, y + r * 0.34, r * 0.36, Math.PI * 0.12, Math.PI * 0.88);
+        ctx.strokeStyle = '#2b1a10'; ctx.lineWidth = 3; ctx.stroke();
+        poly(ctx, [[-r * 0.34, y + r * 0.5], [-r * 0.12, y + r * 0.5], [-r * 0.24, y + r * 0.78]], '#fff8e6', 1.2);
+        poly(ctx, [[r * 0.34, y + r * 0.5], [r * 0.12, y + r * 0.5], [r * 0.24, y + r * 0.78]], '#fff8e6', 1.2);
+      }
     }
     // 冠 / 盔缨
     if (o.crown) {
@@ -5531,57 +6708,61 @@
   }
   function W2(hurt, c) { return hurt ? '#f5f2ea' : c; }
 
-  function drawBossWeapon(ctx, o, hx, hy, swing, t) {
+  function drawBossWeapon(ctx, o, hx, hy, wa, wg) {
     ctx.save();
     ctx.translate(hx, hy);
-    ctx.rotate(0.9 - swing * 2.2);
+    ctx.rotate(wa);
+    ctx.translate(0, wg || 0);
     if (o.weapon === 'spear') {
-      limb(ctx, [0, 30], [0, -38], 4.4, '#6b5232');
-      poly(ctx, [[-5, -38], [5, -38], [0, -52]], '#dfe6ee');
+      // 短矛：杆不宜过长，否则举起来一定横穿脑袋
+      limb(ctx, [0, 20], [0, -24], 4.4, '#6b5232');
+      poly(ctx, [[-4.4, -24], [4.4, -24], [0, -35]], '#dfe6ee');
     } else {
-      // 大刀
-      limb(ctx, [0, 30], [0, -30], 5, '#5b4326');
-      poly(ctx, [[-3, -30], [10, -42], [13, -26], [2, -22]], '#cfd6e0');
-      poly(ctx, [[2, -27], [9, -33], [10, -26], [3, -23]], '#8e97a4', 1.4);
+      // 大刀（单手斧大小）
+      limb(ctx, [0, 22], [0, -24], 5, '#5b4326');
+      poly(ctx, [[-3, -24], [9, -33], [11, -21], [2, -17]], '#cfd6e0');
+      poly(ctx, [[2, -22], [8, -26], [9, -21], [3, -18]], '#8e97a4', 1.4);
     }
     ctx.restore();
   }
 
   // ——— 四足兽形首领（猪/狮/猿/鱼）———
-  function bossBeast(ctx, o, t, e) {
+  function bossBeast(ctx, o, t, e, P) {
     const hurt = e.hitFlash > 0;
     const W = (c) => (hurt ? '#f5f2ea' : c);
     const fur = W(o.fur || '#6b5442'), dark = W(o.furDark || '#493729');
     const ph = t / 135;
     const g = Math.sin(ph);
+    const cr = P.crouch;
     // 远侧腿
-    limb(ctx, [-18, -22], [-20 - g * 5, -2], 9, dark);
-    limb(ctx, [16, -22], [18 + g * 5, -2], 9, dark);
+    limb(ctx, [-18, -22 + cr], [-20 - g * 5, -2], 9, dark);
+    limb(ctx, [16, -22 + cr], [18 + g * 5, -2], 9, dark);
     ellipse(ctx, -20 - g * 5, -1.5, 6, 3.4, dark, 0, LW - 0.6);
     ellipse(ctx, 18 + g * 5, -1.5, 6, 3.4, dark, 0, LW - 0.6);
     // 尾
     ctx.beginPath();
-    ctx.moveTo(-26, -34);
-    ctx.quadraticCurveTo(-38, -44, -34, -54 + g * 3);
+    ctx.moveTo(-26, -34 + cr);
+    ctx.quadraticCurveTo(-38, -44 + cr, -34, -54 + cr + g * 3);
     ctx.strokeStyle = OUT; ctx.lineWidth = 11; ctx.stroke();
     ctx.strokeStyle = fur; ctx.lineWidth = 6; ctx.stroke();
     // 躯干
-    ellipse(ctx, -6, -34, 23, 17, fur);
+    ellipse(ctx, -6, -34 + cr, 23, 17, fur);
     ctx.save(); ctx.globalAlpha = 0.26;
-    ellipse(ctx, -8, -45, 14, 4.5, '#fff', 0, 0);
+    ellipse(ctx, -8, -45 + cr, 14, 4.5, '#fff', 0, 0);
     ctx.restore();
     // 近侧腿
-    limb(ctx, [-14, -24], [-16 + g * 5, -2], 10.5, fur);
-    limb(ctx, [12, -24], [14 - g * 5, -2], 10.5, fur);
+    limb(ctx, [-14, -24 + cr], [-16 + g * 5, -2], 10.5, fur);
+    limb(ctx, [12, -24 + cr], [14 - g * 5, -2], 10.5, fur);
     ellipse(ctx, -16 + g * 5, -1.5, 6.6, 3.8, fur, 0, LW);
     ellipse(ctx, 14 - g * 5, -1.5, 6.6, 3.8, fur, 0, LW);
-    // 头
-    const hx = 22, hy = -52;
-    bossBeastHead(ctx, o, hx, hy, 18, t, hurt, fur, dark);
+    // 头（低头冲锋时整颗头往前压）
+    const hx = 22 + P.hdx, hy = -52 + cr + P.hdy;
+    bossBeastHead(ctx, o, hx, hy, 18, t, hurt, fur, dark, P.jaw);
   }
 
-  function bossBeastHead(ctx, o, x, y, r, t, hurt, fur, dark) {
+  function bossBeastHead(ctx, o, x, y, r, t, hurt, fur, dark, jaw) {
     const W = (c) => (hurt ? '#f5f2ea' : c);
+    const jw = jaw || 0;
     ctx.save();
     if (o.snout === 'lion') {
       // 鬃毛环
@@ -5625,8 +6806,12 @@
       // 默认兽面（狮子/熊）：方吻 + 獠牙
       ellipse(ctx, x + r * 0.36, y + r * 0.26, r * 0.44, r * 0.3, W('#d8bc8a'), 0, LW - 0.8);
       ball(ctx, x + r * 0.5, y + r * 0.16, r * 0.09, '#2a1a1a', 0);
-      poly(ctx, [[x + r * 0.12, y + r * 0.42], [x + r * 0.3, y + r * 0.42], [x + r * 0.16, y + r * 0.84]], '#fff8e6', 1.3);
-      poly(ctx, [[x + r * 0.56, y + r * 0.42], [x + r * 0.74, y + r * 0.42], [x + r * 0.7, y + r * 0.86]], '#fff8e6', 1.3);
+      if (jw > 0.1) {
+        // 张口咆哮
+        ellipse(ctx, x + r * 0.34, y + r * (0.46 + jw * 0.06), r * 0.3, r * 0.05 + jw * r * 0.15, '#40141a', 0, 1.5);
+      }
+      poly(ctx, [[x + r * 0.12, y + r * 0.42], [x + r * 0.3, y + r * 0.42], [x + r * 0.16, y + r * (0.84 + jw * 0.08)]], '#fff8e6', 1.3);
+      poly(ctx, [[x + r * 0.56, y + r * 0.42], [x + r * 0.74, y + r * 0.42], [x + r * 0.7, y + r * (0.86 + jw * 0.08)]], '#fff8e6', 1.3);
     }
     // 眼（通用，已有则跳过）
     if (o.snout !== 'fish' && o.snout !== 'ape') {
@@ -5640,71 +6825,91 @@
 
 
   // ——— 蜘蛛女王：人形上身 + 蛛腹八腿 ———
-  function bossQueen(ctx, o, t, e) {
+  function bossQueen(ctx, o, t, e, P) {
     const hurt = e.hitFlash > 0;
     const W = (c) => (hurt ? '#f5f2ea' : c);
     const skin = W(o.skin || '#8a4bb0'), cloth = W(o.cloth || '#3a1746');
     const ph = t / 190;
-    // 八条腿（后四条先画）
+    const cr = P.crouch;
+    const jw = P.jaw || 0;
+    // 八条腿：从腹侧按角度扇形铺开（原来四根并排，像栅栏）
+    const rx = -10, ry = -42 + cr * 0.6;
     for (let i = 0; i < 4; i++) {
-      const bx = -18 + i * 9;
-      const sw = Math.sin(ph + i * 0.8) * 4;
+      const a = Math.PI * (1.03 - i * 0.35);
+      const sw = Math.sin(ph + i * 0.85) * 4;
       const far = i % 2 === 0;
-      limb2(ctx, [bx, -40], [bx - 16 - i * 2, -58 - (far ? 6 : 0)],
-        [bx - 26 - i * 3 + sw, -2], far ? 5 : 5.6, far ? W('#2c1036') : cloth);
+      const rr = far ? 34 : 43;
+      const kx = rx + Math.cos(a) * rr * 0.6, ky = ry + Math.sin(a) * 15 - 13;
+      const fx = rx + Math.cos(a) * rr + sw;
+      limb2(ctx, [rx, ry], [kx, ky], [fx, -2], far ? 5 : 6, far ? W('#2c1036') : cloth);
     }
     // 蛛腹
-    ellipse(ctx, -12, -42, 21, 17, skin);
+    ellipse(ctx, -12, -42 + cr, 21, 17, skin);
     // 背纹
     ctx.save(); ctx.globalAlpha = 0.55;
-    ellipse(ctx, -14, -48, 8, 5, W('#5c2a78'), 0, 0);
-    ellipse(ctx, -18, -38, 5, 3.4, W('#5c2a78'), 0, 0);
+    ellipse(ctx, -14, -48 + cr, 8, 5, W('#5c2a78'), 0, 0);
+    ellipse(ctx, -18, -38 + cr, 5, 3.4, W('#5c2a78'), 0, 0);
     ctx.restore();
     // 人形上身
-    poly(ctx, [[-9, -52], [-12, -68], [-7, -78], [7, -78], [12, -68], [9, -52]], cloth);
-    // 前四条腿
+    poly(ctx, [[-9, -52 + cr], [-12, -68 + cr], [-7, -78 + cr], [7, -78 + cr], [12, -68 + cr], [9, -52 + cr]], cloth);
+    // 近侧四条腿（比远侧略高、略靠前，才有前后层次）
     for (let i = 0; i < 4; i++) {
-      const bx = -10 + i * 9;
-      const sw = Math.sin(ph + 2 + i * 0.8) * 4;
-      limb2(ctx, [bx, -40], [bx + 14 + i * 2, -56],
-        [bx + 24 + i * 3 + sw, -2], 5.8, skin);
+      const a = Math.PI * (0.94 - i * 0.35);
+      const sw = Math.sin(ph + 1.6 + i * 0.85) * 4;
+      const rr = 47;
+      const kx = rx + Math.cos(a) * rr * 0.58, ky = ry + Math.sin(a) * 15 - 17;
+      const fx = rx + Math.cos(a) * rr + sw;
+      limb2(ctx, [rx + 2, ry + 2], [kx, ky], [fx, -2], 5.4, skin);
     }
-    // 手臂 + 垂丝
-    limb2(ctx, [-9, -72], [-16, -62], [-13, -50], 5.4, skin);
-    limb2(ctx, [9, -72], [17, -64], [19, -52], 5.4, skin);
-    ball(ctx, -13, -50, 3.4, skin, LW - 0.6);
-    ball(ctx, 19, -52, 3.4, skin, LW - 0.6);
-    // 头
-    const hy = -88;
-    ellipse(ctx, 0, hy, 14, 13.4, skin);
+    // 手臂 + 垂丝：手位由动作表给（施法时抬起来）
+    const bsx = -9, bsy = -72 + cr;
+    const bhx = bsx + P.bx, bhy = bsy + P.by;
+    const be = elbowFor(bsx, bsy, bhx, bhy, 6);
+    limb2(ctx, [bsx, bsy], be, [bhx, bhy], 5.4, skin);
+    ball(ctx, bhx, bhy, 3.4, skin, LW - 0.6);
+    const fsx = 9, fsy = -72 + cr;
+    const fhx = fsx + P.hx, fhy = fsy + P.hy * 0.9 + 18;
+    const fe = elbowFor(fsx, fsy, fhx, fhy, 6);
+    limb2(ctx, [fsx, fsy], fe, [fhx, fhy], 5.4, skin);
+    ball(ctx, fhx, fhy, 3.4, skin, LW - 0.6);
+    // 头（先补一段脖子，抬头时不会飘在半空）
+    const hx0 = P.hdx, hy = -88 + cr + P.hdy;
+    limb(ctx, [0, -74 + cr], [hx0 * 0.6, hy + 8], 9.6, skin);
+    ellipse(ctx, hx0, hy, 14, 13.4, skin);
     // 发髻 + 金冠
-    ball(ctx, -3, hy - 12, 6.4, cloth, LW - 0.6);
+    ball(ctx, hx0 - 3, hy - 12, 6.4, cloth, LW - 0.6);
     ctx.beginPath();
-    ctx.arc(0, hy - 2, 13.4, Math.PI * 1.1, Math.PI * 1.9);
+    ctx.arc(hx0, hy - 2, 13.4, Math.PI * 1.1, Math.PI * 1.9);
     ctx.strokeStyle = OUT; ctx.lineWidth = 8; ctx.stroke();
     ctx.strokeStyle = '#e8c25a'; ctx.lineWidth = 4.4; ctx.stroke();
-    ball(ctx, 0, hy - 15, 2.6, '#e8c25a', 1.6);
+    ball(ctx, hx0, hy - 15, 2.6, '#e8c25a', 1.6);
     // 六只眼（两排）
     for (let i = -1; i <= 1; i++) {
-      ball(ctx, i * 6.4, hy - 2, 2.9, '#ff4d6a', 0);
-      ball(ctx, i * 5.2, hy + 4.6, 1.9, '#ffd479', 0);
+      ball(ctx, hx0 + i * 6.4, hy - 2, 2.9, '#ff4d6a', 0);
+      ball(ctx, hx0 + i * 5.2, hy + 4.6, 1.9, '#ffd479', 0);
     }
-    ball(ctx, -3.4, hy - 3.4, 1.1, '#fff', 0);
-    ball(ctx, 3, hy - 3.4, 1.1, '#fff', 0);
-    // 嘴
-    ctx.beginPath();
-    ctx.arc(0, hy + 8.6, 3.4, Math.PI * 0.12, Math.PI * 0.88);
-    ctx.strokeStyle = '#2b0a1a'; ctx.lineWidth = 2.2; ctx.stroke();
-    poly(ctx, [[-1.6, hy + 11], [0.6, hy + 11], [-0.6, hy + 16]], '#fff8e6', 1.1);
+    ball(ctx, hx0 - 3.4, hy - 3.4, 1.1, '#fff', 0);
+    ball(ctx, hx0 + 3, hy - 3.4, 1.1, '#fff', 0);
+    // 嘴：出招时张开吐丝
+    if (jw > 0.1) {
+      ellipse(ctx, hx0, hy + 9.4, 3.4, 1.2 + jw * 3, '#2b0a1a', 0, 1.4);
+      poly(ctx, [[hx0 - 1.6, hy + 8.4], [hx0 + 0.6, hy + 8.4], [hx0 - 0.6, hy + 12.6]], '#fff8e6', 1.1);
+    } else {
+      ctx.beginPath();
+      ctx.arc(hx0, hy + 8.6, 3.4, Math.PI * 0.12, Math.PI * 0.88);
+      ctx.strokeStyle = '#2b0a1a'; ctx.lineWidth = 2.2; ctx.stroke();
+      poly(ctx, [[hx0 - 1.6, hy + 11], [hx0 + 0.6, hy + 11], [hx0 - 0.6, hy + 16]], '#fff8e6', 1.1);
+    }
   }
 
   // ——— 毒龙：蛇形长身 ———
-  function bossDragon(ctx, o, t, e) {
+  function bossDragon(ctx, o, t, e, P) {
     const hurt = e.hitFlash > 0;
     const W = (c) => (hurt ? '#f5f2ea' : c);
     const sc = W(o.sc || '#2f7d6b'), belly = W(o.belly || '#d9e8a8');
     const sway = Math.sin(t / 380) * 3;
     const sway2 = Math.sin(t / 380 + 1.1) * 3.6;
+    const jw = P.jaw || 0;
     // 尾 → 身 → 肩（粗链）
     limb2(ctx, [-52, -14], [-38, -26], [-24, -38], 12, sc);
     limb2(ctx, [-24, -38], [-10, -46], [2, -52], 14, sc);
@@ -5723,12 +6928,22 @@
     // 前爪
     limb2(ctx, [0, -50], [8, -34], [4, -14], 7.4, sc);
     limb(ctx, [4, -14], [-2, -10], 4.4, W('#e8dcc4'));
+    // 头位由动作表给：蓄力时头往后仰，喷吐时整颗头探出去
+    const hx = 34 + sway2 + P.hdx * 1.4, hy = -70 + P.hdy * 1.5;
     // 脖 + 头
-    limb2(ctx, [2, -52], [16, -60], [26 + sway2, -64], 11, sc);
-    const hx = 34 + sway2, hy = -70;
+    limb2(ctx, [2, -52], [16, -58], [hx - 9, hy + 6], 11, sc);
     ellipse(ctx, hx, hy, 15, 12, sc);
     // 长吻
     poly(ctx, [[hx + 4, hy - 4], [hx + 26, hy - 1], [hx + 26, hy + 7], [hx + 6, hy + 9]], sc);
+    // 下颌：张嘴时绕吻根张下去
+    if (jw > 0.05) {
+      ctx.save();
+      ctx.translate(hx + 5, hy + 7);
+      ctx.rotate(jw * 0.4);
+      poly(ctx, [[0, -1], [21, 0.5], [20, 5 + jw * 2], [0, 3.4]], sc, LW - 0.5);
+      poly(ctx, [[15, 0], [18, 0], [17, 4.4]], '#fff8e6', 1);
+      ctx.restore();
+    }
     // 角
     limb(ctx, [hx - 4, hy - 10], [hx - 9, hy - 22], 4.6, W(o.horn || '#e6dcc4'));
     limb(ctx, [hx + 4, hy - 10], [hx + 2, hy - 22], 4, W(o.horn || '#e6dcc4'));
@@ -5745,10 +6960,11 @@
     ball(ctx, hx + 25, hy + 1, 1.4, '#2b1a10', 0);
   }
 
-  function drawBossByKind(ctx, kind, art, e, t) {
-    if (kind === 'queen') return bossQueen(ctx, art, t, e);
-    if (kind === 'dragon') return bossDragon(ctx, art, t, e);
-    if (kind === 'beast') return bossBeast(ctx, art, t, e);
+  function drawBossByKind(ctx, kind, art, e, t, P) {
+    const pose = P || XY.Moves.BOSS_BASE;
+    if (kind === 'queen') return bossQueen(ctx, art, t, e, pose);
+    if (kind === 'dragon') return bossDragon(ctx, art, t, e, pose);
+    if (kind === 'beast') return bossBeast(ctx, art, t, e, pose);
     // 人形系：demon / bear / bone / bull
     const o = {
       skin: art.skin || art.fur || '#6b5442',
@@ -5766,7 +6982,7 @@
       crown: kind === 'bull',
       headR: art.small ? 14 : 17,
     };
-    return bossHumanoid(ctx, o, t, e);
+    return bossHumanoid(ctx, o, t, e, pose);
   }
 
   XY.Toon = {
@@ -5775,6 +6991,8 @@
     drawCharacter(ctx, cx, footY, scale, charId, pose) {
       const L = LOOK[charId] || LOOK.wukong;
       pose = pose || {};
+      // 动作层要知道是谁（同一个 kind 在不同角色上默认动作不同）
+      if (pose.charId !== charId) pose = Object.assign({}, pose, { charId: charId });
       const facing = pose.facing >= 0 ? 1 : -1;
       const s = (scale || 1) * 1.02;   // 造型总高 74 单位，比原像素层（约 60px）大一圈
       ctx.save();
@@ -5797,9 +7015,11 @@
     LOOK,
     FOE,
     drawEnemy(ctx, e, t) {
+      const MV = XY.Moves;
       if (e.isBoss) {
         const art = e.art || {};
         const sc = ((e.h || 86) / 86) * (art.small ? 0.86 : 1);
+        const P = MV && MV.bossPose ? MV.bossPose(e, t) : MV.BOSS_BASE;
         ctx.save();
         ctx.translate(e.x + e.w / 2, e.y + e.h);
         if (ctx.ellipse) {
@@ -5810,17 +7030,19 @@
         const bsx = (e.facing || -1) < 0 ? -1 : 1;
         ctx.scale(bsx * sc, sc);
         ctx.lineJoin = 'round';
-        const bw = e.state === 'windup' ? (e.tele || 0) : 0;
-        if (bw > 0) { ctx.translate(-4 * bw, 2 * bw); ctx.rotate(-0.05 * bw); }
-        const lunge = (e.atkUntil || 0) - t;
-        if (lunge > 0) ctx.translate(Math.sin(Math.min(1, lunge / 300) * Math.PI) * 8, 0);
-        drawBossByKind(ctx, art.kind || 'bull', art, e, t);
+        // 出招：整体绕胯前倾/后仰，再往前顶出去
+        ctx.translate(P.lunge, 0);
+        ctx.translate(0, -34); ctx.rotate(P.lean); ctx.translate(0, 34);
+        const sq = P.sq || 1;
+        if (sq !== 1) ctx.scale(1 / sq, sq);
+        drawBossByKind(ctx, art.kind || 'bull', art, e, t, P);
         ctx.restore();
         return true;
       }
       const L = FOE[e.kind];
       if (!L) return false;
       const scaleY = (e.h || 34) / (e.kind === 'wolf' ? 36 : e.kind === 'spider' ? 32 : 34);
+      const P = MV && MV.foePose ? MV.foePose(e, t) : MV.FOE_BASE;
       ctx.save();
       ctx.translate(e.x + e.w / 2, e.y + e.h);
       // 落地影
@@ -5832,11 +7054,13 @@
       const sx = (e.facing || -1) < 0 ? -1 : 1;
       ctx.scale(sx * scaleY, scaleY);
       ctx.lineJoin = 'round';
-      const wind = e.state === 'windup' ? (e.tele || 0) : 0;
-      if (wind > 0) { ctx.translate(-3.2 * wind, 1.4 * wind); ctx.rotate(-0.05 * wind); }
-      if (e.kind === 'wolf') foeWolf(ctx, L, t, e);
-      else if (e.kind === 'spider') foeSpider(ctx, L, t, e);
-      else foeImp(ctx, L, t, e);
+      // 出招：绕重心转 + 往前顶（蜘蛛腿铺得宽，绕身上转才不像整体翻倒）
+      const pivot = e.kind === 'spider' ? -16 : -10;
+      ctx.translate(P.lunge, 0);
+      ctx.translate(0, pivot); ctx.rotate(P.lean); ctx.translate(0, -pivot);
+      if (e.kind === 'wolf') foeWolf(ctx, L, t, e, P);
+      else if (e.kind === 'spider') foeSpider(ctx, L, t, e, P);
+      else foeImp(ctx, L, t, e, P);
       ctx.restore();
       return true;
     },
@@ -5960,6 +7184,33 @@
   function easeOut(p) { return 1 - (1 - p) * (1 - p); }
   function circle(ctx, x, y, r) { ctx.beginPath(); ctx.arc(x, y, Math.max(0.1, r), 0, Math.PI * 2); }
 
+  // 火舌：底圆钝、往上收成尖，tip 往前歪一点才像在窜，不像球
+  function flamePath(ctx, x, y, w, h, lean) {
+    const tipX = x + lean, tipY = y - h;
+    ctx.beginPath();
+    ctx.moveTo(x - w, y - w * 0.25);
+    ctx.bezierCurveTo(x - w * 1.12, y - h * 0.46, x + lean * 0.35 - w * 0.6, y - h * 0.74, tipX, tipY);
+    ctx.bezierCurveTo(x + lean * 0.25 + w * 0.78, y - h * 0.64, x + w * 1.06, y - h * 0.4, x + w, y - w * 0.2);
+    ctx.quadraticCurveTo(x + w * 0.5, y + w * 0.58, x - w * 0.2, y + w * 0.52);
+    ctx.quadraticCurveTo(x - w * 0.92, y + w * 0.4, x - w, y - w * 0.25);
+    ctx.closePath();
+  }
+  // 水滴：顺着速度方向拉长的橄榄形（圆点读不出"溅"的感觉）
+  function dropPath(ctx, x, y, w, vx, vy) {
+    const sp = Math.hypot(vx, vy) || 1;
+    const len = w * (1.6 + Math.min(1.5, sp / 260));
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(Math.atan2(vy, vx));
+    ctx.beginPath();
+    ctx.moveTo(len, 0);
+    ctx.quadraticCurveTo(0, w * 1.35, -len * 0.75, 0);
+    ctx.quadraticCurveTo(0, -w * 1.35, len, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
   // 十丈金箍棒：一根被放大到离谱的棒子，从头顶抡下来砸地
   function drawGiantStaff(ctx, L, Wd) {
     // 棒身
@@ -6018,6 +7269,13 @@
           it.y += it.vy * dt;
           it.rot += it.spin * dt;
           it.vy = Math.min(96, it.vy + 30 * dt);
+        } else if (it.type === 'fire') {
+          it.x += it.vx * dt; it.y += it.vy * dt;
+          it.vy -= 70 * dt;            // 热气往上顶
+          it.vx *= 0.93;
+        } else if (it.type === 'smoke') {
+          it.x += it.vx * dt; it.y += it.vy * dt;
+          it.vx *= 0.9; it.vy = it.vy * 0.9 - 16 * dt;
         }
         out.push(it);
       }
@@ -6039,6 +7297,74 @@
     giantStaff(x, y, dir, life) {
       const l = life || 0.62;
       this._push({ type: 'giantStaff', x, y, dir: dir < 0 ? -1 : 1, len: 340, wid: 40, life: l, maxLife: l });
+    }
+
+    // ============================================================
+    // 四种元素：火 / 雷 / 水 / 尘
+    // 招式光有刀光不够，得有"打在什么东西上"的质感。
+    // ============================================================
+    // 火焰：一簇往上窜的火舌（外焰橙红、中焰亮橙、心焰近白）
+    fire(x, y, n, opts) {
+      const o = opts || {};
+      const cnt = Math.max(1, n || 6);
+      for (let i = 0; i < cnt; i++) {
+        const l = 0.34 + Math.random() * 0.3;
+        this._push({
+          type: 'fire',
+          x: x + (Math.random() - 0.5) * (o.spread || 16),
+          y: y + (Math.random() - 0.5) * Math.min(14, (o.spread || 16) * 0.42),
+          vx: (Math.random() - 0.5) * 46 + (o.vx || 0),
+          vy: -34 - Math.random() * (o.rise || 76),
+          r: (o.r || 7) * (0.7 + Math.random() * 0.7),
+          life: l, maxLife: l, hot: o.hot || '#fff6d2',
+          seed: Math.random() * 6.28, tall: Math.random() * 0.85,
+        });
+      }
+    }
+    // 闪电：从 (x,y) 劈到 (x2,y2)，带分叉，命中的那一下就是它
+    bolt(x, y, x2, y2, opts) {
+      const o = opts || {};
+      const l = o.life || 0.2;
+      this._push({
+        type: 'bolt', x, y, x2, y2, life: l, maxLife: l,
+        seed: Math.random() * 9999, color: o.color || '#bfe9ff', wide: o.wide || 1,
+      });
+    }
+    // 水花：向上溅开的水珠 + 一圈涟漪
+    splash(x, y, n, opts) {
+      const o = opts || {};
+      const cnt = Math.max(1, n || 12);
+      const dir = o.dir === undefined ? 1 : (o.dir < 0 ? -1 : 1);
+      for (let i = 0; i < cnt; i++) {
+        const a = -Math.PI * (0.12 + Math.random() * 0.76);
+        const sp = 90 + Math.random() * 200;
+        const l = 0.32 + Math.random() * 0.3;
+        this._push({
+          type: 'spark', x: x + (Math.random() - 0.5) * 16, y: y,
+          vx: Math.cos(a) * sp * dir, vy: Math.sin(a) * sp,
+          r: 2.4 + Math.random() * 2.8, life: l, maxLife: l,
+          color: o.color || '#9be7ff', gravity: 900, wet: 1,
+        });
+      }
+      this.ring(x, y, 3, o.r || 42, o.color || '#9be7ff', 0.34, 2.4);
+    }
+    // 尘土：一团扩散的沙尘（比 dust 更"闷"，用于砸地/冲撞）
+    smoke(x, y, n, opts) {
+      const o = opts || {};
+      const cnt = Math.max(1, n || 8);
+      for (let i = 0; i < cnt; i++) {
+        const a = (i / cnt) * Math.PI * 2 + Math.random() * 0.7;
+        const sp = (o.speed || 72) * (0.45 + Math.random() * 0.85);
+        const l = 0.48 + Math.random() * 0.5;
+        this._push({
+          type: 'smoke', x: x + (Math.random() - 0.5) * 8, y: y + (Math.random() - 0.5) * 6,
+          vx: Math.cos(a) * sp * (o.dir === undefined ? 1 : 1),
+          vy: Math.sin(a) * sp * 0.46 - (o.lift === undefined ? 18 : o.lift),
+          r: (o.r || 8) * (0.5 + Math.random() * 0.55),
+          life: l, maxLife: l, color: o.color || '#c9a87c',
+          seed: Math.random() * 6.28,
+        });
+      }
     }
 
     // —— 祥云：一片软乎乎的云，会飘、会散 ——
@@ -6210,9 +7536,93 @@
         if (it.type === 'spark' || it.type === 'trail') {
           ctx.globalAlpha = A();
           ctx.fillStyle = it.color;
-          ctx.beginPath();
-          if (ctx.arc) ctx.arc(it.x, it.y, Math.max(0.4, it.r * (1 - p * 0.55)), 0, Math.PI * 2);
+          if (it.wet) {
+            // 水珠：拉长成水滴，砸下去有方向感
+            dropPath(ctx, it.x, it.y, Math.max(1, it.r * (1 - p * 0.45)), it.vx, it.vy);
+          } else {
+            ctx.beginPath();
+            if (ctx.arc) ctx.arc(it.x, it.y, Math.max(0.4, it.r * (1 - p * 0.55)), 0, Math.PI * 2);
+            ctx.fill();
+          }
+        } else if (it.type === 'fire') {
+          // 火焰：三层火舌，外焰暗红 → 中焰橙 → 心焰近白；越烧越高、顶梢往前歪
+          const k = Math.max(0, it.life / it.maxLife);
+          const age = 1 - k;
+          const grow = 0.6 + age * 0.7;
+          const w = it.r * 0.74 * grow;
+          const h = it.r * (2.05 + (it.tall || 0)) * grow * (0.4 + 0.6 * k);
+          const sway = Math.sin(age * 7 + (it.seed || 0)) * it.r * 0.55 + it.vx * 0.012;
+          const by = it.y + it.r * 0.34;
+          ctx.globalAlpha = Math.min(0.95, k * 1.8);
+          flamePath(ctx, it.x, by, w, h, sway);
+          ctx.fillStyle = 'rgba(198,44,14,0.82)'; ctx.fill();
+          ctx.globalAlpha = Math.min(1, k * 2.4);
+          flamePath(ctx, it.x, by, w * 0.64, h * 0.7, sway * 0.72);
+          ctx.fillStyle = 'rgba(255,134,28,0.94)'; ctx.fill();
+          ctx.globalAlpha = k;
+          flamePath(ctx, it.x, by, w * 0.33, h * 0.42, sway * 0.46);
+          ctx.fillStyle = it.hot; ctx.fill();
+        } else if (it.type === 'smoke') {
+          // 尘土：外圈几团错位软圆 + 淡中心，叠出"炸开的尘环"而不是实心饼
+          const k = Math.max(0, it.life / it.maxLife);
+          const age = 1 - k;
+          const rad = it.r * (0.7 + age * 1.05);
+          const sa = it.seed || 0;
+          ctx.fillStyle = it.color;
+          for (let j = 0; j < 3; j++) {
+            const a = sa + j * 2.1;
+            const ox = Math.cos(a) * rad * 0.62;
+            const oy = Math.sin(a) * rad * 0.4 - age * rad * 0.3;
+            ctx.globalAlpha = k * 0.28;
+            circle(ctx, it.x + ox, it.y + oy, rad * (0.62 - j * 0.09));
+            ctx.fill();
+          }
+          ctx.globalAlpha = k * 0.16;
+          circle(ctx, it.x, it.y - age * rad * 0.25, rad * 0.85);
           ctx.fill();
+        } else if (it.type === 'bolt') {
+          // 闪电：折线形状由 seed 定死（亮一下就没了，不会每帧乱抖）
+          const rnd = (i) => {
+            const v = Math.sin(it.seed + i * 12.9898) * 43758.5453;
+            return v - Math.floor(v);
+          };
+          const dx = it.x2 - it.x, dy = it.y2 - it.y;
+          const len = Math.hypot(dx, dy) || 1;
+          const nx = -dy / len, ny = dx / len;
+          const segs = 7;
+          const pts = [];
+          for (let j = 0; j <= segs; j++) {
+            const t = j / segs;
+            const off = (j === 0 || j === segs) ? 0 : (rnd(j) - 0.5) * len * 0.24;
+            pts.push([it.x + dx * t + nx * off, it.y + dy * t + ny * off]);
+          }
+          const stroke = (w, col, alpha) => {
+            ctx.globalAlpha = alpha;
+            ctx.strokeStyle = col; ctx.lineWidth = w;
+            ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+            ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
+            for (let j = 1; j < pts.length; j++) ctx.lineTo(pts[j][0], pts[j][1]);
+            ctx.stroke();
+          };
+          const a = A(1);
+          ctx.save();
+          ctx.globalCompositeOperation = 'lighter';
+          stroke(10 * it.wide, it.color, a * 0.28);
+          stroke(4.4 * it.wide, it.color, a * 0.72);
+          stroke(1.9 * it.wide, '#ffffff', a * 0.95);
+          // 两道分叉，让雷"炸开"而不是一根直棍
+          for (let f = 0; f < 2; f++) {
+            const b = pts[2 + f * 2] || pts[3];
+            const ang = Math.atan2(dy, dx) + (rnd(f + 7) - 0.5) * 1.7;
+            const fl = len * (0.14 + rnd(f + 3) * 0.16);
+            ctx.globalAlpha = a * 0.62;
+            ctx.strokeStyle = it.color;
+            ctx.lineWidth = 2.1 * it.wide;
+            ctx.beginPath(); ctx.moveTo(b[0], b[1]);
+            ctx.lineTo(b[0] + Math.cos(ang) * fl, b[1] + Math.sin(ang) * fl);
+            ctx.stroke();
+          }
+          ctx.restore();
         } else if (it.type === 'ring') {
           const r = it.r0 + (it.r1 - it.r0) * (p < 0.75 ? p / 0.75 : 1);
           ctx.globalAlpha = A(0.95);
@@ -7853,7 +9263,7 @@
       this.animT = 0;
       this.landT = -9999;           // 最近一次落地时刻（落地压扁动画用）
       this.attackStart = -9999; this.attackUntil = -9999;
-      this.castStart = -9999; this.castUntil = -9999;
+      this.castStart = -9999; this.castUntil = -9999; this.castStrikeAt = -9999;
       // 挨打：受击后短暂失衡（表现层据此做后仰、护痛、踉跄）
       this.hurtStart = -9999; this.hurtUntil = -9999;
       this.combo = 0; this.lastAttackAt = -9999;
@@ -8034,9 +9444,12 @@
       if (this.energy < sk.cost) return null;
       this.energy -= sk.cost;
       this.skillCd[sid] = now + sk.cooldown;
-      this.castStart = now; this.castUntil = now + 340;
+      // 施法时长由技能自己的动作模组决定（重劈要比戳慢，诵经要比护体慢）
+      const cast = sk.cast || 340;
+      this.castStart = now; this.castUntil = now + cast;
       this.castSkillId = sid;
-      return Object.assign({ hitKey: sid + now }, sk);
+      this.castStrikeAt = now + cast * (sk.strike === undefined ? 0.45 : sk.strike);
+      return Object.assign({ hitKey: sid + now, castMs: cast, strikeAt: this.castStrikeAt }, sk);
     }
     tryTreasure(i, now) {
       const tid = this.treasures[i];
@@ -8143,6 +9556,9 @@
       this.moveDir = -1;      // 起手时锁定的方向
       this.tele = 0;          // 起手进度 0..1（美术层画预警用）
       this.actK = 0;          // 出手进度 0..1
+      this.last = null;       // 上一招（收招阶段造型层用）
+      this.recStart = 0;      // 收招开始时间
+      this.recLen = 400;      // 收招时长
       this.cds = {};          // 每招独立冷却
       this.gapUntil = 0;      // 两招之间的最小间隔
       this.strike = null;     // 一次性交给 game 结算的攻击
@@ -8215,7 +9631,12 @@
     endMove(now) {
       const m = this.cur;
       this.state = 'recover';
-      this.stateUntil = now + ((m && m.recover) || 400) * (this.enraged ? 0.85 : 1);
+      const rec = ((m && m.recover) || 400) * (this.enraged ? 0.85 : 1);
+      this.stateUntil = now + rec;
+      // 收招阶段 cur 会清空，但造型层还要按这一招的姿势退回去
+      this.last = m;
+      this.recStart = now;
+      this.recLen = rec;
       this.gapUntil = now + 200;
       if (m) this.cds[m.key] = now + randBetween(m.cd, 1400, 2200) * (this.enraged ? 0.72 : 1);
       this.cur = null;
@@ -8911,6 +10332,15 @@
     // 敌人
     for (const e of game.level.enemies) {
       if (!e.alive) continue;
+      // 调试：?foe=slam&foep=0.6 把怪物钉在指定招式进度上（校验怪物动作与元素特效）
+      if (game.foePin) {
+        const pin = game.foePin;
+        e.cur = { key: pin.key };
+        e.last = { key: pin.key };
+        if (pin.p <= 0.5) { e.state = 'windup'; e.tele = pin.p / 0.5; }
+        else if (pin.p <= 0.76) { e.state = 'active'; e.tele = 1; e.actK = (pin.p - 0.5) / 0.26; }
+        else { e.state = 'recover'; e.recStart = now - pin.p * 1000; e.recLen = 1000; }
+      }
       if (e.state === 'windup' || e.state === 'active') UI.drawEnemyTell(ctx, e, now);
       const k = (e.h / (ENEMY_ART_H[e.kind] || 34)) * 1.02;
       Art().drawEnemy(ctx, e, now, k);
@@ -11341,6 +12771,18 @@
     act(a) {
       if (!a) return;
       const now = this.now, pl = this.player;
+      // —— 技能：先演完起手，到 strike 那一帧才真正出手 ——
+      // 之前是按下即结算，动作还没抬起来伤害就跳完了，所以看着"只有特效没有动作"。
+      // dash 例外：位移要立刻开始，伤害靠身体碰撞结算。
+      if (a.kind && a.kind !== 'melee' && a.kind !== 'dash' && a.kind !== 'treasure' && !a._fired) {
+        const castMs = a.castMs || a.cast || 340;
+        const at = now + castMs * (a.strike === undefined ? 0.45 : a.strike);
+        const lv0 = this.level;
+        const a2 = Object.assign({}, a, { _fired: true });
+        this.pending.push({ at: at, run: () => { if (this.level !== lv0) return; this.act(a2); } });
+        if (XY.Audio) XY.Audio.sfx('charge');
+        return;
+      }
       const cx = pl.x + pl.w / 2, cy = pl.y + pl.h / 2;
       // 普攻用 mult，技能数据用 multiplier —— 统一取一次，避免 undefined 传进伤害公式变成 NaN
       const mult = Number.isFinite(a.multiplier) ? a.multiplier
@@ -11365,6 +12807,11 @@
               this.fx.ring(tipX, tipY, 2, 42, '#ffffff', 0.22, 14);
               this.fx.spark(tipX, tipY, 26, '#fff0b8', { speed: 380, spread: 1.8, angle: dir > 0 ? 0 : Math.PI, gravity: 640, jitter: 10 });
               this.fx.dust(tipX, tipY, 20, '#c9a06a', 80, 48);
+              // 天雷引下来 + 尘浪 + 火星：这一棒是"砸穿地面"的量级
+              this.fx.bolt(tipX, tipY - 300, tipX, tipY, { color: '#ffe9a8', wide: 1.8, life: 0.3 });
+              this.fx.bolt(tipX + dir * 40, tipY - 220, tipX + dir * 12, tipY, { color: '#fff4cf', wide: 1.1, life: 0.22 });
+              this.fx.smoke(tipX, tipY, 18, { color: '#c9a06a', r: 15, speed: 140 });
+              this.fx.fire(tipX, tipY - 10, 14, { r: 12, spread: 64 });
               this.shake = Math.min(18, this.shake + 14);
             },
           });
@@ -11402,6 +12849,20 @@
               // 甩：身后再补一道反手刀光，读得出"这一下是抽了一圈"
               this.fx.slashStyle(mx - dirNow * 16, fxY - 2, -dirNow, '#ffb648', 1.1, 0.24, 'sweep');
             }
+            // 兵器带什么元素，打在空气里也看得见（雷/水/沙/土/佛光）
+            const elX = fxX + dirNow * 20;
+            if (me.char.id === 'wukong') {
+              this.fx.bolt(elX, fxY - 46, elX + dirNow * 8, fxY + 14, { color: '#ffe08a', wide: a.heavy ? 0.9 : 0.6, life: 0.15 });
+            } else if (me.char.id === 'bailongma') {
+              this.fx.splash(elX, fxY + 6, a.heavy ? 9 : 6, { dir: dirNow, color: '#a9e4ff' });
+            } else if (me.char.id === 'shaseng') {
+              this.fx.smoke(elX, fxY + 12, a.heavy ? 7 : 4, { color: '#d8c08a', speed: 54, r: 6 });
+            } else if (me.char.id === 'bajie') {
+              this.fx.smoke(elX, fxY + 14, a.heavy ? 8 : 5, { color: '#c9a87c', speed: 60, r: 7 });
+            } else {
+              // 唐僧：佛光金粉
+              this.fx.spark(elX, fxY, 6, '#ffe9a8', { speed: 150, spread: 1.1, angle: dirNow > 0 ? 0 : Math.PI, gravity: 260 });
+            }
             let hits = this.meleeHit(a.range, mult, a.heavy, dirNow);
             if (a.backRange > 0) hits += this.meleeHit(a.backRange, mult * 0.72, false, -dirNow);
             if (hits > 0) {
@@ -11433,17 +12894,23 @@
         if (a.id === 'ss_quicksand') {
           // 流沙卷：沙纹漩涡卷起敌人
           this.fx.sandWave(cx + pl.facing * 40, pl.y + pl.h - 6, a.radius || 120, pl.facing);
+          this.fx.smoke(cx + pl.facing * 30, pl.y + pl.h - 8, 18, { color: '#d9bd8a', r: 11, speed: 120, lift: 40 });
           if (XY.Audio) XY.Audio.sfx('aoe');
         } else if (a.id === 'bl_breath') {
-          // 龙息：从口中喷出的锥形寒气
+          // 龙息：从口中喷出的锥形寒气 + 一路水花
           this.fx.coneBreath(cx + pl.facing * 20, cy, pl.facing, '#9be7ff', a.radius ? a.radius * 1.3 : 190);
           this.fx.ring(cx + pl.facing * 20, cy, 4, 40, '#cdeeff', 0.3, 3);
+          for (let i = 1; i <= 4; i++) {
+            this.fx.splash(cx + pl.facing * (20 + i * 46), cy + 6 + i * 4, 6, { dir: pl.facing, color: '#bdeaff', r: 26 });
+          }
+          this.fx.smoke(cx + pl.facing * 40, cy, 8, { color: '#cfeaff', r: 10, speed: 60, lift: 6 });
           if (XY.Audio) XY.Audio.sfx('shoot');
         } else if (a.id === 'bl_tail') {
-          // 龙尾扫：前后两道弧形尾浪交叠
+          // 龙尾扫：前后两道弧形尾浪交叠，尾梢甩出一圈水
           this.fx.slashStyle(cx, cy, pl.facing, '#9be7ff', 1.6, 0.3, 'sweep');
           this.fx.slashStyle(cx - pl.facing * 18, cy + 6, -pl.facing, '#cdeeff', 1.3, 0.26, 'sweep');
           this.fx.ring(cx, cy, 10, a.radius || 140, '#9be7ff', 0.4, 6);
+          this.fx.splash(cx + pl.facing * 34, cy + 10, 12, { dir: pl.facing, color: '#bfe9ff', r: 46 });
           if (XY.Audio) XY.Audio.sfx('aoe');
         } else {
           this.fx.ring(cx, cy, 10, a.radius || 140, pl.char.color, 0.42, 6);
@@ -11637,6 +13104,12 @@
       if (s.type === 'melee') {
         this.fx.slash(s.box.x + s.box.w * 0.5, s.box.y + s.box.h * 0.45, s.dir,
           tell, Math.max(0.55, s.box.w / 78), 0.2);
+        // 招式本身的元素：毒牙溅毒、重击起尘、妖爪带火
+        const gx = s.box.x + s.box.w * 0.78, gy = s.box.y + s.box.h * 0.5;
+        if (m.dot) this.fx.splash(gx, gy, 8, { dir: s.dir, color: '#b06bff', r: 30 });
+        else if (m.key === 'slam') this.fx.smoke(gx, gy + 22, 10, { color: '#c9a06a', r: 9, speed: 80 });
+        else if (e.isBoss) this.fx.fire(gx, gy, 5, { r: 6, spread: 22 });
+        else this.fx.smoke(gx, gy + 16, 5, { color: '#bda98a', r: 5, speed: 50 });
         if (XY.aabb(s.box, pl)) {
           this.hurtPlayerBy(e, s.mult, { tag: m.dot ? 'slow' : 'hit' });
           if (m.dot) {
@@ -11647,12 +13120,16 @@
         }
       } else if (s.type === 'dash') {
         this.fx.dust(e.x + e.w / 2, e.y + e.h, 12, '#c9a06a', 70, 45);
+        this.fx.smoke(e.x + e.w / 2 - s.dir * 20, e.y + e.h - 6, 10, { color: '#c9a06a', r: 10, speed: 90 });
         this.fx.slash(e.x + e.w / 2 + s.dir * e.w * 0.4, e.y + e.h * 0.45, s.dir, tell, 1.1, 0.24);
         this.shake = Math.min(14, this.shake + (m.shake || 4));
       } else if (s.type === 'aoe') {
         this.fx.ring(s.x, s.y, 10, s.radius, tell, 0.5, 9);
         this.fx.ring(s.x, s.y, 4, s.radius * 0.62, '#fff6cc', 0.38, 5);
         this.fx.dust(s.x, s.y, 20, '#c9a06a', 110, 55);
+        this.fx.smoke(s.x, s.y - 4, 16, { color: '#c9a06a', r: 13, speed: 120 });
+        this.fx.bolt(s.x, s.y - 210, s.x, s.y - 6, { color: tell, wide: 1.4, life: 0.26 });
+        this.fx.fire(s.x, s.y - 10, 8, { r: 8, spread: 46 });
         this.shake = Math.min(20, this.shake + (m.shake || 8));
         const dx = Math.abs((pl.x + pl.w / 2) - s.x);
         const feet = pl.y + pl.h;
@@ -11673,6 +13150,10 @@
           this.projectiles.push(p);
         }
         this.fx.spark(s.x, s.y, 8, pdef.color || tell, { speed: 160, angle: s.dir > 0 ? 0 : Math.PI, spread: 0.8 });
+        // 弹道带元素：妖火是火焰、蛛丝是黏丝、掷石是土渣
+        if (m.key === 'volley') this.fx.fire(s.x, s.y, 7, { r: 6, spread: 20, vx: s.dir * 60 });
+        else if (m.slow) this.fx.splash(s.x, s.y, 7, { dir: s.dir, color: '#c9a6ff', r: 26 });
+        else this.fx.smoke(s.x, s.y, 6, { color: '#c9a06a', r: 6, speed: 60 });
       } else if (s.type === 'summon') {
         this.summonMinions(e, s);
       }
@@ -11979,6 +13460,20 @@
         const px0 = parseFloat(params.get('px'));
         const lim = (XY.LEVELS[this.levelIndex] || XY.LEVELS[0]).width - 90;
         if (Number.isFinite(px0)) this.player.x = clamp(px0, 20, lim);
+      }
+      // 怪物招式定格：?foe=slam&foep=0.6 把场上怪物钉在指定招式进度（校验怪物动作/特效）
+      if (params.get('foe')) {
+        this.foePin = { key: params.get('foe'), p: Math.min(0.99, Math.max(0, parseFloat(params.get('foep') || '0.6') || 0.6)) };
+      }
+      // 技能定格：?cast=wk_smash&castp=0.5 把技能动作钉在指定进度（校验动作模组用）
+      if (params.get('cast')) {
+        const sid = params.get('cast');
+        const cp = Math.min(0.99, Math.max(0, parseFloat(params.get('castp') || '0.5') || 0.5));
+        if (XY.getSkill(sid)) {
+          this.player.castSkillId = sid;
+          this.player.castStart = this.now - 1000 * cp;
+          this.player.castUntil = this.now + 1000 * (1 - cp);
+        }
       }
       // 招式定格：?atk=0..3&atkp=0.5 把普攻定格在指定进度，方便看动作
       // 走 pose() 的调试分支，而不是伪造 attackStart/attackUntil——后者算出来的

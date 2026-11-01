@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="zh">
+<head><meta charset="utf-8"><title>怪物动作总览</title></head>
+<body style="margin:0;background:#1b2028">
+<canvas id="c"></canvas>
+<script src="../src/data.js"></script>
+<script src="../src/moves.js"></script>
+<script src="../src/toon.js"></script>
+<script>
+  // 一只怪 × 它的所有招 × 四个时间点（蓄力中/满蓄/打完/落定）
+  // 用法：?k=imp|wolf|spider|demon|bear|bone|bull|beast|queen|dragon
+  const q = new URLSearchParams(location.search);
+  const kind = q.get('k') || 'imp';
+  const c = document.getElementById('c'), ctx = c.getContext('2d');
+
+  const FOES = {
+    imp: { w: 30, h: 34, moves: ['claw', 'rock'] },
+    wolf: { w: 46, h: 36, moves: ['bite', 'pounce'] },
+    spider: { w: 48, h: 32, moves: ['fangs', 'web'] },
+  };
+  const BOSS_ART = {
+    demon: { kind: 'demon', skin: '#5d6b52', cloth: '#3b2f24', horn: true, weapon: 'blade', plume: '#c0392b' },
+    bear: { kind: 'bear' },
+    bone: { kind: 'bone' },
+    bull: { kind: 'bull' },
+    beast: { kind: 'beast', fur: '#6b5442', furDark: '#493729', snout: 'pig', tusk: true, mane: '#c9a24a', scale: 1.05 },
+    queen: { kind: 'queen', skin: '#8a4bb0', cloth: '#3a1746' },
+    dragon: { kind: 'dragon', sc: '#2f7d6b', belly: '#d9e8a8', horn: '#e6dcc4', eye: '#ffd479' },
+  };
+  const BOSS_MOVES = {
+    demon: ['slam', 'sweep', 'charge', 'quake', 'volley', 'summon'],
+    bear: ['slam', 'sweep', 'charge', 'quake', 'volley', 'summon'],
+    bone: ['slam', 'sweep', 'charge', 'summon'],
+    bull: ['slam', 'sweep', 'charge', 'quake', 'volley'],
+    beast: ['slam', 'sweep', 'charge', 'quake'],
+    queen: ['sweep', 'volley', 'summon'],
+    dragon: ['charge', 'volley', 'summon'],
+  };
+  const isBoss = !!BOSS_ART[kind];
+  let moves = isBoss ? BOSS_MOVES[kind] : (FOES[kind] || FOES.imp).moves;
+  if (q.get('m')) moves = q.get('m').split(',').filter(Boolean);
+  const zoom = q.get('z') ? parseFloat(q.get('z')) : 0;
+
+  // 把进度 p 变成 engine 会给出的那套状态字段
+  function enemyAt(moveKey, p) {
+    const e = isBoss
+      ? { isBoss: true, art: BOSS_ART[kind], kind: 'boss', w: 60, h: 86 }
+      : { isBoss: false, kind: kind, w: FOES[kind].w, h: FOES[kind].h };
+    e.x = -e.w / 2; e.y = -e.h; e.facing = 1; e.hitFlash = 0;
+    e.state = p <= 0.5 ? 'windup' : (p <= 0.76 ? 'active' : 'recover');
+    e.tele = p <= 0.5 ? p / 0.5 : 0;
+    e.actK = p > 0.5 && p <= 0.76 ? (p - 0.5) / 0.26 : 0;
+    e.last = { key: moveKey };
+    e.cur = p <= 0.76 ? { key: moveKey } : null;
+    e.recStart = 0; e.recLen = 1000;
+    return e;
+  }
+
+  const rows = q.get('p') ? [parseFloat(q.get('p'))] : [0.26, 0.5, 0.6, 0.78];
+  const tags = ['蓄力中', '满蓄', '打完', '落定'];
+  const z = zoom || (isBoss ? 1.85 : 3);
+  const CW = Math.round(150 * z), CH = Math.round(132 * z), TOP = 26;
+  c.width = moves.length * CW;
+  c.height = rows.length * CH + TOP;
+  const bg = ctx.createLinearGradient(0, 0, 0, c.height);
+  bg.addColorStop(0, '#243040'); bg.addColorStop(1, '#151a20');
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, c.width, c.height);
+
+  moves.forEach((mk, ci) => {
+    rows.forEach((p, ri) => {
+      const cx = CW * (ci + 0.5);
+      const baseY = TOP + CH * (ri + 1) - 24;
+      ctx.strokeStyle = 'rgba(255,120,120,0.16)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(CW * ci + 6, baseY + 1); ctx.lineTo(CW * (ci + 1) - 6, baseY + 1); ctx.stroke();
+      ctx.save();
+      ctx.translate(cx, baseY);
+      ctx.scale(z, z);
+      XY.Toon.drawEnemy(ctx, enemyAt(mk, p), 900);
+      ctx.restore();
+    });
+    ctx.fillStyle = '#9fb0c4'; ctx.font = '13px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(mk, CW * (ci + 0.5), c.height - 6);
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(CW * (ci + 1), TOP); ctx.lineTo(CW * (ci + 1), c.height - 18); ctx.stroke();
+  });
+  ctx.fillStyle = '#7f93a8'; ctx.font = '12px sans-serif'; ctx.textAlign = 'left';
+  rows.forEach((p, ri) => ctx.fillText(q.get('p') ? ('p=' + p) : tags[ri], 4, TOP + CH * (ri + 1) - 28));
+  ctx.fillStyle = '#e8eef6'; ctx.font = '15px sans-serif';
+  ctx.fillText(kind + ' · ' + moves.length + ' 个动作', 6, 18);
+</script>
+</body>
+</html>

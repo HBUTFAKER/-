@@ -134,25 +134,25 @@
 
   // ===== 技能（每位 ≥3）=====
   XY.SKILLS = {
-    wk_smash: { id: 'wk_smash', name: '如意棒击', characterId: 'wukong', kind: 'melee', anim: 'giantChop', multiplier: 1.55, cooldown: 1300, cost: 16, range: 168, description: '金箍棒骤然暴涨十丈，自天而降一记重劈。' },
-    wk_dash: { id: 'wk_dash', name: '筋斗云突', characterId: 'wukong', kind: 'dash', anim: 'cloudDash', multiplier: 0.85, cooldown: 1500, cost: 22, range: 320, dashMul: 3.9, dashMs: 340, cloud: true, description: '踏筋斗云疾突，祥云缠身，一撞丈外。' },
-    wk_spin: { id: 'wk_spin', name: '定海神针', characterId: 'wukong', kind: 'aoe', anim: 'throw', multiplier: 1.45, cooldown: 3800, cost: 46, range: 0, radius: 132, description: '掷出金箍棒，棒身空中急旋，插入大地激起冲击波。' },
+    wk_smash: { id: 'wk_smash', name: '如意棒击', characterId: 'wukong', kind: 'melee', anim: 'giantChop', cast: 640, strike: 0.66, multiplier: 1.55, cooldown: 1300, cost: 16, range: 168, description: '金箍棒骤然暴涨十丈，自天而降一记重劈。' },
+    wk_dash: { id: 'wk_dash', name: '筋斗云突', characterId: 'wukong', kind: 'dash', anim: 'cloudDash', cast: 380, strike: 0.14, multiplier: 0.85, cooldown: 1500, cost: 22, range: 320, dashMul: 3.9, dashMs: 340, cloud: true, description: '踏筋斗云疾突，祥云缠身，一撞丈外。' },
+    wk_spin: { id: 'wk_spin', name: '定海神针', characterId: 'wukong', kind: 'aoe', anim: 'throw', cast: 520, strike: 0.5, multiplier: 1.45, cooldown: 3800, cost: 46, range: 0, radius: 132, description: '掷出金箍棒，棒身空中急旋，插入大地激起冲击波。' },
 
-    bj_rake: { id: 'bj_rake', name: '九齿钉耙', characterId: 'bajie', kind: 'melee', multiplier: 1.4, cooldown: 650, cost: 10, range: 80, description: '钉耙前捣，势大力沉。' },
-    bj_counter: { id: 'bj_counter', name: '倒打一耙', characterId: 'bajie', kind: 'dash', multiplier: 0.9, cooldown: 1500, cost: 20, range: 200, description: '回身突进，耙击退敌。' },
-    bj_eat: { id: 'bj_eat', name: '贪吃回元', characterId: 'bajie', kind: 'heal', multiplier: 0, cooldown: 6000, cost: 0, range: 0, healPct: 0.3, description: '吞下灵食，回复气血。' },
+    bj_rake: { id: 'bj_rake', name: '九齿钉耙', characterId: 'bajie', kind: 'melee', anim: 'rakeDown', cast: 460, strike: 0.52, multiplier: 1.4, cooldown: 650, cost: 10, range: 80, description: '钉耙前捣，势大力沉。' },
+    bj_counter: { id: 'bj_counter', name: '倒打一耙', characterId: 'bajie', kind: 'dash', anim: 'counterDash', cast: 380, strike: 0.22, multiplier: 0.9, cooldown: 1500, cost: 20, range: 200, description: '回身突进，耙击退敌。' },
+    bj_eat: { id: 'bj_eat', name: '贪吃回元', characterId: 'bajie', kind: 'heal', anim: 'eat', cast: 700, strike: 0.62, multiplier: 0, cooldown: 6000, cost: 0, range: 0, healPct: 0.3, description: '吞下灵食，回复气血。' },
 
-    ts_zeal: { id: 'ts_zeal', name: '紧箍真言', characterId: 'tangseng', kind: 'ranged', multiplier: 0.6, cooldown: 1100, cost: 14, range: 320, description: '真言遥击，克制妖邪。' },
-    ts_sutra: { id: 'ts_sutra', name: '大乘真经', characterId: 'tangseng', kind: 'buff', multiplier: 0, cooldown: 8000, cost: 30, range: 0, description: '诵经增益，攻速与攻击提升。' },
-    ts_kasaya: { id: 'ts_kasaya', name: '袈裟护体', characterId: 'tangseng', kind: 'buff', multiplier: 0, cooldown: 6000, cost: 20, range: 0, description: '金襕袈裟护身，防御大增。' },
+    ts_zeal: { id: 'ts_zeal', name: '紧箍真言', characterId: 'tangseng', kind: 'ranged', anim: 'finger', cast: 400, strike: 0.46, multiplier: 0.6, cooldown: 1100, cost: 14, range: 320, description: '真言遥击，克制妖邪。' },
+    ts_sutra: { id: 'ts_sutra', name: '大乘真经', characterId: 'tangseng', kind: 'buff', anim: 'chant', cast: 760, strike: 0.56, multiplier: 0, cooldown: 8000, cost: 30, range: 0, description: '诵经增益，攻速与攻击提升。' },
+    ts_kasaya: { id: 'ts_kasaya', name: '袈裟护体', characterId: 'tangseng', kind: 'buff', anim: 'kasaya', cast: 620, strike: 0.52, multiplier: 0, cooldown: 6000, cost: 20, range: 0, description: '金襕袈裟护身，防御大增。' },
 
-    ss_staff: { id: 'ss_staff', name: '降妖宝杖', characterId: 'shaseng', kind: 'melee', multiplier: 1.45, cooldown: 600, cost: 10, range: 82, description: '宝杖砸落，稳如泰山。' },
-    ss_quicksand: { id: 'ss_quicksand', name: '流沙卷', characterId: 'shaseng', kind: 'aoe', multiplier: 1.15, cooldown: 2800, cost: 35, range: 0, radius: 135, description: '卷起流沙，绞杀四周。' },
-    ss_bind: { id: 'ss_bind', name: '降妖缚', characterId: 'shaseng', kind: 'ranged', multiplier: 1.0, cooldown: 1400, cost: 18, range: 300, description: '抛出缚妖索，遥击敌人。' },
+    ss_staff: { id: 'ss_staff', name: '降妖宝杖', characterId: 'shaseng', kind: 'melee', anim: 'staffSlam', cast: 480, strike: 0.54, multiplier: 1.45, cooldown: 600, cost: 10, range: 82, description: '宝杖砸落，稳如泰山。' },
+    ss_quicksand: { id: 'ss_quicksand', name: '流沙卷', characterId: 'shaseng', kind: 'aoe', anim: 'sandSwirl', cast: 620, strike: 0.58, multiplier: 1.15, cooldown: 2800, cost: 35, range: 0, radius: 135, description: '卷起流沙，绞杀四周。' },
+    ss_bind: { id: 'ss_bind', name: '降妖缚', characterId: 'shaseng', kind: 'ranged', anim: 'bindCast', cast: 420, strike: 0.48, multiplier: 1.0, cooldown: 1400, cost: 18, range: 300, description: '抛出缚妖索，遥击敌人。' },
 
-    bl_tail: { id: 'bl_tail', name: '龙尾扫', characterId: 'bailongma', kind: 'aoe', multiplier: 1.2, cooldown: 800, cost: 12, range: 0, radius: 95, description: '龙尾横扫身周。' },
-    bl_charge: { id: 'bl_charge', name: '化龙击', characterId: 'bailongma', kind: 'dash', multiplier: 0.95, cooldown: 1500, cost: 22, range: 240, description: '化龙疾冲，撞飞来敌。' },
-    bl_breath: { id: 'bl_breath', name: '龙息', characterId: 'bailongma', kind: 'aoe', multiplier: 1.15, cooldown: 2600, cost: 35, range: 260, radius: 120, description: '喷吐龙息，焚敌一片。' },
+    bl_tail: { id: 'bl_tail', name: '龙尾扫', characterId: 'bailongma', kind: 'aoe', anim: 'tailSweep', cast: 480, strike: 0.52, multiplier: 1.2, cooldown: 800, cost: 12, range: 0, radius: 95, description: '龙尾横扫身周。' },
+    bl_charge: { id: 'bl_charge', name: '化龙击', characterId: 'bailongma', kind: 'dash', anim: 'dragonDash', cast: 380, strike: 0.18, multiplier: 0.95, cooldown: 1500, cost: 22, range: 240, description: '化龙疾冲，撞飞来敌。' },
+    bl_breath: { id: 'bl_breath', name: '龙息', characterId: 'bailongma', kind: 'aoe', anim: 'breath', cast: 780, strike: 0.62, multiplier: 1.15, cooldown: 2600, cost: 35, range: 260, radius: 120, description: '喷吐龙息，焚敌一片。' },
   };
   XY.getSkill = (id) => XY.SKILLS[id];
   XY.skillsOf = (cid) => Object.values(XY.SKILLS).filter((s) => s.characterId === cid);

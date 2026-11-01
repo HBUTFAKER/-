@@ -574,6 +574,15 @@
     // 敌人
     for (const e of game.level.enemies) {
       if (!e.alive) continue;
+      // 调试：?foe=slam&foep=0.6 把怪物钉在指定招式进度上（校验怪物动作与元素特效）
+      if (game.foePin) {
+        const pin = game.foePin;
+        e.cur = { key: pin.key };
+        e.last = { key: pin.key };
+        if (pin.p <= 0.5) { e.state = 'windup'; e.tele = pin.p / 0.5; }
+        else if (pin.p <= 0.76) { e.state = 'active'; e.tele = 1; e.actK = (pin.p - 0.5) / 0.26; }
+        else { e.state = 'recover'; e.recStart = now - pin.p * 1000; e.recLen = 1000; }
+      }
       if (e.state === 'windup' || e.state === 'active') UI.drawEnemyTell(ctx, e, now);
       const k = (e.h / (ENEMY_ART_H[e.kind] || 34)) * 1.02;
       Art().drawEnemy(ctx, e, now, k);

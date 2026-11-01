@@ -383,6 +383,11 @@
       noise(c, d, t + 0.07, 0.24, 0.1, 'bandpass', 1100, 1.5, 1700);
       blip(c, d, t, { type: 'sine', f0: 180, f1: 90, dur: 0.3, gain: 0.09 });
     },
+    // 蓄力：一口吸气 + 低鸣上扬（技能起手用，让人知道"这一下要来了"）
+    charge(c, t, d) {
+      noise(c, d, t, 0.3, 0.075, 'bandpass', 240, 0.7, 900);
+      blip(c, d, t, { type: 'sine', f0: 120, f1: 250, dur: 0.28, gain: 0.075 });
+    },
     hit(c, t, d) {
       blip(c, d, t, { type: 'sine', f0: 175, f1: 58, glide: 0.07, dur: 0.12, gain: 0.36 });
       noise(c, d, t, 0.07, 0.26, 'bandpass', 1500, 0.9, 700);

@@ -9,6 +9,33 @@
   function easeOut(p) { return 1 - (1 - p) * (1 - p); }
   function circle(ctx, x, y, r) { ctx.beginPath(); ctx.arc(x, y, Math.max(0.1, r), 0, Math.PI * 2); }
 
+  // 火舌：底圆钝、往上收成尖，tip 往前歪一点才像在窜，不像球
+  function flamePath(ctx, x, y, w, h, lean) {
+    const tipX = x + lean, tipY = y - h;
+    ctx.beginPath();
+    ctx.moveTo(x - w, y - w * 0.25);
+    ctx.bezierCurveTo(x - w * 1.12, y - h * 0.46, x + lean * 0.35 - w * 0.6, y - h * 0.74, tipX, tipY);
+    ctx.bezierCurveTo(x + lean * 0.25 + w * 0.78, y - h * 0.64, x + w * 1.06, y - h * 0.4, x + w, y - w * 0.2);
+    ctx.quadraticCurveTo(x + w * 0.5, y + w * 0.58, x - w * 0.2, y + w * 0.52);
+    ctx.quadraticCurveTo(x - w * 0.92, y + w * 0.4, x - w, y - w * 0.25);
+    ctx.closePath();
+  }
+  // 水滴：顺着速度方向拉长的橄榄形（圆点读不出"溅"的感觉）
+  function dropPath(ctx, x, y, w, vx, vy) {
+    const sp = Math.hypot(vx, vy) || 1;
+    const len = w * (1.6 + Math.min(1.5, sp / 260));
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(Math.atan2(vy, vx));
+    ctx.beginPath();
+    ctx.moveTo(len, 0);
+    ctx.quadraticCurveTo(0, w * 1.35, -len * 0.75, 0);
+    ctx.quadraticCurveTo(0, -w * 1.35, len, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
   // 十丈金箍棒：一根被放大到离谱的棒子，从头顶抡下来砸地
   function drawGiantStaff(ctx, L, Wd) {
     // 棒身
@@ -67,6 +94,13 @@
           it.y += it.vy * dt;
           it.rot += it.spin * dt;
           it.vy = Math.min(96, it.vy + 30 * dt);
+        } else if (it.type === 'fire') {
+          it.x += it.vx * dt; it.y += it.vy * dt;
+          it.vy -= 70 * dt;            // 热气往上顶
+          it.vx *= 0.93;
+        } else if (it.type === 'smoke') {
+          it.x += it.vx * dt; it.y += it.vy * dt;
+          it.vx *= 0.9; it.vy = it.vy * 0.9 - 16 * dt;
         }
         out.push(it);
       }
@@ -88,6 +122,74 @@
     giantStaff(x, y, dir, life) {
       const l = life || 0.62;
       this._push({ type: 'giantStaff', x, y, dir: dir < 0 ? -1 : 1, len: 340, wid: 40, life: l, maxLife: l });
+    }
+
+    // ============================================================
+    // 四种元素：火 / 雷 / 水 / 尘
+    // 招式光有刀光不够，得有"打在什么东西上"的质感。
+    // ============================================================
+    // 火焰：一簇往上窜的火舌（外焰橙红、中焰亮橙、心焰近白）
+    fire(x, y, n, opts) {
+      const o = opts || {};
+      const cnt = Math.max(1, n || 6);
+      for (let i = 0; i < cnt; i++) {
+        const l = 0.34 + Math.random() * 0.3;
+        this._push({
+          type: 'fire',
+          x: x + (Math.random() - 0.5) * (o.spread || 16),
+          y: y + (Math.random() - 0.5) * Math.min(14, (o.spread || 16) * 0.42),
+          vx: (Math.random() - 0.5) * 46 + (o.vx || 0),
+          vy: -34 - Math.random() * (o.rise || 76),
+          r: (o.r || 7) * (0.7 + Math.random() * 0.7),
+          life: l, maxLife: l, hot: o.hot || '#fff6d2',
+          seed: Math.random() * 6.28, tall: Math.random() * 0.85,
+        });
+      }
+    }
+    // 闪电：从 (x,y) 劈到 (x2,y2)，带分叉，命中的那一下就是它
+    bolt(x, y, x2, y2, opts) {
+      const o = opts || {};
+      const l = o.life || 0.2;
+      this._push({
+        type: 'bolt', x, y, x2, y2, life: l, maxLife: l,
+        seed: Math.random() * 9999, color: o.color || '#bfe9ff', wide: o.wide || 1,
+      });
+    }
+    // 水花：向上溅开的水珠 + 一圈涟漪
+    splash(x, y, n, opts) {
+      const o = opts || {};
+      const cnt = Math.max(1, n || 12);
+      const dir = o.dir === undefined ? 1 : (o.dir < 0 ? -1 : 1);
+      for (let i = 0; i < cnt; i++) {
+        const a = -Math.PI * (0.12 + Math.random() * 0.76);
+        const sp = 90 + Math.random() * 200;
+        const l = 0.32 + Math.random() * 0.3;
+        this._push({
+          type: 'spark', x: x + (Math.random() - 0.5) * 16, y: y,
+          vx: Math.cos(a) * sp * dir, vy: Math.sin(a) * sp,
+          r: 2.4 + Math.random() * 2.8, life: l, maxLife: l,
+          color: o.color || '#9be7ff', gravity: 900, wet: 1,
+        });
+      }
+      this.ring(x, y, 3, o.r || 42, o.color || '#9be7ff', 0.34, 2.4);
+    }
+    // 尘土：一团扩散的沙尘（比 dust 更"闷"，用于砸地/冲撞）
+    smoke(x, y, n, opts) {
+      const o = opts || {};
+      const cnt = Math.max(1, n || 8);
+      for (let i = 0; i < cnt; i++) {
+        const a = (i / cnt) * Math.PI * 2 + Math.random() * 0.7;
+        const sp = (o.speed || 72) * (0.45 + Math.random() * 0.85);
+        const l = 0.48 + Math.random() * 0.5;
+        this._push({
+          type: 'smoke', x: x + (Math.random() - 0.5) * 8, y: y + (Math.random() - 0.5) * 6,
+          vx: Math.cos(a) * sp * (o.dir === undefined ? 1 : 1),
+          vy: Math.sin(a) * sp * 0.46 - (o.lift === undefined ? 18 : o.lift),
+          r: (o.r || 8) * (0.5 + Math.random() * 0.55),
+          life: l, maxLife: l, color: o.color || '#c9a87c',
+          seed: Math.random() * 6.28,
+        });
+      }
     }
 
     // —— 祥云：一片软乎乎的云，会飘、会散 ——
@@ -259,9 +361,93 @@
         if (it.type === 'spark' || it.type === 'trail') {
           ctx.globalAlpha = A();
           ctx.fillStyle = it.color;
-          ctx.beginPath();
-          if (ctx.arc) ctx.arc(it.x, it.y, Math.max(0.4, it.r * (1 - p * 0.55)), 0, Math.PI * 2);
+          if (it.wet) {
+            // 水珠：拉长成水滴，砸下去有方向感
+            dropPath(ctx, it.x, it.y, Math.max(1, it.r * (1 - p * 0.45)), it.vx, it.vy);
+          } else {
+            ctx.beginPath();
+            if (ctx.arc) ctx.arc(it.x, it.y, Math.max(0.4, it.r * (1 - p * 0.55)), 0, Math.PI * 2);
+            ctx.fill();
+          }
+        } else if (it.type === 'fire') {
+          // 火焰：三层火舌，外焰暗红 → 中焰橙 → 心焰近白；越烧越高、顶梢往前歪
+          const k = Math.max(0, it.life / it.maxLife);
+          const age = 1 - k;
+          const grow = 0.6 + age * 0.7;
+          const w = it.r * 0.74 * grow;
+          const h = it.r * (2.05 + (it.tall || 0)) * grow * (0.4 + 0.6 * k);
+          const sway = Math.sin(age * 7 + (it.seed || 0)) * it.r * 0.55 + it.vx * 0.012;
+          const by = it.y + it.r * 0.34;
+          ctx.globalAlpha = Math.min(0.95, k * 1.8);
+          flamePath(ctx, it.x, by, w, h, sway);
+          ctx.fillStyle = 'rgba(198,44,14,0.82)'; ctx.fill();
+          ctx.globalAlpha = Math.min(1, k * 2.4);
+          flamePath(ctx, it.x, by, w * 0.64, h * 0.7, sway * 0.72);
+          ctx.fillStyle = 'rgba(255,134,28,0.94)'; ctx.fill();
+          ctx.globalAlpha = k;
+          flamePath(ctx, it.x, by, w * 0.33, h * 0.42, sway * 0.46);
+          ctx.fillStyle = it.hot; ctx.fill();
+        } else if (it.type === 'smoke') {
+          // 尘土：外圈几团错位软圆 + 淡中心，叠出"炸开的尘环"而不是实心饼
+          const k = Math.max(0, it.life / it.maxLife);
+          const age = 1 - k;
+          const rad = it.r * (0.7 + age * 1.05);
+          const sa = it.seed || 0;
+          ctx.fillStyle = it.color;
+          for (let j = 0; j < 3; j++) {
+            const a = sa + j * 2.1;
+            const ox = Math.cos(a) * rad * 0.62;
+            const oy = Math.sin(a) * rad * 0.4 - age * rad * 0.3;
+            ctx.globalAlpha = k * 0.28;
+            circle(ctx, it.x + ox, it.y + oy, rad * (0.62 - j * 0.09));
+            ctx.fill();
+          }
+          ctx.globalAlpha = k * 0.16;
+          circle(ctx, it.x, it.y - age * rad * 0.25, rad * 0.85);
           ctx.fill();
+        } else if (it.type === 'bolt') {
+          // 闪电：折线形状由 seed 定死（亮一下就没了，不会每帧乱抖）
+          const rnd = (i) => {
+            const v = Math.sin(it.seed + i * 12.9898) * 43758.5453;
+            return v - Math.floor(v);
+          };
+          const dx = it.x2 - it.x, dy = it.y2 - it.y;
+          const len = Math.hypot(dx, dy) || 1;
+          const nx = -dy / len, ny = dx / len;
+          const segs = 7;
+          const pts = [];
+          for (let j = 0; j <= segs; j++) {
+            const t = j / segs;
+            const off = (j === 0 || j === segs) ? 0 : (rnd(j) - 0.5) * len * 0.24;
+            pts.push([it.x + dx * t + nx * off, it.y + dy * t + ny * off]);
+          }
+          const stroke = (w, col, alpha) => {
+            ctx.globalAlpha = alpha;
+            ctx.strokeStyle = col; ctx.lineWidth = w;
+            ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+            ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
+            for (let j = 1; j < pts.length; j++) ctx.lineTo(pts[j][0], pts[j][1]);
+            ctx.stroke();
+          };
+          const a = A(1);
+          ctx.save();
+          ctx.globalCompositeOperation = 'lighter';
+          stroke(10 * it.wide, it.color, a * 0.28);
+          stroke(4.4 * it.wide, it.color, a * 0.72);
+          stroke(1.9 * it.wide, '#ffffff', a * 0.95);
+          // 两道分叉，让雷"炸开"而不是一根直棍
+          for (let f = 0; f < 2; f++) {
+            const b = pts[2 + f * 2] || pts[3];
+            const ang = Math.atan2(dy, dx) + (rnd(f + 7) - 0.5) * 1.7;
+            const fl = len * (0.14 + rnd(f + 3) * 0.16);
+            ctx.globalAlpha = a * 0.62;
+            ctx.strokeStyle = it.color;
+            ctx.lineWidth = 2.1 * it.wide;
+            ctx.beginPath(); ctx.moveTo(b[0], b[1]);
+            ctx.lineTo(b[0] + Math.cos(ang) * fl, b[1] + Math.sin(ang) * fl);
+            ctx.stroke();
+          }
+          ctx.restore();
         } else if (it.type === 'ring') {
           const r = it.r0 + (it.r1 - it.r0) * (p < 0.75 ? p / 0.75 : 1);
           ctx.globalAlpha = A(0.95);

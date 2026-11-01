@@ -159,7 +159,7 @@ cd xiyou
 
 node server.js                 # 本地起服务，浏览器打开 http://localhost:8080
 node build.js                  # 把 src/ 打包成单文件 西游降妖录.html
-node --test tests/*.test.js    # 跑测试，129 项全过才算没改坏
+node --test tests/*.test.js    # 跑测试，146 项全过才算没改坏
 ```
 
 **重要**：改完 `src/` 里任意文件后，必须重新执行 `node build.js`，否则 `西游降妖录.html` 还是旧的。想边改边看，直接双击 `index.html` 也行（它引用 `src/` 下的源文件，不走打包）。
@@ -171,16 +171,41 @@ src/data.js       角色、技能、法宝、怪物、关卡配置（改数值�
 src/logic.js      纯函数逻辑：伤害、掉落、成长、商店定价、技能换算、锻造
 src/audio.js      WebAudio 合成：七首循环曲 + 二十多种音效，无音频文件
 src/engine.js     游戏主循环、物理、碰撞、角色动作状态机
-src/art.js        角色美术：像素栅格层（人物）+ 矢量层（怪物/场景道具/兜底）
+src/art.js        角色美术：像素栅格层（人物）+ 矢量层（场景道具/兜底）
+src/toon.js       卡通 Q 版层：三头身角色、小怪、七种首领的绘制（吃 moves 的姿态）
+src/moves.js      动作模组层：玩家四段普攻 + 三个技能的骨架关键帧，以及怪物/首领的招式表
 src/portraits.js  角色立绘加载（AI 生成，双通道：单文件内嵌 base64 / 开发模式读 assets）
 assets/portraits/ 五张角色立绘 JPEG（标题 / 选角 / 过场用，打包时内嵌）
-src/fx.js         特效层：刀光、火花、冲击环、巨棒、祥云
+src/fx.js         特效层：刀光、火花、冲击环、巨棒、祥云，以及火/雷/水/尘四种元素
 src/scenery.js    三套主题背景立绘与视差（按关卡的 theme 取）
 src/ui.js         HUD、背包、商店、技能、锻造、过关结算、菜单
 src/game.js       状态机与场景调度，串起上面所有模块
 build.js          单文件打包脚本
 server.js         本地预览用的小服务
+tools/            离线预览页：动作表、怪物招式表、元素特效对照（见下）
 tests/            Node 原生测试，覆盖核心逻辑、成长系统与渲染安全
+```
+
+## 看动作和特效
+
+改动作/特效最怕"盲改"——改完跑游戏，镜头一晃根本看不清。`tools/` 下几个静态页专门用来定格看，双击就能开：
+
+| 页面 | 看什么 | 参数 |
+| --- | --- | --- |
+| `tools/move-sheet.html` | 一个角色 7 个动作（4 段普攻 + 3 技能）的对照表，上排蓄力、下排出手 | `?char=wukong` |
+| `tools/move-preview.html` | 单招逐帧放大 | `?char=&k=` |
+| `tools/foe-sheet.html` | 一种怪的全部招式 × 四帧（蓄力中 / 满蓄 / 打完 / 落定） | `?k=imp|wolf|spider|demon|bear|bone|bull|beast|queen|dragon&m=claw&z=2&p=0.5` |
+| `tools/fx-preview.html` | 火 / 雷 / 水 / 尘四格并排，同一个时间点对照 | `?age=0.3`（秒） |
+| `tools/toon-preview.html`、`boss-preview.html` | 角色与首领的造型总览 | — |
+
+要连实机一起看，链接上加调试参数把画面钉死（都只读不改存档）：
+
+```text
+?scene=play&lv=0&px=560            # 直接进第 1 关，把角色放在 x=560
+&foe=slam&foep=0.6                 # 把场上怪物钉在 slam 招式的 60% 进度
+&atk=0&atkp=0.5                    # 把普攻第 1 段钉在 50% 进度
+&cast=bj_rake&castp=0.5            # 把某个技能钉在 50% 进度
+&sim=44&act=1&actAt=8&freeze=1     # 无头推进 44 帧、第 8 帧出手、然后冻住画面
 ```
 
 ## 想加东西，从哪里下手
@@ -190,6 +215,9 @@ tests/            Node 原生测试，覆盖核心逻辑、成长系统与渲染
 - **改数值**（伤害、血量、冷却）：只动 `src/data.js`，不用碰引擎
 - **加怪物 / 关卡**：`src/data.js` 的 `ENEMIES` 与 `LEVELS`，背景在 `src/scenery.js`
 - **改怪物招式**：杂兵在 `XY.ENEMY_MOVES`，首领在 `XY.BOSS_MOVES`（六个公共招式）和 `XY.BOSSES[*].moves`（挑哪几个）；一套招式写 `type / range / windup / active / recover / cd / tell` 就够，引擎不用动
+- **改普攻 / 技能动作**：`src/moves.js` 的 `BASIC` / `SKILL`，一招一行关键帧（重心、躯干倾角、双手、兵器角度），加一招不用碰绘制层
+- **改怪物动作**：`src/moves.js` 的 `FOE_MOVE` / `BOSS_MOVE`，`claw`（爪）`slam`（砸）这种一行一势；招式本身在哪一帧出手仍在 `src/data.js` 的招式表里
+- **加特效**：`src/fx.js`——刀光走 `slashStyle`，元素走 `fire` / `bolt` / `splash` / `smoke`，几何与透明度都在 `draw()` 里
 - **调手感**：`src/engine.js` 顶部的重力、跳跃初速、奔跑倍率等常量
 - **调成长曲线**：`src/data.js` 的 `GROWTH`（每级成长）、`SHOP`（商店属性与涨价系数）、`SKILL_JADE_COST`（技能升级价）
 - **加装备**：`src/data.js` 的 `ITEMS` 加一条（`slot` 决定部位，`tier` 决定品阶）→ `RECIPES` 配材料与金币

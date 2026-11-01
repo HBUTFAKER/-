@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="zh">
+<head><meta charset="utf-8"><title>动作总览</title></head>
+<body style="margin:0;background:#1b2028">
+<canvas id="c" width="1400" height="640"></canvas>
+<script src="../src/data.js"></script>
+<script src="../src/moves.js"></script>
+<script src="../src/toon.js"></script>
+<script>
+  // 一个角色 7 个动作的对照表：4 段普攻 + 3 个技能
+  // 上看"蓄力帧"，下看"出手帧"，用来检查每招姿态是不是真的不一样
+  const q = new URLSearchParams(location.search);
+  const char = q.get('char') || 'wukong';
+  const c = document.getElementById('c'), ctx = c.getContext('2d');
+  const W = c.width, H = c.height;
+  const bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, '#243040'); bg.addColorStop(1, '#151a20');
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+
+  const BASIC_ORDER = {
+    wukong: ['arc', 'thrust', 'lift', 'sweep'],
+    bajie: ['smash', 'reel', 'ram', 'spin'],
+    tangseng: ['palm', 'sleeve', 'kick', 'pray'],
+    shaseng: ['scoop', 'sweepLow', 'butt', 'press'],
+    bailongma: ['thrust2', 'lift2', 'parry', 'back'],
+  }[char] || ['arc', 'thrust', 'lift', 'sweep'];
+  const skills = (XY.getCharacter(char).skills || []);
+  const cols = BASIC_ORDER.map((m) => ({ kind: 'basic', key: m, label: m }))
+    .concat(skills.map((id) => ({ kind: 'skill', key: id, label: (XY.getSkill(id) || {}).name || id })));
+
+  const rows = [{ p: 0.26, tag: '蓄力' }, { p: 0.5, tag: '出手' }, { p: 0.78, tag: '收势' }];
+  const colW = W / cols.length;
+  const rowH = (H - 40) / rows.length;
+  const s = 1.55;
+
+  cols.forEach((col, ci) => {
+    rows.forEach((row, ri) => {
+      const cx = colW * (ci + 0.5);
+      const baseY = 40 + rowH * (ri + 1) - 26;
+      // 地面
+      ctx.strokeStyle = 'rgba(255,120,120,0.16)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(colW * ci + 4, baseY + 1); ctx.lineTo(colW * (ci + 1) - 4, baseY + 1); ctx.stroke();
+      let pose;
+      if (col.kind === 'skill') {
+        pose = { t: 800, state: 'idle', castP: row.p, castId: col.key, facing: 1 };
+      } else {
+        const k = BASIC_ORDER.indexOf(col.key);
+        pose = { t: 800, state: 'attack', attackP: row.p, attackPath: col.key, attackKind: k < 0 ? 0 : k, facing: 1 };
+      }
+      XY.Toon.drawCharacter(ctx, cx, baseY, s, char, pose);
+    });
+    ctx.fillStyle = '#9fb0c4'; ctx.font = '14px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(col.label, colW * (ci + 0.5), H - 8);
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(colW * (ci + 1), 40); ctx.lineTo(colW * (ci + 1), H - 26); ctx.stroke();
+  });
+  ctx.fillStyle = '#7f93a8'; ctx.font = '13px sans-serif'; ctx.textAlign = 'left';
+  rows.forEach((row, ri) => ctx.fillText(row.tag, 8, 40 + rowH * (ri + 1) - 34));
+  ctx.fillStyle = '#e8eef6'; ctx.font = '16px sans-serif';
+  ctx.fillText(char + ' · ' + cols.length + ' 个动作', 8, 22);
+</script>
+</body>
+</html>

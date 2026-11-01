@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh">
+<head><meta charset="utf-8"><title>元素特效预览</title></head>
+<body style="margin:0;background:#161a20">
+<canvas id="c"></canvas>
+<script src="../src/fx.js"></script>
+<script>
+  // 四种元素特效各取一个寿命中点，看颜色/层次/形状对不对
+  // 用法：?age=0.3（秒，默认 0.3）
+  const q = new URLSearchParams(location.search);
+  const AGE = parseFloat(q.get('age') || '0.3');
+  const c = document.getElementById('c'), ctx = c.getContext('2d');
+  const CW = 1080, CH = 620;
+  c.width = CW; c.height = CH;
+
+  const g = ctx.createLinearGradient(0, 0, 0, CH);
+  g.addColorStop(0, '#233042'); g.addColorStop(1, '#141920');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, CW, CH);
+
+  const CELLS = [
+    { x: 150, y: 300, tag: '火焰 fire', make: (fx, x, y) => fx.fire(x, y, 26, { r: 26 }) },
+    { x: 410, y: 300, tag: '闪电 bolt', make: (fx, x, y) => fx.bolt(x - 4, y - 250, x + 18, y, { life: 0.9 }) },
+    { x: 680, y: 300, tag: '水花 splash', make: (fx, x, y) => fx.splash(x, y, 24, { r: 22 }) },
+    { x: 930, y: 300, tag: '尘土 smoke', make: (fx, x, y) => fx.smoke(x, y, 22, { r: 24 }) },
+  ];
+
+  for (const cell of CELLS) {
+    const fx = new XY.FXLayer();
+    cell.make(fx, cell.x, cell.y);
+    // 用固定步长推进到 AGE 秒
+    let t = 0;
+    while (t < AGE) { fx.update(0.016); t += 0.016; }
+    // 地面
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(cell.x - 90, cell.y + 1); ctx.lineTo(cell.x + 90, cell.y + 1); ctx.stroke();
+    fx.draw(ctx, 'back');
+    fx.draw(ctx, 'front');
+    ctx.fillStyle = '#9fb0c4'; ctx.font = '13px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(cell.tag, cell.x, 340);
+  }
+  ctx.fillStyle = '#e8eef6'; ctx.font = '15px sans-serif'; ctx.textAlign = 'left';
+  ctx.fillText('元素特效 · age=' + AGE.toFixed(2) + 's', 10, 22);
+</script>
+</body>
+</html>
