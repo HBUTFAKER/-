@@ -1237,13 +1237,13 @@
       this.shake = Math.min(12, this.shake + 1.6 + n * 0.8);
     }
     // 定身 / 冻结：眩晕 + 一段"结住"的表现
-    rootEnemy(e, ms, color) {
+    rootEnemy(e, ms, color, word) {
       if (!e.alive || !ms) return;
       e.stunUntil = Math.max(e.stunUntil || 0, this.now + ms);
       e.frozenUntil = this.now + ms;
       e.cur = null; e.tele = 0; e.strike = null;
       this.fx.ring(e.x + e.w / 2, e.y + e.h * 0.5, 4, 34, color || '#9be7ff', 0.34, 3);
-      this.floater(e.x + e.w / 2, e.y - 26, '定住', color || '#9be7ff');
+      this.floater(e.x + e.w / 2, e.y - 26, word || '定住', color || '#9be7ff');
     }
 
     // 技能命中一名敌人：先算印记加成/消耗，再结算伤害，最后补挂这一招该留的痕迹
@@ -1264,7 +1264,10 @@
       // 有"引动"的招式，只有在没引到东西时才补一道痕；纯叠层的招式每一下都记
       if (a.apply && (!a.use || !b.n)) this.addMark(e, a.apply, a.applyN || 1);
       if (b.n) this.linkFx(e, a, b.n);
-      if (a.rootVs && this.markN(e, a.rootVs)) this.rootEnemy(e, a.rootMs, (XY.MARKS[a.rootVs] || {}).color);
+      if (a.rootVs && this.markN(e, a.rootVs)) {
+        const md = XY.MARKS[a.rootVs] || {};
+        this.rootEnemy(e, a.rootMs, md.color, md.rootWord);
+      }
       if (a.knockAt && b.n >= a.knockAt) {
         e.knockUntil = this.now + 360;
         e.vx = (e.x + e.w / 2 < pl.x + pl.w / 2 ? -1 : 1) * 420;

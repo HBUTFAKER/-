@@ -246,9 +246,9 @@
   XY.MARKS = {
     bopen: { key: 'bopen', name: '破绽', color: '#ff8a5e', max: 3, dur: 10000, per: 0.09, who: 'any', hint: '受击伤害 +9%/层（火眼照出的罩门）' },
     pahen: { key: 'pahen', name: '耙痕', color: '#ffb648', max: 3, dur: 8000, per: 0.07, who: 'bajie', hint: '受钉耙伤害 +7%/层' },
-    liusha: { key: 'liusha', name: '陷沙', color: '#d9bd8a', max: 1, dur: 1600, per: 0, who: 'shaseng', hint: '脚陷流沙：减速、被锁链一绊就定住' },
+    liusha: { key: 'liusha', name: '陷沙', color: '#d9bd8a', max: 1, dur: 1600, per: 0, who: 'shaseng', rootWord: '陷住', hint: '脚陷流沙：减速、被锁链一绊就定住' },
     jingu: { key: 'jingu', name: '紧箍', color: '#ffd479', max: 5, dur: 10000, per: 0.12, who: 'tangseng', hint: '受唐僧伤害 +12%/层（念一次紧一分）' },
-    shuihen: { key: 'shuihen', name: '水痕', color: '#9be7ff', max: 1, dur: 8000, per: 0.3, who: 'bailongma', hint: '龙息伤害 +30%，被龙身一撞就冻住' },
+    shuihen: { key: 'shuihen', name: '水痕', color: '#9be7ff', max: 1, dur: 8000, per: 0.3, who: 'bailongma', rootWord: '冻住', hint: '龙息伤害 +30%，被龙身一撞就冻住' },
   };
 
   // ===== 技能（每位 3 个）=====
@@ -10608,6 +10608,63 @@
     ctx.restore();
   };
 
+  // 冻住：一层淡蓝冰壳 + 底部霜棱 + 头顶雪花。跟陷沙那个 ★ 一眼分开，
+  // 否则玩家看不出来"这一下为什么伤害翻倍"（龙息对冻住的目标有碎冰倍率）。
+  UI.drawIceShell = function (ctx, e, now) {
+    const x = e.x - 3, y = e.y - 4, w = e.w + 6, h = e.h + 6;
+    const pulse = 0.85 + Math.sin(now / 140) * 0.15;
+    ctx.save();
+    // 只留"霜"的浓度：中间透，边上一圈亮，别糊成一团奶白把怪盖住
+    const g = ctx.createLinearGradient(x, y, x, y + h);
+    g.addColorStop(0, 'rgba(226,248,255,0.26)');
+    g.addColorStop(0.45, 'rgba(180,232,255,0.07)');
+    g.addColorStop(1, 'rgba(150,216,248,0.20)');
+    ctx.globalAlpha = pulse;
+    ctx.fillStyle = g;
+    if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(x, y, w, h, 6); ctx.fill(); }
+    else ctx.fillRect(x, y, w, h);
+    // 壳边：一道冷蓝描边 + 内侧一圈更淡的，做出玻璃厚度（别用纯白，太像选中框）
+    ctx.globalAlpha = 0.55 * pulse;
+    ctx.strokeStyle = '#cdeeff'; ctx.lineWidth = 1.6;
+    if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(x, y, w, h, 6); ctx.stroke(); }
+    else ctx.strokeRect(x, y, w, h);
+    ctx.globalAlpha = 0.22 * pulse;
+    ctx.lineWidth = 4;
+    if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(x + 3, y + 3, w - 6, h - 6, 4); ctx.stroke(); }
+    // 一道斜冰裂
+    ctx.globalAlpha = 0.26 * pulse;
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x + w * 0.2, y + h * 0.94);
+    ctx.lineTo(x + w * 0.46, y + h * 0.52);
+    ctx.lineTo(x + w * 0.66, y + h * 0.2);
+    ctx.stroke();
+    // 底部霜棱：三根尖冰，让"冻在地上"有重量
+    ctx.globalAlpha = 0.78 * pulse;
+    ctx.fillStyle = '#e8f8ff';
+    for (let i = 0; i < 3; i++) {
+      const bx = x + w * (0.2 + i * 0.3);
+      const bh = 6 + (i % 2) * 3;
+      ctx.beginPath();
+      ctx.moveTo(bx - 3, y + h); ctx.lineTo(bx, y + h - bh); ctx.lineTo(bx + 3, y + h);
+      ctx.closePath(); ctx.fill();
+    }
+    // 头顶雪花：画六根辐条，不用 ❄ 字形（不少中文字体里这个是方框）
+    // 挂在冰壳左上角——正上方那一条被印记方块和伤害数字占满了，放中间只会互相压
+    const sx = x + 4, sy = y - 3 - Math.sin(now / 260) * 1.5;
+    ctx.globalAlpha = 0.92;
+    ctx.strokeStyle = '#eafaff'; ctx.lineWidth = 1.4; ctx.lineCap = 'round';
+    for (let i = 0; i < 3; i++) {
+      const ang = Math.PI / 3 * i + now / 1600;
+      ctx.beginPath();
+      ctx.moveTo(sx - Math.cos(ang) * 5.5, sy - Math.sin(ang) * 5.5);
+      ctx.lineTo(sx + Math.cos(ang) * 5.5, sy + Math.sin(ang) * 5.5);
+      ctx.stroke();
+    }
+    ctx.lineCap = 'butt';
+    ctx.restore();
+  };
+
   UI.drawWorld = function (ctx, game) {
     const now = game.now;
     UI.drawPlatforms(ctx, game);
@@ -10640,7 +10697,9 @@
         bar(ctx, e.x + (e.w - bw) / 2, e.y - 10, bw, 4.5, e.hp / e.maxHp, '#e74c3c');
       }
       UI.drawMarks(ctx, e, now);
-      if (e.stunUntil > now) {
+      // 冻住和陷沙都算"动不了"，但表现要分开：冻住裹一层冰壳，陷沙只顶个星
+      if (now < (e.frozenUntil || 0)) UI.drawIceShell(ctx, e, now);
+      else if (e.stunUntil > now) {
         ctx.fillStyle = '#ffd479'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center';
         ctx.fillText('★', e.x + e.w / 2, e.y - 16);
         ctx.textAlign = 'left';
@@ -13400,13 +13459,13 @@
       this.shake = Math.min(12, this.shake + 1.6 + n * 0.8);
     }
     // 定身 / 冻结：眩晕 + 一段"结住"的表现
-    rootEnemy(e, ms, color) {
+    rootEnemy(e, ms, color, word) {
       if (!e.alive || !ms) return;
       e.stunUntil = Math.max(e.stunUntil || 0, this.now + ms);
       e.frozenUntil = this.now + ms;
       e.cur = null; e.tele = 0; e.strike = null;
       this.fx.ring(e.x + e.w / 2, e.y + e.h * 0.5, 4, 34, color || '#9be7ff', 0.34, 3);
-      this.floater(e.x + e.w / 2, e.y - 26, '定住', color || '#9be7ff');
+      this.floater(e.x + e.w / 2, e.y - 26, word || '定住', color || '#9be7ff');
     }
 
     // 技能命中一名敌人：先算印记加成/消耗，再结算伤害，最后补挂这一招该留的痕迹
@@ -13427,7 +13486,10 @@
       // 有"引动"的招式，只有在没引到东西时才补一道痕；纯叠层的招式每一下都记
       if (a.apply && (!a.use || !b.n)) this.addMark(e, a.apply, a.applyN || 1);
       if (b.n) this.linkFx(e, a, b.n);
-      if (a.rootVs && this.markN(e, a.rootVs)) this.rootEnemy(e, a.rootMs, (XY.MARKS[a.rootVs] || {}).color);
+      if (a.rootVs && this.markN(e, a.rootVs)) {
+        const md = XY.MARKS[a.rootVs] || {};
+        this.rootEnemy(e, a.rootMs, md.color, md.rootWord);
+      }
       if (a.knockAt && b.n >= a.knockAt) {
         e.knockUntil = this.now + 360;
         e.vx = (e.x + e.w / 2 < pl.x + pl.w / 2 ? -1 : 1) * 420;

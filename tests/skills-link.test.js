@@ -203,3 +203,42 @@ test('沙僧：宝杖铺沙，沙里的妖会被磨血并陷住', () => {
   for (let i = 0; i < 60; i++) { g.now += 16; g.update(0.016); }
   assert.ok(g.markN(e, 'liusha') > 0 || e.hp < hp0, '流沙里的妖应被磨血或陷入沙中');
 });
+
+test('白龙马：带水痕被龙身撞上就冻住，措辞与陷沙分开', () => {
+  const g = newGame(4);
+  const e = dummyEnemy(g);
+  e.frozenUntil = 0;
+  e.x = g.player.x + 40; e.y = g.player.y;
+  g.addMark(e, 'shuihen', 1);
+  const charge = XY.getSkill('bl_charge');
+  g.hitWithSkill(e, charge.multiplier, charge);
+  assert.ok(e.frozenUntil > g.now, '带着水痕被撞应该冻住');
+  assert.ok(e.stunUntil > g.now, '冻住同时必须动不了');
+  // 冻住和陷沙在界面上是两套表现（冰壳 vs ★），文案也不能混
+  assert.equal(XY.MARKS.shuihen.rootWord, '冻住');
+  assert.equal(XY.MARKS.liusha.rootWord, '陷住');
+});
+
+test('白龙马：寒气打在冻住的目标上会碎冰，倍率翻倍', () => {
+  const g = newGame(4);
+  const e = dummyEnemy(g);
+  const breath = XY.getSkill('bl_breath');
+  // 同一只怪、同一个角色打两遍，才比得清"冻住"带来的差别：
+  // 暴击是随机的（翻倍），跨两只角色比会被暴击和随机起手属性搅乱
+  g.player.stats.critRate = 0;
+
+  e.frozenUntil = g.now + 3000;               // 先冻住
+  g.addMark(e, 'shuihen', 1);
+  const h0 = e.hp;
+  g.hitWithSkill(e, breath.multiplier, breath);
+  const frozenHit = h0 - e.hp;
+
+  e.frozenUntil = 0;                          // 同一只怪，这次没冻
+  g.addMark(e, 'shuihen', 1);
+  const h1 = e.hp;
+  g.hitWithSkill(e, breath.multiplier, breath);
+  const plainHit = h1 - e.hp;
+
+  assert.ok(frozenHit > plainHit * 1.8, '碎冰那一下应明显更疼，实际 ' + frozenHit + ' vs ' + plainHit);
+  assert.equal(e.frozenUntil, 0, '碎冰后冻状态应该解除');
+});

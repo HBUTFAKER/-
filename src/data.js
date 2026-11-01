@@ -140,9 +140,9 @@
   XY.MARKS = {
     bopen: { key: 'bopen', name: '破绽', color: '#ff8a5e', max: 3, dur: 10000, per: 0.09, who: 'any', hint: '受击伤害 +9%/层（火眼照出的罩门）' },
     pahen: { key: 'pahen', name: '耙痕', color: '#ffb648', max: 3, dur: 8000, per: 0.07, who: 'bajie', hint: '受钉耙伤害 +7%/层' },
-    liusha: { key: 'liusha', name: '陷沙', color: '#d9bd8a', max: 1, dur: 1600, per: 0, who: 'shaseng', hint: '脚陷流沙：减速、被锁链一绊就定住' },
+    liusha: { key: 'liusha', name: '陷沙', color: '#d9bd8a', max: 1, dur: 1600, per: 0, who: 'shaseng', rootWord: '陷住', hint: '脚陷流沙：减速、被锁链一绊就定住' },
     jingu: { key: 'jingu', name: '紧箍', color: '#ffd479', max: 5, dur: 10000, per: 0.12, who: 'tangseng', hint: '受唐僧伤害 +12%/层（念一次紧一分）' },
-    shuihen: { key: 'shuihen', name: '水痕', color: '#9be7ff', max: 1, dur: 8000, per: 0.3, who: 'bailongma', hint: '龙息伤害 +30%，被龙身一撞就冻住' },
+    shuihen: { key: 'shuihen', name: '水痕', color: '#9be7ff', max: 1, dur: 8000, per: 0.3, who: 'bailongma', rootWord: '冻住', hint: '龙息伤害 +30%，被龙身一撞就冻住' },
   };
 
   // ===== 技能（每位 3 个）=====

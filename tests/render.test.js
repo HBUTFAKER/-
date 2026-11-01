@@ -578,6 +578,9 @@ test.it('定海神针：掷棒空中旋转，插地后产生冲击波并结算�
   const g = fresh();
   g.charIndex = 0; g.initRun(); g.startLevel(0);
   const pl = g.player, e = g.level.enemies[0];
+  // 首关的小妖只有 40 血，冲击波有可能一下打死它——死了就不再"站在针边"，
+  // 后面验留场挂破绽会随机扑空。这里把血拉厚，测的是机制不是斩杀。
+  e.hp = e.maxHp = 4000;
   pl.x = e.x - 90; pl.y = e.y; pl.facing = 1; pl.energy = 999;
   g.now = 6000;
   const a = pl.trySkill(2, g.now);
@@ -609,6 +612,13 @@ test.it('定海神针：掷棒空中旋转，插地后产生冲击波并结算�
   assert.ok(g.zones[0].until > g.now + 3000, '神针应留够时间，不能一瞬间就散');
 
   // 留在场上的神针会持续照出破绽（这才是下一棒打爆发的引子）
+  // 妖会追着人跑，掷棒那几帧就可能挪到针外面去——这里把它按在针正上方，
+  // 测的是"站在针边就会被照出罩门"这条规则，不是测追击 AI 会不会自己走开
+  const needle = g.zones[0];
+  e.x = needle.x - e.w / 2;
+  e.y = needle.y - e.h;
+  e.stunUntil = g.now + 4000;
+  e.slowUntil = g.now + 4000;
   let marked = false;
   for (let i = 0; i < 120 && !marked; i++) {
     g.now += 16; g.update(0.016);
