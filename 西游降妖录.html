@@ -2527,6 +2527,7 @@
   // 像素层对外开放一点，测试和调试页都要用（矢量层仍是兜底）
   Art.PX = {
     unit: PX_UNIT, look: PX_LOOK, heads: HEADS, headsPal: HEAD_PAL,
+    get monLook() { return MON_LOOK; },
     Painter, color: pxC, rig: pxRig, outline: PX_OUT,
   };
 
@@ -3411,7 +3412,123 @@
     ctx.beginPath(); ctx.moveTo(-2, -83); ctx.lineTo(12, -83); ctx.lineTo(5, -79); ctx.closePath(); ctx.fill();
   }
 
+  // ===== 小怪像素层 =====
+  // 人物像素化之后小怪还是矢量，同框风格打架最凶的就是它们（天天贴脸）。
+  // BOSS 保持矢量：86px 的大块头矢量细节反而撑得住气场，像素化性价比太低。
+  const MON_LOOK = {
+    imp:    { body: '#b5483b', dark: '#8e2f26', belly: '#e8a184', horn: '#f0e0c0', eye: '#2b1210', fang: '#fff8e6' },
+    wolf:   { fur: '#7a5432', dark: '#462d17', hi: '#96693e', eye: '#ff4d4d', glint: '#fff2c0', fang: '#f2e8d5' },
+    spider: { skin: '#5a2b6b', dark: '#3a1746', leg: '#6a2f80', hi: '#8e44ad', eye: '#ff6b6b', eye2: '#ff9b9b' },
+  };
+
+  function drawEnemyPx(ctx, e, t, scale) {
+    const flash = e.hitFlash > 0;
+    const k = scale || 1;
+    // 变换栈与矢量版完全一致：出手前冲 / 受击顿身 / 起手下蹲
+    const atkLeft = (e.atkUntil || 0) - t;
+    const lunge = atkLeft > 0 ? Math.sin(Math.min(1, atkLeft / 260) * Math.PI) * 7 : 0;
+    ctx.save();
+    ctx.translate(e.x + e.w / 2, e.y + e.h);
+    const sx = (e.facing || -1) < 0 ? -1 : 1;
+    ctx.scale(sx * k, k);
+    ctx.translate(lunge, 0);
+    const hurtLeft = (e.hurtUntil || 0) - t;
+    const hurtK = hurtLeft > 0 ? Math.sin(Math.min(1, hurtLeft / 200) * Math.PI) : 0;
+    if (hurtK) { ctx.translate(-4.5 * hurtK, 0); ctx.rotate(-0.11 * hurtK); }
+    const wind = e.state === 'windup' ? (e.tele || 0) : 0;
+    if (wind > 0) { ctx.translate(-5.5 * wind, 1.6 * wind); ctx.rotate(-0.055 * wind); }
+
+    const L = MON_LOOK[e.kind];
+    const W = (c) => (flash ? '#f5f2ea' : c);
+    const C = pxC, OUT = C(PX_OUT);
+    const g = Math.sin(t / 130);              // 走路相位：腿前后交替
+    const bob = Math.sin(t / 95) * 0.6;       // 身体起伏
+
+    let BW, BH, OX, OY;
+    if (e.kind === 'wolf') { BW = 32; BH = 24; OX = 16; OY = 23; }
+    else if (e.kind === 'spider') { BW = 36; BH = 22; OX = 18; OY = 21; }
+    else { BW = 28; BH = 24; OX = 14; OY = 23; }
+    const p = new Painter(BW, BH);
+    const X = (x) => x + OX, Y = (y) => y + OY;
+    const cap = (a, b, r, col, noOut) => {
+      if (!noOut) p.capsule(X(a[0]), Y(a[1]), X(b[0]), Y(b[1]), r + UND, OUT);
+      p.capsule(X(a[0]), Y(a[1]), X(b[0]), Y(b[1]), r, C(W(col)));
+    };
+    const disc = (x, y, r, col, noOut) => {
+      if (!noOut) p.disc(X(x), Y(y), r + UND, OUT);
+      p.disc(X(x), Y(y), r, C(W(col)));
+    };
+    const poly = (pts, col, noOut) => {
+      if (!noOut) {
+        let mx = 0, my = 0;
+        for (const q of pts) { mx += q[0]; my += q[1]; }
+        mx /= pts.length; my /= pts.length;
+        p.poly(pts.map((q) => [X(mx + (q[0] - mx) * 1.24), Y(my + (q[1] - my) * 1.24)]), OUT);
+      }
+      p.poly(pts.map((q) => [X(q[0]), Y(q[1])]), C(W(col)));
+    };
+    const dot = (x, y, c) => p.dot(X(x), Y(y), C(W(c)));
+    const rect = (x, y, w, h, col) => p.rect(X(x), Y(y), w, h, C(W(col)));
+
+    if (e.kind === 'wolf') {
+      // 妖狼：弓背剪影 + 大尖耳 + 红瞳，靠轮廓认人
+      cap([-9, -10], [-12.5, -14], 1.2, L.dark);                  // 尾巴上扬
+      cap([-4, -7], [-4 - g, 0], 1.1, L.dark);                    // 远侧腿
+      cap([3, -7], [3 + g, 0], 1.1, L.dark);
+      poly([[-10, -8], [-11, -13.5], [-4, -16], [2, -16], [5.5, -12], [5, -7]], L.fur);   // 弓背身体
+      cap([-8, -14], [0, -16.5], 0.45, L.hi, true);               // 背线高光
+      poly([[4, -14], [9, -16], [12.5, -13], [11.5, -10.5], [5, -10]], L.fur);           // 长吻头
+      poly([[4.2, -15], [2.8, -21.5], [8, -15.5]], L.dark);       // 大尖耳
+      poly([[8.3, -16], [10, -22], [11.8, -15.5]], L.dark);
+      dot(11.5, -11.5, L.fang);                                   // 獠牙
+      dot(10.4, -10.8, L.fang);
+      disc(8.2, -13, 0.95, L.eye, true);
+      dot(8.5, -13.4, L.glint);
+      cap([-5.5, -7], [-5.5 + g, 0], 1.3, L.fur);                 // 近侧腿
+      cap([4.5, -7], [4.5 - g, 0], 1.3, L.fur);
+    } else if (e.kind === 'spider') {
+      // 毒蛛：八条细腿 + 大圆腹，腿带爬行相位
+      // 这个尺寸画膝关节必糊成带子：经典小尺寸蜘蛛就是"圆身 + 斜刺腿"，每侧三条直线腿。
+      // 腿根必须落在身体轮廓外（±5 以上），否则被后画的圆身盖住，只剩下垂的外半截
+      for (let i = 0; i < 6; i++) {
+        const sgn = i < 3 ? -1 : 1, kk = i % 3;
+        const ph = Math.sin(t / 90 + i * 0.8) * 0.9;
+        cap([sgn * (4.6 + kk * 0.9), -12], [sgn * (7.2 + kk * 3.6), -0.4 + ph], 0.62, L.leg);
+      }
+      disc(-2.5, -10, 4.6, L.skin);                               // 腹部
+      disc(-2.5, -12.2, 2.1, L.hi, true);                         // 背脊亮斑
+      disc(3.5, -10.5, 2.9, L.skin);                              // 头胸部
+      poly([[5.5, -9], [8, -6.5], [4.5, -7.5]], L.dark);          // 螯肢
+      disc(4.6, -11.6, 1, L.eye, true);
+      disc(6.2, -10.6, 0.8, L.eye, true);
+      dot(3, -12.2, L.eye2);
+    } else {
+      // 小妖：短腿圆身 + 双角 + 獠牙
+      cap([-3, -6], [-4 - g, 0], 1.5, L.dark);
+      cap([3, -6], [4 + g, 0], 1.5, L.dark);
+      cap([-8, -13 + bob], [-12, -7], 1.2, L.dark);               // 外撑的手臂
+      cap([8, -13 + bob], [12, -7], 1.2, L.dark);
+      disc(0, -11 + bob, 5, L.body);                              // 圆身
+      disc(0, -14.5 + bob, 3.9, L.body);
+      disc(0.5, -9.5 + bob, 2.2, L.belly, true);                  // 肚皮
+      poly([[-3, -17.5 + bob], [-5.5, -22 + bob], [-1.2, -18 + bob]], L.horn);
+      poly([[3, -17.5 + bob], [5.5, -22 + bob], [1.2, -18 + bob]], L.horn);
+      disc(-1.8, -13.5 + bob, 0.95, L.eye, true);
+      disc(1.8, -13.5 + bob, 0.95, L.eye, true);
+      rect(-2.2, -7.5 + bob, 1, 1.6, L.fang);
+      rect(1.2, -7.5 + bob, 1, 1.6, L.fang);
+    }
+    if (e.kind !== 'spider') p.outline(OUT);   // 蛛腿细密，整体描边会把腿缝填黑
+    const kk = PX_UNIT;
+    ctx.imageSmoothingEnabled = false;
+    pxBlit(ctx, p, -OX * kk, -OY * kk, kk);
+    ctx.imageSmoothingEnabled = true;
+    ctx.restore();
+  }
+
   Art.drawEnemy = function (ctx, e, t, scale) {
+    // 小怪走像素层（与角色同一套像素笔）；BOSS 与测试环境（无 document）走矢量
+    if (Art.pixelMode && !e.isBoss && canPixel() && MON_LOOK[e.kind]) { drawEnemyPx(ctx, e, t, scale); return; }
     const flash = e.hitFlash > 0;
     const k = scale || 1;
     // 出手前冲：让"打人"有动作，而不是站着贴图

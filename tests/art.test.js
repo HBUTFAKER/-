@@ -32,6 +32,16 @@ test.describe('像素角色造型表', () => {
     assert.ok((hi - lo) / hi < 0.15, '身高差过大：' + hs.map((h) => h.toFixed(1)).join(' / '));
   });
 
+  test.it('小怪像素造型表齐全', () => {
+    const MON = XY.Art.PX.monLook;
+    for (const kind of ['imp', 'wolf', 'spider']) {
+      assert.ok(MON[kind], kind + ' 缺造型');
+      const keys = Object.keys(MON[kind]);
+      assert.ok(keys.length >= 5, kind + ' 色板太薄');
+      for (const k of keys) assert.ok(/^#[0-9a-f]{6}$/i.test(MON[kind][k]), kind + '.' + k + ' 不是合法色值');
+    }
+  });
+
   test.it('头部网格是矩形，字符都在调色板里', () => {
     for (const id of IDS) {
       const rows = PX.heads[id];
