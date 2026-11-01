@@ -61,6 +61,12 @@
           it.x += it.vx * dt;
           it.y += it.vy * dt;
           it.vx *= 0.99;
+        } else if (it.type === 'page') {
+          // 经页：边飘边旋，带一点左右摇曳
+          it.x += (it.vx + Math.sin(it.life * 6) * 26) * dt;
+          it.y += it.vy * dt;
+          it.rot += it.spin * dt;
+          it.vy = Math.min(96, it.vy + 30 * dt);
         }
         out.push(it);
       }
@@ -179,6 +185,66 @@
         type: 'spark', x, y, vx: 0, vy: 0, r: r || 4, color: color || '#9be7ff',
         life: 0.22, maxLife: 0.22, gravity: 0,
       });
+    }
+
+    // —— 九齿钉耙：三道平行弧爪痕（八戒的签名）——
+    rakeArc(x, y, dir, color) {
+      const l = 0.34;
+      this._push({ type: 'rake', x, y, dir: dir < 0 ? -1 : 1, color: color || '#ffd15c', life: l, maxLife: l });
+    }
+
+    // —— 流沙卷：沙粒螺旋上升的漩涡（沙僧的签名）——
+    sandWave(x, y, r, dir) {
+      const l = 0.7;
+      this._push({ type: 'sand', x, y, r: r || 100, dir: dir < 0 ? -1 : 1, life: l, maxLife: l });
+      // 地面扬沙
+      for (let i = 0; i < 16; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const s = 90 + Math.random() * 160;
+        this._push({
+          type: 'spark', x: x + Math.cos(a) * (r || 100) * 0.7, y: y + 6,
+          vx: Math.cos(a) * s * 0.5, vy: -40 - Math.random() * 120,
+          r: 2 + Math.random() * 2.4, color: Math.random() > 0.4 ? '#c9a06a' : '#8a6a42',
+          life: 0.5 + Math.random() * 0.35, maxLife: 0.85, gravity: 320,
+        });
+      }
+    }
+
+    // —— 符文环：金环上浮动刻度齿（唐僧系/出关法阵同族）——
+    runeRing(x, y, r0, r1, color) {
+      const l = 0.8;
+      this._push({ type: 'rune', x, y, r0: r0 || 12, r1: r1 || 90, color: color || '#ffd479', life: l, maxLife: l });
+    }
+
+    // —— 龙息：锥形渐开的吐息（白龙马的签名）——
+    coneBreath(x, y, dir, color, len) {
+      const l = 0.55;
+      this._push({ type: 'cone', x, y, dir: dir < 0 ? -1 : 1, color: color || '#9be7ff', len: len || 180, life: l, maxLife: l });
+      // 锥内的冰晶碎粒
+      for (let i = 0; i < 14; i++) {
+        const d = Math.random();
+        const spread = (Math.random() - 0.5) * 0.5 * d;
+        const s = 200 + Math.random() * 260;
+        this._push({
+          type: 'spark', x: x + dir * 14, y: y + (Math.random() - 0.5) * 8,
+          vx: dir * s * Math.cos(spread), vy: Math.sin(spread) * s * 0.6,
+          r: 1.6 + Math.random() * 2.2, color: i % 3 ? color : '#e8f8ff',
+          life: 0.3 + Math.random() * 0.3, maxLife: 0.6, gravity: -30,
+        });
+      }
+    }
+
+    // —— 经页雨：金色小经页打着旋飘落（唐僧真经/袈裟的签名）——
+    pageRain(x, y, n, w) {
+      const cnt = n || 10;
+      for (let i = 0; i < cnt; i++) {
+        this._push({
+          type: 'page', x: x + (Math.random() - 0.5) * (w || 90), y: y - 30 - Math.random() * 70,
+          vx: (Math.random() - 0.5) * 46, vy: 40 + Math.random() * 60,
+          rot: Math.random() * Math.PI * 2, spin: (Math.random() - 0.5) * 5,
+          life: 1.1 + Math.random() * 0.5, maxLife: 1.6,
+        });
+      }
     }
 
     // pass: 'back' 只画残影（在角色身后）；'front' 画刀光/火花/光环（在角色身前）
@@ -360,6 +426,135 @@
           if (!XY.Art || !XY.Art.drawCharacter) continue;
           ctx.globalAlpha = A(0.42);
           XY.Art.drawCharacter(ctx, it.x, it.footY, it.scale, it.charId, it.pose);
+        } else if (it.type === 'rake') {
+          // 九齿钉耙：三道平行弧，弧端各一枚齿尖亮星
+          ctx.save();
+          ctx.translate(it.x, it.y);
+          ctx.scale(it.dir, 1);
+          const head = Math.min(1, p * 1.6);
+          for (let k = 0; k < 3; k++) {
+            const dy = (k - 1) * 9;
+            const r = 30 - Math.abs(k - 1) * 5;
+            const a0 = -0.95, a1 = a0 + 1.9 * head;
+            ctx.globalAlpha = A(1 - k * 0.22) * (1 - p * 0.4);
+            ctx.strokeStyle = k === 1 ? '#fff6d8' : it.color;
+            ctx.lineWidth = Math.max(1.4, 4.2 - k * 0.9);
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            if (ctx.arc) ctx.arc(-r * 0.25, dy, r, a0, a1);
+            ctx.stroke();
+            // 齿尖亮星
+            if (head > 0.55) {
+              const ta = a1;
+              ctx.globalCompositeOperation = 'lighter';
+              ctx.globalAlpha = A(0.9) * (1 - p * 0.5);
+              ctx.fillStyle = '#fff6d8';
+              ctx.beginPath();
+              if (ctx.arc) ctx.arc(-r * 0.25 + Math.cos(ta) * r, dy + Math.sin(ta) * r, 2.6 - k * 0.5, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.globalCompositeOperation = 'source-over';
+            }
+          }
+          ctx.restore();
+        } else if (it.type === 'sand') {
+          // 流沙卷：两圈螺旋收拢的沙纹 + 中心上旋的沙柱
+          ctx.save();
+          ctx.translate(it.x, it.y);
+          const r = it.r0 + (it.r1 - it.r0) * Math.min(1, p * 1.5);
+          for (let k = 0; k < 3; k++) {
+            ctx.globalAlpha = A(0.75 - k * 0.2);
+            ctx.strokeStyle = k === 0 ? '#e8cf9a' : (k === 1 ? '#c9a06a' : '#8a6a42');
+            ctx.lineWidth = Math.max(1.2, 5 - k * 1.2);
+            ctx.beginPath();
+            if (ctx.ellipse) ctx.ellipse(0, 0, r * (1 - k * 0.26), r * 0.36 * (1 - k * 0.26), 0, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+          // 中心沙柱（向上渐隐的椭圆堆叠）
+          const colH = 44 * (1 - p * 0.4);
+          for (let k = 0; k < 6; k++) {
+            const q = k / 6;
+            ctx.globalAlpha = A(0.5) * (1 - q);
+            ctx.fillStyle = k % 2 ? '#c9a06a' : '#a87e4e';
+            ctx.beginPath();
+            if (ctx.ellipse) ctx.ellipse(0, -q * colH, 14 * (1 - q * 0.55), 5.4 * (1 - q * 0.5), 0, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.restore();
+        } else if (it.type === 'rune') {
+          // 符文环：双层金环 + 旋转刻度齿（与出关山门法阵同族）
+          ctx.save();
+          ctx.translate(it.x, it.y);
+          const r = it.r0 + (it.r1 - it.r0) * Math.min(1, p * 1.35);
+          const rot = (it.life || 0) * 4;
+          // 淡金填充垫底
+          ctx.globalAlpha = A(0.2);
+          ctx.fillStyle = it.color;
+          ctx.beginPath();
+          if (ctx.ellipse) ctx.ellipse(0, 0, r, r * 0.34, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = A(0.95);
+          ctx.strokeStyle = it.color;
+          ctx.lineWidth = Math.max(1.2, 4 * (1 - p));
+          ctx.beginPath();
+          if (ctx.ellipse) ctx.ellipse(0, 0, r, r * 0.34, 0, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.globalAlpha = A(0.6);
+          ctx.lineWidth = Math.max(1, 2.4 * (1 - p));
+          ctx.beginPath();
+          if (ctx.ellipse) ctx.ellipse(0, 0, r * 0.66, r * 0.22, 0, 0, Math.PI * 2);
+          ctx.stroke();
+          // 转动的符齿
+          ctx.globalAlpha = A(0.9);
+          ctx.lineWidth = Math.max(1, 2.6 * (1 - p));
+          for (let i = 0; i < 12; i++) {
+            const a = rot + (i / 12) * Math.PI * 2;
+            ctx.beginPath();
+            ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r * 0.34);
+            ctx.lineTo(Math.cos(a) * r * 0.9, Math.sin(a) * r * 0.31);
+            ctx.stroke();
+          }
+          ctx.restore();
+        } else if (it.type === 'cone') {
+          // 龙息：从口部渐开的锥形吐息，外淡内亮，边缘卷曲
+          ctx.save();
+          ctx.translate(it.x, it.y);
+          ctx.scale(it.dir, 1);
+          const grow = Math.min(1, p * 2.2);
+          const fade = 1 - Math.max(0, (p - 0.45) / 0.55);
+          const L = it.len * grow, half = L * 0.34;
+          ctx.globalCompositeOperation = 'lighter';
+          for (let k = 0; k < 3; k++) {
+            const wMul = [1.5, 1, 0.5][k];
+            const col = [it.color, it.color, '#f2fdff'][k];
+            ctx.globalAlpha = A([0.16, 0.3, 0.5][k]) * fade;
+            ctx.fillStyle = col;
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.quadraticCurveTo(L * 0.5, -half * wMul, L, -half * wMul * 0.86);
+            ctx.lineTo(L, half * wMul * 0.86);
+            ctx.quadraticCurveTo(L * 0.5, half * wMul, 0, 0);
+            ctx.closePath();
+            ctx.fill();
+          }
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.restore();
+        } else if (it.type === 'page') {
+          // 经页：一枚打着旋的小金页
+          ctx.save();
+          ctx.translate(it.x, it.y);
+          ctx.rotate(it.rot);
+          ctx.globalAlpha = Math.min(1, A(1.2) * 1.4);
+          ctx.fillStyle = '#f2dfae';
+          ctx.fillRect(-3.4, -4.6, 6.8, 9.2);
+          ctx.strokeStyle = '#b8934e';
+          ctx.lineWidth = 0.9;
+          ctx.strokeRect(-3.4, -4.6, 6.8, 9.2);
+          ctx.globalAlpha = Math.min(1, A(0.8) * 1.2);
+          ctx.fillStyle = '#8a6a34';
+          ctx.fillRect(-2.1, -3.2, 4.2, 0.8);
+          ctx.fillRect(-2.1, -1.4, 4.2, 0.8);
+          ctx.fillRect(-2.1, 0.4, 3, 0.8);
+          ctx.restore();
         }
       }
       ctx.globalAlpha = 1;

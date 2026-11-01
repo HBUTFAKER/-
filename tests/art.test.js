@@ -42,6 +42,31 @@ test.describe('像素角色造型表', () => {
     }
   });
 
+  test.it('首领像素骨架：12 只首领全部有归属，画布尺寸合法', () => {
+    const DEF = XY.Art.PX.bossDef;
+    assert.ok(DEF, '缺首领像素骨架表');
+    // art.test 只加载了 art.js，BOSSES 在 data.js —— 用已知的七套骨架 + 引擎侧变体映射验
+    for (const kind of ['demon', 'beast', 'dragon', 'queen', 'bear', 'bone', 'bull']) {
+      const d = DEF[kind];
+      assert.ok(d, kind + ' 缺像素骨架');
+      assert.strictEqual(typeof d.draw, 'function', kind + ' 缺 draw');
+      assert.ok(d.w >= 30 && d.h >= 40, kind + ' 画布尺寸异常');
+      assert.ok(d.bodyH >= 40, kind + ' 身高基准异常（首领应在 40 格以上）');
+      assert.ok(d.ox > 0 && d.oy > 0 && d.ox < d.w && d.oy < d.h, kind + ' 原点越界');
+    }
+    // 每只首领的 art.kind 必须能命中骨架（data.js 里的七类）
+    const kinds = ['demon', 'dragon', 'bear', 'beast', 'queen', 'bone', 'bull'];
+    const variants = ['mowang', 'dragon', 'bear', 'pig', 'queen', 'ape', 'yellow', 'bone', 'lion', 'redboy', 'fish', 'bull'];
+    const map = {
+      mowang: 'demon', yellow: 'demon', redboy: 'demon',
+      pig: 'beast', ape: 'beast', lion: 'beast', fish: 'beast',
+    };
+    for (const v of variants) {
+      const kind = map[v] || v;
+      assert.ok(kinds.includes(kind) && DEF[kind], v + ' 的骨架 ' + kind + ' 不存在');
+    }
+  });
+
   test.it('头部网格是矩形，字符都在调色板里', () => {
     for (const id of IDS) {
       const rows = PX.heads[id];

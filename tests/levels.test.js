@@ -238,3 +238,22 @@ test.describe('关卡 · 选关页交互', () => {
     assert.strictEqual(g2.persist.cleared.length, before, '重打不该往 cleared 里重复记');
   });
 });
+
+test.describe('关卡 · 玩家边界', () => {
+  test.it('boss 关跑到出关山门右侧会被挡住（修复穿墙看不到人物）', () => {
+    // 直接用 engine 层的 Player + Level 验证：右边界以山门为准
+    const data = XY.LEVELS[0];
+    const lv = new XY.Level(data);
+    assert.ok(lv.hasBoss, '第一回应为 boss 关');
+    const pl = XY.makePlayer(XY.CHARACTERS.wukong, [], [], null);
+    pl.now = 1000; pl.onGround = true; pl.jumpsLeft = 2;
+    // 把玩家丢到山门右侧很远处，模拟一路向右跑
+    pl.x = lv.goal.x + 400; pl.vx = 320;
+    for (let i = 0; i < 8; i++) pl.update(0.016, XY.Input, lv, 1000 + i * 16);
+    assert.ok(pl.x <= lv.goal.x + 12.01, '玩家不该越过山门右缘（当前 x=' + pl.x + '）');
+    // 左边界也夹住
+    pl.x = -200; pl.vx = -320;
+    for (let i = 0; i < 8; i++) pl.update(0.016, XY.Input, lv, 1200 + i * 16);
+    assert.ok(pl.x >= 6, '玩家不该跑出左边界（当前 x=' + pl.x + '）');
+  });
+});

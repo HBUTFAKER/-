@@ -44,10 +44,16 @@ function run(g, idx) {
   g.now = 4000;
   return g;
 }
-// 现在每一关都有首领，通关条件是把它打掉（不再靠走到旗子）
+// 现在每一关都有首领：击杀后开"出关山门"，走到门口按空格才结算
 function clearLevel(g) {
   for (const e of g.level.enemies) if (e.isBoss) e.alive = false;
   step(g);
+  if (g.state === 'playing') {
+    assert.ok(g.exitOpen, '首领伏诛后应打开出关山门，而不是直接结算');
+    // 走到山门口，按空格出关
+    g.player.x = g.level.goal.x - 26;
+    tap('Space'); step(g);
+  }
 }
 function resetAudio() {
   const A = XY.Audio;
@@ -59,11 +65,18 @@ function resetAudio() {
 }
 
 // ===== 关卡结算菜单 =====
-test.it('走到终点即进入过关结算，五个选项齐全且发放仙玉', () => {
+test.it('击杀首领开山门，走到门口按空格才结算，五个选项齐全且发放仙玉', () => {
   const g = run(fresh());
   const jade0 = g.jade;
-  clearLevel(g);
-  assert.strictEqual(g.state, 'levelClear', '通关后应停在结算界面，而不是直接切下一关');
+  // 只杀首领（不按空格）：山门开启但不应进结算
+  for (const e of g.level.enemies) if (e.isBoss) e.alive = false;
+  step(g);
+  assert.strictEqual(g.state, 'playing', '首领死后应留在战斗里等玩家走到山门');
+  assert.ok(g.exitOpen, '首领死后应打开出关山门');
+  // 站到门口按空格 → 结算
+  g.player.x = g.level.goal.x - 26;
+  tap('Space'); step(g);
+  assert.strictEqual(g.state, 'levelClear', '门口按空格应进入过关结算');
   assert.ok(g.clearStats && g.clearStats.name === XY.LEVELS[0].name, '结算应记录关卡名');
   assert.ok(g.clearStats.total >= 1, '结算应记录本关妖物总数');
   const ids = g.clearOptions().map((o) => o.id);
@@ -94,7 +107,7 @@ test.it('结算菜单：下一关进入新关卡前情，最后一关是「完�
   assert.strictEqual(g.levelIndex, 1, '关卡序号应前进');
   assert.strictEqual(g.persist.levelReached, 1, '进度应存档');
 
-  // 最后一关：击败首领后结算，选项变成「完成取经」
+  // 最后一关：击败首领 → 走到山门按空格出关 → 结算选项变成「完成取经」
   const g2 = fresh();
   g2.charIndex = 0; g2.initRun();
   const last = XY.LEVELS.length - 1;
@@ -103,6 +116,8 @@ test.it('结算菜单：下一关进入新关卡前情，最后一关是「完�
   const boss = g2.level.enemies.find((e) => e.isBoss);
   g2.killEnemy(boss);
   step(g2);
+  g2.player.x = g2.level.goal.x - 26;
+  tap('Space'); step(g2);
   assert.strictEqual(g2.state, 'levelClear');
   assert.strictEqual(g2.clearOptions()[0].name, '完成取经');
   g2.clearIndex = 0;
@@ -117,6 +132,39 @@ test.it('返回主菜单：结算里选主菜单会回到标题页', () => {
   g.render();
   tap('Enter'); step(g);
   assert.strictEqual(g.state, 'title');
+});
+
+// ===== 暂停菜单 =====
+test.it('P 暂停出菜单：继续 / 重玩本关 / 回选关 / 回主界面', () => {
+  const g = run(fresh());
+  tap('KeyP'); step(g);
+  assert.strictEqual(g.state, 'pause', 'P 应进入暂停');
+  g.render();   // 暂停菜单必须能画
+  const ids = g.pauseOptions().map((o) => o.id);
+  assert.deepStrictEqual(ids, ['resume', 'retry', 'levels', 'title'], '暂停菜单四项');
+
+  // ↓ 选择「重玩本关」→ Enter：重开本关回到战斗
+  tap('KeyS'); step(g);
+  assert.strictEqual(g.pauseIndex, 1, '↓ 应移动菜单光标');
+  tap('Enter'); step(g);
+  assert.strictEqual(g.state, 'playing', '重玩本关应重开并回到战斗');
+  assert.strictEqual(g.exitOpen, false, '重开后山门应复位为封印');
+
+  // P 进暂停，Esc 直接继续（不动光标）
+  tap('KeyP'); step(g);
+  tap('Escape'); step(g);
+  assert.strictEqual(g.state, 'playing', 'Esc 应直接继续');
+
+  // T：回关卡选择
+  tap('KeyP'); step(g);
+  tap('KeyT'); step(g);
+  assert.strictEqual(g.state, 'levelselect', 'T 应回关卡选择');
+
+  // Q：回主界面
+  g.state = 'playing';
+  tap('KeyP'); step(g);
+  tap('KeyQ'); step(g);
+  assert.strictEqual(g.state, 'title', 'Q 应回主界面');
 });
 
 // ===== 挨打动作 =====

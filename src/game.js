@@ -27,6 +27,10 @@
       this.bossRef = null;       // 场上的首领（血条读它）
       this.bossBarA = 0;         // 血条淡入淡出
       this.bossDeadAt = 0;
+      // 出关山门：首领伏诛后才开，玩家走到门口按空格才结算
+      this.exitOpen = false;
+      this.exitNear = false;
+      this.pauseIndex = 0;       // 暂停菜单光标
       this.cutIndex = 0; this.cutTimer = 0;
       this.inventory = {}; this.equipped = {}; this.treasures = [];
       this.treasureSlots = [null, null, null];
@@ -300,6 +304,8 @@
       this.specials = []; this.pending = [];
       this.fx.clear();
       this.bossRef = null; this.bossBarA = 0; this.bossDeadAt = 0;
+      this.exitOpen = false; this.exitNear = false;
+      this.pauseIndex = 0;
       const pl = this.player;
       pl.x = 80; pl.y = 360; pl.vx = 0; pl.vy = 0; pl.facing = 1;
       pl.hp = pl.maxHp;
@@ -448,10 +454,7 @@
         case 'craft': this.updateCraft(); break;
         case 'shop': this.updateShop(); break;
         case 'skillup': this.updateSkillUp(); break;
-        case 'pause':
-          if (I.pressed('KeyP') || I.pressed('Escape')) this.state = 'playing';
-          if (I.pressed('KeyR')) { this.levelCursor = this.levelIndex; this.state = 'levelselect'; }
-          break;
+        case 'pause': this.updatePause(); break;
         case 'gameover':
           // 死了回选关页重来（12 关节奏长，别再把人踢回标题从头走流程）
           if (I.pressed('Escape')) { this.state = 'title'; break; }
@@ -540,6 +543,13 @@
       if (I.pressed('KeyL') || I.pressed('KeyC')) { this.openMenu('craft', 'playing'); return; }
       if (I.pressed('KeyG')) { this.openMenu('shop', 'playing'); return; }
       if (I.pressed('KeyH')) { this.openMenu('skillup', 'playing'); return; }
+
+      // —— 出关：首领伏诛后山门开启，站在门口按空格才进结算 ——
+      // 放在 pl.update 之前：确认那一帧不再起跳，人不会"跳着进结算"。
+      if (this.exitOpen) {
+        this.exitNear = Math.abs((pl.x + pl.w / 2) - lv.goal.x) < 92;
+        if (this.exitNear && I.pressed('Space')) { this.finishLevel(); return; }
+      } else this.exitNear = false;
 
       pl.update(dt, I, lv, now);
       this.drainPlayerFx(pl);
@@ -679,8 +689,63 @@
 
       if (pl.hp <= 0) { this.state = 'gameover'; if (XY.Audio) XY.Audio.sfx('gameover'); this.save(); return; }
       const bossAlive = lv.enemies.some((e) => e.isBoss && e.alive);
-      const cleared = lv.hasBoss ? !bossAlive : (pl.x + pl.w >= lv.goal.x);
-      if (cleared) this.finishLevel();
+      if (lv.hasBoss) {
+        // 不再"Boss 倒地即结算"：开山门，让玩家自己走过去按空格
+        if (!bossAlive && !this.exitOpen) this.openExit();
+      } else if (pl.x + pl.w >= lv.goal.x) this.finishLevel();
+    }
+
+    // —— 首领伏诛：出关山门轰然洞开（特效 + 提示），结算等玩家走到门口 ——
+    openExit() {
+      this.exitOpen = true;
+      const now = this.now, lv = this.level;
+      const gx = lv.goal.x, gy = lv.goal.y;
+      this.toast('妖首已伏 · 出关山门已开，走到门口按 空格 出关');
+      if (XY.Audio) XY.Audio.sfx('clear');
+      this.fx.ring(gx, gy - 40, 12, 140, '#ffd479', 0.85, 7);
+      this.fx.ring(gx, gy - 40, 6, 78, '#fff6cc', 0.5, 4);
+      this.fx.spark(gx, gy - 40, 26, '#ffe9a8', { speed: 320, jitter: 26 });
+      this.fx.dust(gx, gy + 62, 16, '#c9a06a', 46, 66);
+      this.shake = Math.min(12, this.shake + 5);
+    }
+
+    // —— 暂停菜单：继续 / 重玩本关 / 回选关 / 回主界面 ——
+    pauseOptions() {
+      return [
+        { id: 'resume', name: '继续战斗', note: '回到刚才的战局', key: 'Enter' },
+        { id: 'retry', name: '重玩本关', note: '满血从头再来，已拾取的材料保留', key: 'R' },
+        { id: 'levels', name: '回关卡选择', note: '放弃本关，另选去处', key: 'T' },
+        { id: 'title', name: '返回主界面', note: '战果与等级已自动存档', key: 'Q' },
+      ];
+    }
+
+    updatePause() {
+      const I = XY.Input;
+      const opts = this.pauseOptions();
+      const n = opts.length;
+      if (I.pressed('KeyW') || I.pressed('ArrowUp')) { this.pauseIndex = (this.pauseIndex + n - 1) % n; if (XY.Audio) XY.Audio.sfx('ui'); }
+      if (I.pressed('KeyS') || I.pressed('ArrowDown')) { this.pauseIndex = (this.pauseIndex + 1) % n; if (XY.Audio) XY.Audio.sfx('ui'); }
+      // P / Esc 直接回到战局（老习惯保留，不用挪光标）
+      if (I.pressed('KeyP') || I.pressed('Escape')) { this.state = 'playing'; if (XY.Audio) XY.Audio.sfx('ui'); return; }
+      // 快捷键：菜单里每个选项一个字母
+      if (I.pressed('KeyR')) { this.choosePause('retry'); return; }
+      if (I.pressed('KeyT')) { this.choosePause('levels'); return; }
+      if (I.pressed('KeyQ')) { this.choosePause('title'); return; }
+      if (I.pressed('Mouse0')) {
+        const mp = I.mouse || { x: -999, y: -999 };
+        const hit = XY.UI.pauseOptionAt ? XY.UI.pauseOptionAt(mp.x, mp.y, n) : -1;
+        if (hit >= 0) { this.pauseIndex = hit; this.choosePause(opts[hit].id); }
+        return;
+      }
+      if (this.confirmPressed(I)) this.choosePause(opts[clamp(this.pauseIndex, 0, n - 1)].id);
+    }
+
+    choosePause(id) {
+      if (XY.Audio) XY.Audio.sfx('confirm');
+      if (id === 'resume') this.state = 'playing';
+      else if (id === 'retry') this.startLevel(this.levelIndex);
+      else if (id === 'levels') { this.levelCursor = this.levelIndex; this.save(); this.state = 'levelselect'; }
+      else if (id === 'title') { this.save(); this.state = 'title'; }
     }
 
     // —— 过关结算：给出「下一关 / 关卡选择 / 商店 / 锻造 / 参悟 / 主菜单」的岔路 ——
@@ -890,6 +955,13 @@
             this.fx.slashStyle(fxX, fxY, dirNow,
               a.heavy ? '#ffb648' : '#ffd15c', a.heavy ? 1.42 : 1.12,
               k === 1 ? 0.15 : (a.heavy ? 0.3 : 0.22), style);
+            if (a.id === 'bj_rake') {
+              // 九齿钉耙：刀光之上再叠三道耙痕，读得出"钉耙抓的"
+              this.fx.rakeArc(fxX + dirNow * 8, fxY, dirNow);
+            } else if (a.id === 'ss_staff') {
+              // 降妖宝杖：补一道月牙状的青光回刃
+              this.fx.slashStyle(fxX - dirNow * 14, fxY + 4, -dirNow, '#8fd8c0', 0.92, 0.2, 'arc');
+            }
             if (k === 3) {
               // 甩：身后再补一道反手刀光，读得出"这一下是抽了一圈"
               this.fx.slashStyle(mx - dirNow * 16, fxY - 2, -dirNow, '#ffb648', 1.1, 0.24, 'sweep');
@@ -922,9 +994,26 @@
           this.shake = Math.min(6, this.shake + 2);
           return;
         }
-        this.fx.ring(cx, cy, 10, a.radius || 140, pl.char.color, 0.42, 6);
-        this.fx.spark(cx, cy, 14, pl.char.accent, { speed: 260, jitter: 20 });
-        if (XY.Audio) XY.Audio.sfx('aoe');
+        if (a.id === 'ss_quicksand') {
+          // 流沙卷：沙纹漩涡卷起敌人
+          this.fx.sandWave(cx + pl.facing * 40, pl.y + pl.h - 6, a.radius || 120, pl.facing);
+          if (XY.Audio) XY.Audio.sfx('aoe');
+        } else if (a.id === 'bl_breath') {
+          // 龙息：从口中喷出的锥形寒气
+          this.fx.coneBreath(cx + pl.facing * 20, cy, pl.facing, '#9be7ff', a.radius ? a.radius * 1.3 : 190);
+          this.fx.ring(cx + pl.facing * 20, cy, 4, 40, '#cdeeff', 0.3, 3);
+          if (XY.Audio) XY.Audio.sfx('shoot');
+        } else if (a.id === 'bl_tail') {
+          // 龙尾扫：前后两道弧形尾浪交叠
+          this.fx.slashStyle(cx, cy, pl.facing, '#9be7ff', 1.6, 0.3, 'sweep');
+          this.fx.slashStyle(cx - pl.facing * 18, cy + 6, -pl.facing, '#cdeeff', 1.3, 0.26, 'sweep');
+          this.fx.ring(cx, cy, 10, a.radius || 140, '#9be7ff', 0.4, 6);
+          if (XY.Audio) XY.Audio.sfx('aoe');
+        } else {
+          this.fx.ring(cx, cy, 10, a.radius || 140, pl.char.color, 0.42, 6);
+          this.fx.spark(cx, cy, 14, pl.char.accent, { speed: 260, jitter: 20 });
+          if (XY.Audio) XY.Audio.sfx('aoe');
+        }
         this.aoeHit(a.radius || 140, mult);
         this.shake = Math.min(9, this.shake + 4);
       } else if (a.kind === 'dash') {
@@ -947,24 +1036,59 @@
           }
           this.fx.ring(cx, cy, 8, 62, '#fff2cf', 0.4, 5);
         }
+        if (a.id === 'bj_counter') {
+          // 倒打一耙：冲出去时身后留一串反向爪痕
+          this.fx.rakeArc(cx, cy, -pl.facing, '#ffb648');
+        } else if (a.id === 'bl_charge') {
+          // 化龙击：蓝白龙鳞碎光拖尾
+          this.fx.spark(cx, cy, 14, '#9be7ff', { speed: 240, angle: pl.facing > 0 ? Math.PI : 0, spread: 1.2 });
+          this.fx.spark(cx, cy, 8, '#f2fdff', { speed: 200, angle: pl.facing > 0 ? Math.PI : 0, spread: 0.8 });
+        }
         this.fx.ring(cx, cy, 6, 46, '#bfe9ff', 0.28, 4);
         this.fx.spark(cx - pl.facing * 16, cy, 8, '#bfe9ff', { speed: 180, angle: pl.facing > 0 ? Math.PI : 0, spread: 1.1 });
       } else if (a.kind === 'ranged') {
         const d = XY.computeDamage({ attack: pl.stats.attack * pl.atkMul, critRate: pl.stats.critRate }, { defense: 0 }, a.multiplier, Math.random).amount;
         if (XY.Audio) XY.Audio.sfx('shoot');
-        this.projectiles.push(new XY.Projectile(cx + pl.facing * 18, cy, pl.facing * 540, 0, d, 'player', 9, pl.char.color, (a.range || 320) / 540));
+        if (a.id === 'ts_zeal') {
+          // 紧箍真言：金色符文弹，出手时先起一枚符环
+          this.fx.runeRing(cx + pl.facing * 22, cy, 4, 30, '#ffd479');
+          this.projectiles.push(new XY.Projectile(cx + pl.facing * 18, cy, pl.facing * 540, 0, d, 'player', 10, '#ffd479', (a.range || 320) / 540));
+        } else if (a.id === 'ss_bind') {
+          // 降妖缚：暗金锁链弹
+          this.projectiles.push(new XY.Projectile(cx + pl.facing * 18, cy, pl.facing * 480, 0, d, 'player', 12, '#d8a84a', (a.range || 320) / 480));
+        } else {
+          this.projectiles.push(new XY.Projectile(cx + pl.facing * 18, cy, pl.facing * 540, 0, d, 'player', 9, pl.char.color, (a.range || 320) / 540));
+        }
         this.fx.spark(cx + pl.facing * 22, cy, 7, pl.char.color, { speed: 170, angle: pl.facing > 0 ? 0 : Math.PI, spread: 0.9 });
         this.shake = Math.min(5, this.shake + 1.6);
       } else if (a.kind === 'heal') {
         pl.hp = Math.min(pl.maxHp, pl.hp + pl.maxHp * (a.healPct || 0.3));
         if (XY.Audio) XY.Audio.sfx('heal');
-        this.fx.dust(cx, pl.y + pl.h, 16, '#8fd48a', 46, 90);
-        this.fx.ring(cx, cy, 8, 60, '#7CFC9B', 0.4, 3);
+        if (a.id === 'bj_eat') {
+          // 贪吃回元：金光从四面八方"吸"进嘴里 + 头顶冒出一个饱嗝光圈
+          for (let i = 0; i < 10; i++) {
+            const a2 = (i / 10) * Math.PI * 2;
+            this.fx.spark(cx + Math.cos(a2) * 54, cy + Math.sin(a2) * 36, 1, '#ffd479',
+              { speed: 130, angle: a2 + Math.PI, spread: 0.1, life: 0.5, gravity: 0 });
+          }
+          this.fx.runeRing(cx, pl.y - 10, 4, 34, '#ffd479');
+        } else {
+          this.fx.dust(cx, pl.y + pl.h, 16, '#8fd48a', 46, 90);
+          this.fx.ring(cx, cy, 8, 60, '#7CFC9B', 0.4, 3);
+        }
         this.floater(cx, pl.y - 6, '回复', '#7CFC9B');
       } else if (a.kind === 'buff') {
         if (XY.Audio) XY.Audio.sfx('treasure');
-        if (a.id === 'ts_sutra') { pl.buffAtkUntil = now + 6000; this.toast('大乘真经 · 攻击大增'); this.fx.dust(cx, pl.y + pl.h, 14, '#ffd479', 40, 80); }
-        else if (a.id === 'ts_kasaya') { pl.buffDefUntil = now + 6000; this.toast('袈裟护体 · 防御大增'); this.fx.dust(cx, pl.y + pl.h, 14, '#ffd479', 40, 80); }
+        if (a.id === 'ts_sutra') {
+          // 大乘真经：金页从天而降，页页打着旋
+          pl.buffAtkUntil = now + 6000; this.toast('大乘真经 · 攻击大增');
+          this.fx.pageRain(cx, pl.y + pl.h, 12, 110);
+        } else if (a.id === 'ts_kasaya') {
+          // 袈裟护体：脚下起一圈符文金环，菱形光罩罩住全身
+          pl.buffDefUntil = now + 6000; this.toast('袈裟护体 · 防御大增');
+          this.fx.runeRing(cx, pl.y + pl.h - 4, 10, 64, '#ffd479');
+          this.fx.ring(cx, cy, 24, 26, '#ffe9a8', 0.5, 3);
+        }
         this.fx.ring(cx, cy, 6, 54, '#ffe9a8', 0.36, 3);
       } else if (a.kind === 'treasure') this.execTreasure(a.treasure);
     }
@@ -1437,6 +1561,12 @@
         const boss = this.level.enemies.find((q) => q.isBoss);
         if (boss && Number.isFinite(ratio)) boss.hp = Math.max(1, Math.round(boss.maxHp * Math.min(1, Math.max(0.01, ratio))));
       }
+      // ?exit=1 直接斩杀首领并打开出关山门（看山门开启态/出关流程用）
+      if (params.get('exit') != null) {
+        const boss = this.level.enemies.find((q) => q.isBoss);
+        if (boss) { boss.hp = 0; boss.alive = false; this.exitOpen = false; this.openExit(); }
+        if (params.get('px') == null) this.player.x = Math.max(20, this.level.goal.x - 260);
+      }
       const map = {
         title: 'title', charselect: 'charselect', levelselect: 'levelselect', cutscene: 'cutscene', intro: 'levelIntro',
         play: 'playing', bag: 'bag', craft: 'craft', pause: 'pause', gameover: 'gameover', win: 'win',
@@ -1514,7 +1644,7 @@
         }
         case 'levelIntro': XY.UI.drawLevelIntro(ctx, this); break;
         case 'playing': this.renderPlaying(); break;
-        case 'pause': this.renderPlaying(); XY.UI.drawPause(ctx); break;
+        case 'pause': this.renderPlaying(); XY.UI.drawPause(ctx, this); break;
         case 'bag': XY.UI.drawBag(ctx, this); break;
         case 'craft': XY.UI.drawCraft(ctx, this); break;
         case 'shop': XY.UI.drawShop(ctx, this); break;
@@ -1574,6 +1704,7 @@
       }
       XY.UI.drawHUD(ctx, this);
       XY.UI.drawBossBar(ctx, this);
+      if (XY.UI.drawExitHint) XY.UI.drawExitHint(ctx, this);
       XY.UI.drawToast(ctx, this);
     }
   };

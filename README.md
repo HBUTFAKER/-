@@ -159,7 +159,7 @@ cd xiyou
 
 node server.js                 # 本地起服务，浏览器打开 http://localhost:8080
 node build.js                  # 把 src/ 打包成单文件 西游降妖录.html
-node --test tests/*.test.js    # 跑测试，126 项全过才算没改坏
+node --test tests/*.test.js    # 跑测试，129 项全过才算没改坏
 ```
 
 **重要**：改完 `src/` 里任意文件后，必须重新执行 `node build.js`，否则 `西游降妖录.html` 还是旧的。想边改边看，直接双击 `index.html` 也行（它引用 `src/` 下的源文件，不走打包）。

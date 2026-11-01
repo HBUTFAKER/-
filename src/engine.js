@@ -269,6 +269,13 @@
       this.vy += GRAVITY * dt;
       if (this.vy > 1400) this.vy = 1400;
       XY.moveAndCollide(this, level.platforms, dt);
+      // 地图左右边界（墙）：boss 关末端以出关山门为界（可以走进门洞，但穿不到门后），
+      // 其余以地图宽为界——修复"跑过出关口进墙里、人走出屏幕看不到"
+      const maxX = (level.goal && level.hasBoss)
+        ? level.goal.x + 12
+        : level.width - this.w - 6;
+      if (this.x > maxX) { this.x = maxX; if (this.vx > 0) this.vx = 0; }
+      if (this.x < 6) { this.x = 6; if (this.vx < 0) this.vx = 0; }
       // 落地补满跳跃次数
       if (this.onGround) this.jumpsLeft = this.maxJumps;
       // 从高处砸下来：落地扬尘 + 闷响

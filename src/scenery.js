@@ -779,6 +779,326 @@
     }
   }
 
+  // ========== 场景四：涧峡（鹰愁涧 / 白骨岭 / 狮驼岭） ==========
+  // 两壁夹一涧：冷月悬顶，崖口垂瀑，水面浮雾，雁影掠过。
+  function sceneGorge(ctx, t, camX) {
+    ctx.fillStyle = grad(ctx, 0, H, [
+      [0, '#16283a'], [0.3, '#2e4a5e'], [0.55, '#5e7a80'], [0.76, '#a89478'], [1, '#141c22'],
+    ]);
+    ctx.fillRect(0, 0, W, H);
+
+    // 冷月
+    const mx = 700, my = 118;
+    softBlob(ctx, mx, my, 210, null, [
+      [0, 'rgba(230,240,244,0.4)'], [0.4, 'rgba(200,220,230,0.12)'], [1, 'rgba(200,220,230,0)'],
+    ]);
+    ctx.fillStyle = 'rgba(238,246,250,0.92)';
+    ctx.beginPath(); ctx.arc(mx, my, 25, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(190,208,218,0.5)';
+    ctx.beginPath(); ctx.arc(mx - 7, my + 4, 5, 0, Math.PI * 2);
+    ctx.arc(mx + 9, my - 6, 3.4, 0, Math.PI * 2); ctx.fill();
+
+    // 峡缝里的远山（雾青两道）
+    ridge(ctx, 336, 'rgba(64,94,108,0.5)', camX, 0.08, 4, 96, 220);
+    ridge(ctx, 386, 'rgba(40,64,76,0.8)', camX, 0.14, 9, 76, 190);
+
+    // —— 左崖壁（内缘参差，岩层外凸）——
+    const l0 = -70 - camX * 0.17;
+    ctx.fillStyle = '#1c2e36';
+    ctx.beginPath();
+    ctx.moveTo(l0, -40);
+    ctx.lineTo(l0 + 236, -40);
+    ctx.lineTo(l0 + 196, 96);
+    ctx.lineTo(l0 + 244, 214);
+    ctx.lineTo(l0 + 188, 350);
+    ctx.lineTo(l0 + 252, 540);
+    ctx.lineTo(l0, 540);
+    ctx.closePath();
+    ctx.fill();
+    // 岩层理
+    ctx.strokeStyle = 'rgba(140,176,188,0.14)';
+    ctx.lineWidth = 1.6;
+    for (let i = 0; i < 5; i++) {
+      const yy = 60 + i * 92;
+      ctx.beginPath();
+      ctx.moveTo(l0 + 200 - i * 8, yy);
+      ctx.quadraticCurveTo(l0 + 160, yy + 16, l0 + 60, yy + 8);
+      ctx.stroke();
+    }
+    // 崖上探出的孤松（剪影）
+    ctx.strokeStyle = '#132028'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(l0 + 216, 96); ctx.lineTo(l0 + 236, 62); ctx.stroke();
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(l0 + 226, 76); ctx.lineTo(l0 + 246, 66); ctx.stroke();
+    ctx.fillStyle = '#132028';
+    ell(ctx, l0 + 240, 56, 14, 9); ell(ctx, l0 + 252, 62, 10, 7);
+
+    // —— 右崖壁 ——
+    const r0 = 760 - camX * 0.17;
+    ctx.fillStyle = '#18282f';
+    ctx.beginPath();
+    ctx.moveTo(r0 + 260, -40);
+    ctx.lineTo(r0 + 18, -40);
+    ctx.lineTo(r0 + 66, 128);
+    ctx.lineTo(r0 + 14, 262);
+    ctx.lineTo(r0 + 72, 398);
+    ctx.lineTo(r0 + 8, 540);
+    ctx.lineTo(r0 + 260, 540);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(140,176,188,0.12)';
+    ctx.lineWidth = 1.6;
+    for (let i = 0; i < 4; i++) {
+      const yy = 110 + i * 100;
+      ctx.beginPath();
+      ctx.moveTo(r0 + 60 + i * 6, yy);
+      ctx.quadraticCurveTo(r0 + 110, yy + 14, r0 + 220, yy + 6);
+      ctx.stroke();
+    }
+
+    // 崖口垂瀑（左一股大的 + 右一股细的）
+    waterfall(ctx, l0 + 214, 104, 470, 34, t);
+    waterfall(ctx, r0 + 40, 150, 480, 14, t);
+
+    // —— 涧水：渐变水面 + 流动波光 ——
+    ctx.fillStyle = grad(ctx, 462, H, [[0, '#2e545e'], [0.4, '#1c3a44'], [1, '#0e2028']]);
+    ctx.fillRect(0, 462, W, H - 462);
+    for (let i = 0; i < 10; i++) {
+      const px = ((i * 173 + t * 26) % (W + 90)) - 45;
+      const py = 476 + (i % 4) * 15;
+      ctx.strokeStyle = 'rgba(206,234,240,' + (0.1 + (i % 3) * 0.06) + ')';
+      ctx.lineWidth = 1.6; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px + 30 + (i % 3) * 14, py); ctx.stroke();
+    }
+    // 月在水面的碎光带
+    for (let i = 0; i < 6; i++) {
+      const px = mx - 34 + Math.sin(t / 700 + i * 1.3) * 26;
+      const py = 470 + i * 11;
+      ctx.strokeStyle = 'rgba(226,242,246,' + (0.24 - i * 0.03) + ')';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px + 40 - i * 4, py); ctx.stroke();
+    }
+
+    // 贴水雾带
+    cloudBand(ctx, 452, t * 7 + camX * 0.22, 'rgba(196,214,220,0.16)', 1.25);
+    cloudBand(ctx, 428, t * 11 + camX * 0.3, 'rgba(206,222,226,0.1)', 0.95);
+
+    // 雁影（三只，慢速掠过）
+    ctx.strokeStyle = 'rgba(18,28,34,0.75)';
+    ctx.lineWidth = 1.8; ctx.lineCap = 'round';
+    for (let i = 0; i < 3; i++) {
+      const bx = ((i * 340 + t * 20) % (W + 140)) - 70;
+      const by = 96 + i * 34 + Math.sin(t / 520 + i) * 4;
+      const f = Math.sin(t / 160 + i * 1.4) * 2.4;
+      ctx.beginPath();
+      ctx.moveTo(bx - 6, by - f * 0.4); ctx.lineTo(bx, by); ctx.lineTo(bx + 6, by - f * 0.4);
+      ctx.stroke();
+    }
+  }
+
+  // ========== 场景五：高老庄黄昏 ==========
+  // 黄昏村落：大太阳压在地平线上，农舍升起炊烟，田埂层叠，老树归鸦。
+  function sceneVillage(ctx, t, camX) {
+    ctx.fillStyle = grad(ctx, 0, H, [
+      [0, '#3a2050'], [0.26, '#7a4050'], [0.46, '#c97a4e'], [0.64, '#eeb06a'], [0.8, '#8a5a40'], [1, '#2a1c18'],
+    ]);
+    ctx.fillRect(0, 0, W, H);
+
+    // 低垂大日
+    const sx = 190, sy = 316;
+    softBlob(ctx, sx, sy, 320, null, [
+      [0, 'rgba(255,214,150,0.55)'], [0.3, 'rgba(255,164,92,0.22)'], [1, 'rgba(255,140,70,0)'],
+    ]);
+    ctx.fillStyle = 'rgba(255,196,120,0.95)';
+    ctx.beginPath(); ctx.arc(sx, sy, 58, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,226,168,0.6)';
+    ctx.beginPath(); ctx.arc(sx - 12, sy - 12, 34, 0, Math.PI * 2); ctx.fill();
+
+    // 远处田野层带
+    ridge(ctx, 400, 'rgba(120,104,66,0.55)', camX, 0.08, 6, 34, 260);
+    ridge(ctx, 432, 'rgba(92,82,52,0.8)', camX, 0.14, 3, 26, 230);
+
+    // —— 农舍两座（远小近大，土墙 + 茅草顶 + 暖窗）——
+    const hut = (hx, hy, s, warm) => {
+      ctx.save();
+      ctx.translate(hx, hy);
+      ctx.scale(s, s);
+      // 墙
+      ctx.fillStyle = '#4a3a28';
+      ctx.fillRect(-46, -44, 92, 44);
+      ctx.fillStyle = 'rgba(0,0,0,0.18)';
+      ctx.fillRect(-46, -18, 92, 18);
+      // 茅草顶（两坡 + 出檐）
+      ctx.fillStyle = '#6a532e';
+      ctx.beginPath();
+      ctx.moveTo(-60, -42); ctx.lineTo(-30, -76); ctx.lineTo(30, -76); ctx.lineTo(60, -42);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(255,214,150,0.22)';
+      ctx.beginPath();
+      ctx.moveTo(-60, -42); ctx.lineTo(-30, -76); ctx.lineTo(-6, -76); ctx.lineTo(-24, -42);
+      ctx.closePath(); ctx.fill();
+      // 顶草垄
+      ctx.strokeStyle = 'rgba(42,32,18,0.5)'; ctx.lineWidth = 1.4;
+      for (let i = -2; i <= 2; i++) {
+        ctx.beginPath(); ctx.moveTo(i * 16, -76); ctx.lineTo(i * 16 + 4, -42); ctx.stroke();
+      }
+      // 门 + 暖窗
+      ctx.fillStyle = '#2a1e12';
+      ctx.fillRect(-10, -30, 20, 30);
+      ctx.fillStyle = 'rgba(255,186,104,' + (warm ? 0.72 : 0.4) + ')';
+      ctx.fillRect(18, -34, 18, 14);
+      ctx.strokeStyle = '#2a1e12'; ctx.lineWidth = 1.4;
+      ctx.strokeRect(18, -34, 18, 14);
+      ctx.beginPath(); ctx.moveTo(27, -34); ctx.lineTo(27, -20); ctx.stroke();
+      ctx.restore();
+    };
+    hut(300 - camX * 0.3, 448, 0.72, false);
+    hut(742 - camX * 0.3, 462, 1, true);
+
+    // 炊烟（近舍屋顶，三段循环上飘）
+    for (let i = 0; i < 3; i++) {
+      const pp = (t / 3400 + i * 0.33) % 1;
+      const alpha = 0.2 * (1 - pp);
+      softBlob(ctx, 742 - camX * 0.3 + Math.sin(pp * 6 + i) * 10, 380 - pp * 130, 14 + pp * 26, null, [
+        [0, 'rgba(240,226,204,' + alpha.toFixed(2) + ')'], [1, 'rgba(240,226,204,0)'],
+      ]);
+    }
+
+    // 老树剪影（右侧）
+    const tx = 920 - camX * 0.44;
+    ctx.strokeStyle = '#241812'; ctx.lineCap = 'round';
+    ctx.lineWidth = 9;
+    ctx.beginPath(); ctx.moveTo(tx, 540); ctx.quadraticCurveTo(tx - 8, 470, tx + 2, 428); ctx.stroke();
+    ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.moveTo(tx, 452); ctx.quadraticCurveTo(tx - 34, 424, tx - 52, 396); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(tx + 1, 430); ctx.quadraticCurveTo(tx + 30, 402, tx + 44, 380); ctx.stroke();
+    ctx.fillStyle = '#241812';
+    const blobs = [[tx - 56, 384, 26], [tx - 26, 372, 32], [tx + 8, 362, 30], [tx + 44, 372, 24], [tx - 4, 392, 24]];
+    for (const b of blobs) ell(ctx, b[0], b[1], b[2], b[2] * 0.8);
+
+    // 稻草垛两座
+    const stack = (px, py, s) => {
+      ctx.save(); ctx.translate(px, py); ctx.scale(s, s);
+      ctx.fillStyle = '#8a6f38';
+      ctx.beginPath();
+      ctx.moveTo(-20, 0); ctx.quadraticCurveTo(-22, -26, 0, -34);
+      ctx.quadraticCurveTo(22, -26, 20, 0); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(60,44,20,0.4)'; ctx.lineWidth = 1.2;
+      for (let i = -2; i <= 2; i++) {
+        ctx.beginPath(); ctx.moveTo(i * 8, -2); ctx.lineTo(i * 9, -30); ctx.stroke();
+      }
+      ctx.restore();
+    };
+    stack(130 - camX * 0.44, 512, 1);
+    stack(560 - camX * 0.44, 522, 0.72);
+
+    // 篱笆（近景一排）
+    ctx.strokeStyle = '#33241a'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    const fx0 = -40 - camX * 0.5;
+    for (let i = 0; i < 14; i++) {
+      const px = fx0 + i * 78;
+      ctx.beginPath(); ctx.moveTo(px, 540); ctx.lineTo(px, 506 + (i % 3) * 4); ctx.stroke();
+    }
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(fx0 - 10, 516); ctx.lineTo(fx0 + 1080, 514); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(fx0 - 10, 528); ctx.lineTo(fx0 + 1080, 526); ctx.stroke();
+
+    // 黄昏蚊蚋光点
+    for (let i = 0; i < 12; i++) {
+      const px = ((i * 149 + t * 11) % (W + 60)) - 30;
+      const py = 300 + ((i * 97 + t * 18) % 220);
+      ctx.fillStyle = 'rgba(255,226,150,' + (0.12 + (i % 3) * 0.08) + ')';
+      ctx.beginPath(); ctx.arc(px, py, 1.5, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  // ========== 场景六：大河暮色（流沙河 / 通天河） ==========
+  // 水天一色：沉月半雾，沙洲平缓，芦苇摇曳，雁阵归远。
+  function sceneRiver(ctx, t, camX) {
+    ctx.fillStyle = grad(ctx, 0, H, [
+      [0, '#1a2438'], [0.3, '#3a4a62'], [0.52, '#8a8a76'], [0.6, '#c9b48a'], [0.72, '#5a6a72'], [1, '#182632'],
+    ]);
+    ctx.fillRect(0, 0, W, H);
+
+    // 半雾沉月
+    const mx = 742, my = 148;
+    softBlob(ctx, mx, my, 240, null, [
+      [0, 'rgba(240,232,204,0.42)'], [0.4, 'rgba(220,206,170,0.14)'], [1, 'rgba(220,206,170,0)'],
+    ]);
+    ctx.fillStyle = 'rgba(244,238,214,0.88)';
+    ctx.beginPath(); ctx.arc(mx, my, 30, 0, Math.PI * 2); ctx.fill();
+
+    // 远岸沙洲（平缓的长坡）
+    ridge(ctx, 316, 'rgba(112,110,88,0.5)', camX, 0.06, 5, 26, 300);
+    ridge(ctx, 344, 'rgba(84,88,74,0.75)', camX, 0.11, 2, 20, 260);
+
+    // —— 水面（占下 38%）：渐变 + 月光碎带 + 缓波 ——
+    const wy = 338;
+    ctx.fillStyle = grad(ctx, wy, H, [
+      [0, '#8a9484'], [0.12, '#5a6a6e'], [0.5, '#2c3e4a'], [1, '#101c26'],
+    ]);
+    ctx.fillRect(0, wy, W, H - wy);
+    // 天水交界亮边
+    ctx.fillStyle = 'rgba(236,222,186,0.3)';
+    ctx.fillRect(0, wy, W, 2);
+    // 月光倒影碎带
+    for (let i = 0; i < 8; i++) {
+      const px = mx - 44 + Math.sin(t / 640 + i * 1.1) * 30;
+      const py = wy + 10 + i * 13;
+      ctx.strokeStyle = 'rgba(240,232,200,' + (0.26 - i * 0.026) + ')';
+      ctx.lineWidth = 2.2; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px + 54 - i * 5, py); ctx.stroke();
+    }
+    // 缓波横线
+    for (let i = 0; i < 12; i++) {
+      const px = ((i * 211 + t * 16) % (W + 120)) - 60;
+      const py = wy + 26 + (i % 5) * 32;
+      ctx.strokeStyle = 'rgba(190,204,196,' + (0.07 + (i % 3) * 0.05) + ')';
+      ctx.lineWidth = 1.6; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px + 44 + (i % 4) * 18, py); ctx.stroke();
+    }
+
+    // 雁阵（一列五只，朝远山去）
+    ctx.strokeStyle = 'rgba(26,34,40,0.7)';
+    ctx.lineWidth = 1.8; ctx.lineCap = 'round';
+    for (let i = 0; i < 5; i++) {
+      const bx = 180 + i * 34 - (t * 0.012) % 40;
+      const by = 120 + i * 9 + Math.sin(t / 480 + i) * 3;
+      const f = Math.sin(t / 170 + i) * 2.2;
+      ctx.beginPath();
+      ctx.moveTo(bx - 5, by - f * 0.4); ctx.lineTo(bx, by); ctx.lineTo(bx + 5, by - f * 0.4);
+      ctx.stroke();
+    }
+
+    // —— 前景芦苇（左右两丛，随风摆）——
+    const reed = (bx, n, sc, color) => {
+      ctx.strokeStyle = color; ctx.lineCap = 'round';
+      for (let i = 0; i < n; i++) {
+        const px = bx + i * 14 * sc;
+        const sway = Math.sin(t / 900 + i * 0.7) * 10 * sc;
+        const hh = (108 + (i % 4) * 26) * sc;
+        ctx.lineWidth = 2.2 * sc;
+        ctx.beginPath();
+        ctx.moveTo(px, 540);
+        ctx.quadraticCurveTo(px + sway * 0.3, 540 - hh * 0.55, px + sway, 540 - hh);
+        ctx.stroke();
+        // 芦花穗
+        ctx.fillStyle = color;
+        ell(ctx, px + sway, 540 - hh, 6.5 * sc, 2.6 * sc);
+      }
+    };
+    reed(-30 - camX * 0.5, 6, 1.05, '#141f1c');
+    reed(880 - camX * 0.5, 5, 0.9, '#101a18');
+    reed(60 - camX * 0.36, 4, 0.7, 'rgba(20,32,28,0.8)');
+
+    // 萤火
+    for (let i = 0; i < 9; i++) {
+      const px = ((i * 167 + t * 9) % (W + 60)) - 30;
+      const py = 380 + ((i * 83 + t * 13) % 140);
+      ctx.fillStyle = 'rgba(214,232,190,' + (0.14 + (i % 3) * 0.08) + ')';
+      ctx.beginPath(); ctx.arc(px, py, 1.4, 0, Math.PI * 2); ctx.fill();
+    }
+  }
   // ---------- 统一压暗 / 暗角 ----------
   function overlay(ctx) {
     ctx.fillStyle = grad(ctx, 0, H, [
@@ -799,15 +1119,19 @@
   }
 
   S.draw = function (ctx, levelIndex, t, camX) {
-    // 关卡数据里写明了 theme 就用它（12 关要对应场景，不能按 下标%3 硬轮换）
+    // 关卡数据里写明了 theme 就用它（12 关各归各的场景，不按下标硬轮换）
+    // 0 云海山峦 / 1 洞窟 / 2 火山 / 3 涧峡 / 4 黄昏村庄 / 5 暮色大河
     const lv = XY.LEVELS && XY.LEVELS[levelIndex];
     const theme = lv && Number.isFinite(lv.theme) ? lv.theme : levelIndex;
-    const idx = (((theme | 0) % 3) + 3) % 3;
+    const idx = (((theme | 0) % 6) + 6) % 6;
     camX = camX || 0;
     ctx.save();
     if (idx === 0) sceneMountain(ctx, t || 0, camX);
     else if (idx === 1) sceneCave(ctx, t || 0, camX);
-    else sceneFire(ctx, t || 0, camX);
+    else if (idx === 2) sceneFire(ctx, t || 0, camX);
+    else if (idx === 3) sceneGorge(ctx, t || 0, camX);
+    else if (idx === 4) sceneVillage(ctx, t || 0, camX);
+    else sceneRiver(ctx, t || 0, camX);
     // 关卡自带的色调（血月 / 冰面 / 妖雾…）
     if (lv && lv.tint) { ctx.fillStyle = lv.tint; ctx.fillRect(0, 0, W, H); }
     overlay(ctx);

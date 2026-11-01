@@ -375,7 +375,7 @@
       reward: { jade: 10, gold: 150 } },
 
     // —— 主线 2 ——
-    { id: 'l2', kind: 'main', chapter: 2, theme: 1, tint: 'rgba(60,120,150,0.16)',
+    { id: 'l2', kind: 'main', chapter: 2, theme: 3, tint: 'rgba(60,120,150,0.16)',
       name: '第二回 · 鹰愁涧', sub: '涧底有龙',
       width: 2600, height: 540, platforms: [
         [0, 500, 2600, 40], [300, 390, 150, 24], [560, 310, 170, 24], [900, 410, 190, 24],
@@ -410,7 +410,7 @@
       reward: { jade: 16, gold: 320, items: { mat_soul: 2 } } },
 
     // —— 主线 4 ——
-    { id: 'l4', kind: 'main', chapter: 4, theme: 0, tint: 'rgba(150,90,40,0.16)',
+    { id: 'l4', kind: 'main', chapter: 4, theme: 4, tint: 'rgba(150,90,40,0.16)',
       name: '第四回 · 高老庄', sub: '女婿是头猪',
       width: 2600, height: 540, platforms: [
         [0, 500, 2600, 40], [240, 420, 200, 26], [620, 360, 180, 26], [980, 300, 200, 26],
@@ -447,7 +447,7 @@
       reward: { jade: 20, gold: 300, items: { mat_fire: 2, mat_soul: 1 } } },
 
     // —— 主线 5 ——
-    { id: 'l5', kind: 'main', chapter: 5, theme: 1, tint: 'rgba(30,90,110,0.22)',
+    { id: 'l5', kind: 'main', chapter: 5, theme: 5, tint: 'rgba(30,90,110,0.22)',
       name: '第五回 · 流沙河', sub: '河底有将',
       width: 3000, height: 540, platforms: [
         [0, 500, 3000, 40], [420, 400, 150, 24], [760, 330, 170, 24], [1120, 420, 180, 24],
@@ -484,7 +484,7 @@
       reward: { jade: 22, gold: 360, items: { mat_stone: 2, mat_herb: 2 } } },
 
     // —— 主线 6（首领：白骨精）——
-    { id: 'l6', kind: 'main', chapter: 6, theme: 0, tint: 'rgba(120,150,170,0.20)',
+    { id: 'l6', kind: 'main', chapter: 6, theme: 3, tint: 'rgba(120,150,170,0.20)',
       name: '第六回 · 白骨岭', sub: '白骨精',
       width: 3000, height: 540, platforms: [
         [0, 500, 3000, 40], [420, 390, 150, 24], [700, 300, 170, 24], [1060, 400, 190, 24],
@@ -501,7 +501,7 @@
       reward: { jade: 26, gold: 520, items: { mat_soul: 3 } } },
 
     // —— 支线 3（前置：白骨岭）——
-    { id: 's3', kind: 'side', chapter: 0, theme: 2, tint: 'rgba(120,80,30,0.18)',
+    { id: 's3', kind: 'side', chapter: 0, theme: 3, tint: 'rgba(120,80,30,0.18)',
       name: '支线 · 狮驼岭', sub: '三妖聚',
       width: 3000, height: 540, platforms: [
         [0, 500, 3000, 40], [380, 400, 160, 24], [740, 320, 180, 24], [1120, 410, 190, 24],
@@ -538,7 +538,7 @@
       reward: { jade: 30, gold: 580 } },
 
     // —— 支线 4（前置：火云洞）——
-    { id: 's4', kind: 'side', chapter: 0, theme: 1, tint: 'rgba(40,110,150,0.24)',
+    { id: 's4', kind: 'side', chapter: 0, theme: 5, tint: 'rgba(40,110,150,0.24)',
       name: '支线 · 通天河', sub: '冰下骨',
       width: 2800, height: 540, platforms: [
         [0, 500, 2800, 40], [400, 410, 170, 24], [760, 340, 180, 24], [1120, 420, 190, 24],

@@ -132,15 +132,19 @@
   // ===== 世界（已 translate 到相机坐标）=====
   const ENEMY_ART_H = { imp: 34, wolf: 36, spider: 32, boss: 86 };
 
-  // 每关平台材质：岩体主色 / 表层色 / 亮边 / 装饰类型
+  // 每关平台材质：岩体主色 / 表层色 / 亮边 / 装饰类型 —— 跟着场景主题走（0..5）
   const PLATFORM_STYLE = [
-    { body: '#241d16', top: '#4b7a3c', lit: '#6aa052', deco: 'grass' },  // 花果山：青苔岩
-    { body: '#221b10', top: '#5c4580', lit: '#8a6cb4', deco: 'moss' },   // 黑风洞：黑曜石
-    { body: '#1e0d08', top: '#7c2f18', lit: '#e07a2e', deco: 'lava' },   // 火焰山：焦岩
+    { body: '#241d16', top: '#4b7a3c', lit: '#6aa052', deco: 'grass' },  // 0 花果山：青苔岩
+    { body: '#221b10', top: '#5c4580', lit: '#8a6cb4', deco: 'moss' },   // 1 洞窟：黑曜石
+    { body: '#1e0d08', top: '#7c2f18', lit: '#e07a2e', deco: 'lava' },   // 2 火焰山：焦岩
+    { body: '#1c2a24', top: '#4a7a62', lit: '#6aa87e', deco: 'grass' },  // 3 涧峡：涧边湿岩
+    { body: '#2e2416', top: '#96803e', lit: '#bf9f55', deco: 'grass' },  // 4 庄院：夯土田埂
+    { body: '#1c2830', top: '#48707c', lit: '#6fa0aa', deco: 'moss' },   // 5 大河：水漫石
   ];
 
   UI.drawPlatforms = function (ctx, game) {
-    const st = PLATFORM_STYLE[(game.levelIndex || 0) % 3];
+    const theme = (XY.LEVELS[game.levelIndex || 0] || {}).theme || 0;
+    const st = PLATFORM_STYLE[((theme % PLATFORM_STYLE.length) + PLATFORM_STYLE.length) % PLATFORM_STYLE.length];
     for (const p of game.level.platforms) {
       // 岩体：下沿做不规则断裂，避免出现规整的矩形板子
       const segs = Math.max(2, Math.round(p.w / 64));
@@ -214,7 +218,10 @@
   };
 
   UI.drawGoal = function (ctx, game) {
-    const gx = game.level.goal.x, gy = game.level.goal.y;
+    const lv = game.level;
+    // 有首领的关卡：终点是一座"出关山门"（首领伏诛后开启），不再插旗子
+    if (lv && lv.hasBoss) { UI.drawGate(ctx, game); return; }
+    const gx = lv.goal.x, gy = lv.goal.y;
     ctx.strokeStyle = '#e8e2d0'; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.moveTo(gx, gy); ctx.lineTo(gx, gy - 84); ctx.stroke();
     // 旗面（飘动）
@@ -228,6 +235,219 @@
     ctx.fillStyle = '#c0392b'; ctx.fill();
     ctx.strokeStyle = '#ffd479'; ctx.lineWidth = 1.5; ctx.stroke();
     ctx.fillStyle = '#ffe9a8'; ctx.font = 'bold 14px serif'; ctx.fillText('终', gx + 14, gy - 56);
+  };
+
+  // ===== 出关山门（石坊）：首领在时封印，伏诛后金光洞开 =====
+  UI.drawGate = function (ctx, game) {
+    const gx = game.level.goal.x, gy = game.level.goal.y;
+    const now = game.now;
+    const open = !!game.exitOpen;
+    const near = !!game.exitNear;
+    const groundY = gy + 62;                      // 台基落地（主平台面 500）
+    const stone = '#3a3226', stoneHi = '#57492e', stoneDk = '#241d14';
+
+    ctx.save();
+    // —— 开启态：门内先铺一层暖光 ——
+    if (open) {
+      const halo = ctx.createRadialGradient(gx, groundY - 66, 8, gx, groundY - 66, 120);
+      if (halo && halo.addColorStop) {
+        halo.addColorStop(0, 'rgba(255,224,150,0.5)');
+        halo.addColorStop(0.55, 'rgba(255,200,110,0.18)');
+        halo.addColorStop(1, 'rgba(255,190,90,0)');
+        ctx.fillStyle = halo;
+        ctx.fillRect(gx - 124, groundY - 190, 248, 200);
+      }
+      const gl = ctx.createLinearGradient(0, groundY - 4, 0, groundY - 108);
+      if (gl && gl.addColorStop) {
+        gl.addColorStop(0, 'rgba(255,240,190,0.95)');
+        gl.addColorStop(0.6, 'rgba(255,216,124,0.6)');
+        gl.addColorStop(1, 'rgba(255,206,100,0.25)');
+        ctx.fillStyle = gl;
+        ctx.fillRect(gx - 27, groundY - 4, 54, 104);
+      } else {
+        ctx.fillStyle = 'rgba(255,224,150,0.7)';
+        ctx.fillRect(gx - 27, groundY - 4, 54, 104);
+      }
+      // 门内上浮的金屑
+      for (let i = 0; i < 8; i++) {
+        const ph = ((now / 14) + i * 67) % 118;
+        const px = gx + Math.sin(i * 2.1 + now / 460) * 17;
+        const a = Math.max(0, 0.85 - ph / 130);
+        if (a <= 0.02) continue;
+        ctx.globalAlpha = a;
+        ctx.fillStyle = i % 3 ? '#ffe9a8' : '#fff6d8';
+        ctx.fillRect(px, groundY - 8 - ph, 2.2, 2.2);
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // —— 台基（两级）——
+    ctx.fillStyle = stoneDk;
+    ctx.fillRect(gx - 60, groundY - 6, 120, 8);
+    ctx.fillStyle = stone;
+    ctx.fillRect(gx - 52, groundY - 12, 104, 6);
+    ctx.fillStyle = stoneHi;
+    ctx.fillRect(gx - 52, groundY - 12, 104, 1.6);
+
+    // —— 门洞（封印 = 一块封石 + 符箓；开启 = 留空透金光）——
+    if (!open) {
+      ctx.fillStyle = '#1d1710';
+      ctx.fillRect(gx - 27, groundY - 108, 54, 98);
+      // 封石砖缝
+      ctx.strokeStyle = 'rgba(90,74,48,0.5)'; ctx.lineWidth = 1;
+      for (let i = 1; i < 5; i++) {
+        const yy = groundY - 108 + i * 19;
+        ctx.beginPath(); ctx.moveTo(gx - 27, yy); ctx.lineTo(gx + 27, yy); ctx.stroke();
+      }
+      for (let i = 0; i < 3; i++) {
+        const xx = gx - 13 + i * 18;
+        ctx.beginPath(); ctx.moveTo(xx, groundY - 108); ctx.lineTo(xx, groundY - 10); ctx.stroke();
+      }
+      // 镇门符箓
+      const ty = groundY - 96 + Math.sin(now / 620) * 1.5;
+      ctx.fillStyle = '#e8d5a8';
+      ctx.fillRect(gx - 8, ty, 16, 58);
+      ctx.strokeStyle = '#b03a3a'; ctx.lineWidth = 1.2;
+      ctx.strokeRect(gx - 8, ty, 16, 58);
+      ctx.beginPath();
+      ctx.moveTo(gx - 4, ty + 8); ctx.lineTo(gx + 4, ty + 14); ctx.lineTo(gx - 4, ty + 20);
+      ctx.moveTo(gx - 4, ty + 28); ctx.lineTo(gx + 4, ty + 34); ctx.lineTo(gx - 4, ty + 40);
+      ctx.stroke();
+    }
+
+    // —— 立柱（带柱头）——
+    for (const sx of [-1, 1]) {
+      ctx.fillStyle = stone;
+      ctx.fillRect(gx + sx * 28 - 5, groundY - 116, 10, 106);
+      ctx.fillStyle = stoneHi;
+      ctx.fillRect(gx + sx * 28 - 5, groundY - 116, 2, 106);
+      ctx.fillStyle = stoneDk;
+      ctx.fillRect(gx + sx * 28 + 3, groundY - 116, 2, 106);
+      // 柱头
+      ctx.fillStyle = stone;
+      ctx.fillRect(gx + sx * 28 - 8, groundY - 124, 16, 9);
+      ctx.fillStyle = stoneHi;
+      ctx.fillRect(gx + sx * 28 - 8, groundY - 124, 16, 1.6);
+    }
+
+    // —— 额枋 + 檐顶（小飞檐）——
+    ctx.fillStyle = stone;
+    ctx.fillRect(gx - 50, groundY - 140, 100, 15);
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(gx - 50, groundY - 129, 100, 3);
+    ctx.fillStyle = stoneHi;
+    ctx.fillRect(gx - 50, groundY - 140, 100, 1.6);
+    // 檐顶：反宇屋面
+    ctx.fillStyle = '#2b2117';
+    ctx.beginPath();
+    ctx.moveTo(gx - 62, groundY - 140);
+    ctx.quadraticCurveTo(gx, groundY - 166, gx + 62, groundY - 140);
+    ctx.lineTo(gx + 50, groundY - 140);
+    ctx.quadraticCurveTo(gx, groundY - 156, gx - 50, groundY - 140);
+    ctx.closePath(); ctx.fill();
+    // 正脊金线 + 鸱吻
+    ctx.strokeStyle = open ? 'rgba(255,212,121,0.85)' : 'rgba(217,164,65,0.45)';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(gx - 46, groundY - 156);
+    ctx.quadraticCurveTo(gx, groundY - 165, gx + 46, groundY - 156);
+    ctx.stroke();
+
+    // —— 匾额：出关 ——
+    ctx.fillStyle = open ? '#57331c' : '#432416';
+    ctx.fillRect(gx - 21, groundY - 137, 42, 12);
+    ctx.strokeStyle = open ? '#ffd479' : 'rgba(217,164,65,0.6)';
+    ctx.lineWidth = 1.2;
+    ctx.strokeRect(gx - 21, groundY - 137, 42, 12);
+    ctx.fillStyle = open ? '#ffe9a8' : '#b99d6a';
+    ctx.font = kfont(11, 'bold');
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('出 关', gx, groundY - 130.6);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+
+    // —— 开启态：门脚法阵（两圈金环 + 旋转刻度）——
+    if (open && ctx.ellipse) {
+      const rot = now / 640;
+      ctx.save();
+      // 先垫一圈淡金填充，细线在 540p 下才立得住
+      ctx.fillStyle = 'rgba(255,206,110,0.16)';
+      ctx.beginPath(); ctx.ellipse(gx, groundY - 2, 62, 12, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,212,121,0.9)'; ctx.lineWidth = 2.6;
+      ctx.beginPath(); ctx.ellipse(gx, groundY - 2, 62, 12, 0, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,236,170,0.65)'; ctx.lineWidth = 1.8;
+      ctx.beginPath(); ctx.ellipse(gx, groundY - 2, 40, 7.4, 0, 0, Math.PI * 2); ctx.stroke();
+      // 转动的刻度齿
+      ctx.strokeStyle = 'rgba(255,224,150,0.95)'; ctx.lineWidth = 2;
+      for (let i = 0; i < 10; i++) {
+        const a = rot + (i / 10) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.moveTo(gx + Math.cos(a) * 62, groundY - 2 + Math.sin(a) * 12);
+        ctx.lineTo(gx + Math.cos(a) * 53, groundY - 2 + Math.sin(a) * 10);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // —— 封印态整体压暗，跟开启态拉开"死/活"的差别 ——
+    if (!open) {
+      ctx.fillStyle = 'rgba(6,5,3,0.34)';
+      ctx.fillRect(gx - 62, groundY - 166, 124, 168);
+    }
+
+    // —— 站在门口：浮动提示 ——
+    if (near) {
+      const bob = Math.sin(now / 240) * 3.2;
+      const a = 0.72 + 0.28 * Math.sin(now / 200);
+      ctx.save();
+      ctx.globalAlpha = a;
+      ctx.font = kfont(17, 'bold');
+      ctx.textAlign = 'center';
+      ctx.strokeStyle = 'rgba(20,12,4,0.9)'; ctx.lineWidth = 3.4;
+      ctx.strokeText('空格 · 出关', gx, groundY - 186 + bob);
+      ctx.fillStyle = '#ffe9a8';
+      ctx.fillText('空格 · 出关', gx, groundY - 186 + bob);
+      ctx.restore();
+      ctx.textAlign = 'left';
+    }
+    ctx.restore();
+  };
+
+  // 出关指引：山门不在屏内时，屏幕边缘给一枚金色箭头（屏内就不打扰）
+  UI.drawExitHint = function (ctx, game) {
+    if (!game.exitOpen || !game.level || !game.player) return;
+    const gx = game.level.goal.x;
+    const camL = game.cam.x, camR = game.cam.x + W;
+    if (gx >= camL + 70 && gx <= camR - 70) return;
+    const dir = gx > camR ? 1 : -1;
+    const x = dir > 0 ? W - 44 : 44;
+    const y = 250 + Math.sin(game.now / 320) * 6;
+    const pulse = 0.7 + 0.3 * Math.sin(game.now / 240);
+    ctx.save();
+    ctx.globalAlpha = pulse;
+    // 箭头
+    ctx.fillStyle = '#ffd479';
+    ctx.strokeStyle = 'rgba(24,14,4,0.85)'; ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x + dir * 15, y);
+    ctx.lineTo(x - dir * 7, y - 12);
+    ctx.lineTo(x - dir * 7, y - 4.5);
+    ctx.lineTo(x - dir * 20, y - 4.5);
+    ctx.lineTo(x - dir * 20, y + 4.5);
+    ctx.lineTo(x - dir * 7, y + 4.5);
+    ctx.lineTo(x - dir * 7, y + 12);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    // 字
+    ctx.globalAlpha = Math.min(1, pulse + 0.15);
+    ctx.font = kfont(15, 'bold');
+    ctx.textAlign = dir > 0 ? 'right' : 'left';
+    ctx.strokeStyle = 'rgba(24,14,4,0.9)'; ctx.lineWidth = 3;
+    const tx = x - dir * 28, ty = y + 30;
+    ctx.strokeText('出关', tx, ty);
+    ctx.fillStyle = '#ffe9a8';
+    ctx.fillText('出关', tx, ty);
+    ctx.restore();
+    ctx.textAlign = 'left';
   };
 
   // 出招预警：地面上画出「这一下够得着的范围」，再用一段扫过来的亮扇形表示蓄力进度
@@ -460,7 +680,23 @@
     // 头像
     ctx.save();
     rrect(ctx, x, y, size, size, 12); ctx.clip();
+    // 角色主题色光环（底部往上的柔光，头像有"阵营色"）
+    const A = (Art().ART && Art().ART[pl.char.id]) || {};
+    const halo = ctx.createRadialGradient(x + size / 2, y + size * 0.78, 4, x + size / 2, y + size * 0.78, size * 0.72);
+    if (halo && halo.addColorStop) {
+      halo.addColorStop(0, (A.cape || A.armor || '#c9a24a') + '55');
+      halo.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = halo;
+      ctx.fillRect(x, y, size, size);
+    }
     Art().drawFace(ctx, x + size / 2, y + 57, 23, pl.char.id, { t: game.now, mood: 'calm' });
+    // 低血量警示：30% 以下整框泛红脉冲
+    const hpR = pl.hp / pl.maxHp;
+    if (hpR < 0.3) {
+      const pulse = 0.14 + 0.12 * Math.sin(game.now / 180);
+      ctx.fillStyle = 'rgba(200,40,20,' + pulse.toFixed(3) + ')';
+      ctx.fillRect(x, y, size, size);
+    }
     ctx.restore();
     // 等级徽标
     const bw = 34, bh = 18;
@@ -1207,12 +1443,84 @@
     center(ctx, 'Esc 回关卡选择', 510, '12.5px "PingFang SC", sans-serif', 'rgba(150,162,182,0.85)');
   };
 
-  UI.drawPause = function (ctx) {
-    ctx.fillStyle = 'rgba(0,0,0,0.62)'; ctx.fillRect(0, 0, W, H);
-    center(ctx, '暂停', 230, 'bold 44px serif', '#ffd479');
-    center(ctx, 'P 继续', 296, '18px "PingFang SC", sans-serif', '#fff');
-    center(ctx, 'R 放弃本关回到关卡选择', 332, '14px "PingFang SC", sans-serif', '#a89a7d');
-    center(ctx, 'M 关掉 / 打开音乐与音效', 358, '14px "PingFang SC", sans-serif', '#a89a7d');
+  // ===== 暂停菜单：继续 / 重玩本关 / 回选关 / 回主界面 =====
+  UI.PAUSE_L = { x: 300, y: 172, w: 360, h: 54, gap: 9 };
+  UI.pauseOptionAt = function (px, py, n) {
+    const L = UI.PAUSE_L;
+    if (!(px >= L.x && px <= L.x + L.w)) return -1;
+    const count = Math.max(0, n | 0);
+    for (let i = 0; i < count; i++) {
+      const y = L.y + i * (L.h + L.gap);
+      if (py >= y && py <= y + L.h) return i;
+    }
+    return -1;
+  };
+
+  UI.drawPause = function (ctx, game) {
+    ctx.fillStyle = 'rgba(8,6,4,0.68)'; ctx.fillRect(0, 0, W, H);
+    // 标题 + 金线
+    ctx.fillStyle = '#ffd479'; ctx.font = kfont(40, 'bold'); ctx.textAlign = 'center';
+    ctx.fillText('暂 停', W / 2, 116);
+    const lg = ctx.createLinearGradient(W / 2 - 150, 0, W / 2 + 150, 0);
+    lg.addColorStop(0, 'rgba(255,212,121,0)');
+    lg.addColorStop(0.5, 'rgba(255,212,121,0.8)');
+    lg.addColorStop(1, 'rgba(255,212,121,0)');
+    ctx.fillStyle = lg;
+    ctx.fillRect(W / 2 - 150, 132, 300, 1.6);
+    ctx.textAlign = 'left';
+
+    const opts = game.pauseOptions ? game.pauseOptions() : [{ name: '继续战斗', key: 'Enter' }];
+    const cur = Math.max(0, Math.min(opts.length - 1, game.pauseIndex || 0));
+    const L = UI.PAUSE_L;
+    for (let i = 0; i < opts.length; i++) {
+      const y = L.y + i * (L.h + L.gap);
+      const on = i === cur;
+      // 行底板（选中行铺一层暖金）
+      rrect(ctx, L.x, y, L.w, L.h, 9);
+      ctx.fillStyle = on ? 'rgba(255,212,121,0.15)' : 'rgba(22,17,10,0.86)';
+      ctx.fill();
+      ctx.strokeStyle = on ? 'rgba(255,212,121,0.85)' : 'rgba(217,164,65,0.32)';
+      ctx.lineWidth = on ? 1.6 : 1;
+      ctx.stroke();
+      if (on) {
+        // 左侧指示金条（呼吸）
+        const a = 0.7 + 0.3 * Math.sin(game.uiTime / 240);
+        ctx.globalAlpha = a;
+        ctx.fillStyle = '#ffd479';
+        rrect(ctx, L.x + 7, y + 12, 3.4, L.h - 24, 1.7); ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+      // 名称 + 说明
+      ctx.fillStyle = on ? '#ffe9a8' : '#d9cba8';
+      ctx.font = kfont(19, on ? 'bold' : '');
+      ctx.fillText(opts[i].name, L.x + 24, y + 25);
+      ctx.fillStyle = 'rgba(169,152,116,0.9)';
+      ctx.font = '11.5px "PingFang SC", sans-serif';
+      ctx.fillText(opts[i].note || '', L.x + 24, y + 42);
+      // 快捷键角标
+      if (opts[i].key) {
+        const kb = { w: 26, h: 20 };
+        rrect(ctx, L.x + L.w - kb.w - 10, y + (L.h - kb.h) / 2, kb.w, kb.h, 5);
+        ctx.fillStyle = on ? 'rgba(255,212,121,0.2)' : 'rgba(255,212,121,0.08)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(217,164,65,0.45)'; ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.fillStyle = on ? '#ffe9a8' : '#b99d6a';
+        ctx.font = 'bold 11px "PingFang SC", sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(opts[i].key, L.x + L.w - 10 - kb.w / 2, y + L.h / 2 + 0.5);
+        ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+      }
+    }
+    // 页脚提示
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(169,152,116,0.85)';
+    ctx.font = '12.5px "PingFang SC", sans-serif';
+    ctx.fillText('↑↓ 选择 · Enter 确认 · P / Esc 直接继续 · M 音乐开关', W / 2, 448);
+    ctx.fillStyle = 'rgba(125,108,78,0.8)';
+    ctx.font = '11.5px "PingFang SC", sans-serif';
+    ctx.fillText('B 背包 · G 商店 · L 锻造 · H 参悟（继续后按）', W / 2, 470);
+    ctx.textAlign = 'left';
   };
 
   UI.drawGameOver = function (ctx) {
