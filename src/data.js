@@ -132,27 +132,142 @@
   XY.SKILL_MAX_LV = 5;
   XY.SKILL_JADE_COST = [60, 140, 300, 620]; // 升到 2/3/4/5 级所需仙玉
 
-  // ===== 技能（每位 ≥3）=====
+  // ===== 印记：一招在身上留痕，另一招再把它引出来 =====
+  // 所有技能都围绕这一层做组合，不再各打各的。
+  //   who  —— 只有这个角色的后续伤害吃加成（'any' 表示谁都吃）
+  //   per  —— 每层加成
+  //   max  —— 叠加上限（八戒「饱食」会把耙痕上限顶到 5）
+  XY.MARKS = {
+    bopen: { key: 'bopen', name: '破绽', color: '#ff8a5e', max: 3, dur: 10000, per: 0.09, who: 'any', hint: '受击伤害 +9%/层（火眼照出的罩门）' },
+    pahen: { key: 'pahen', name: '耙痕', color: '#ffb648', max: 3, dur: 8000, per: 0.07, who: 'bajie', hint: '受钉耙伤害 +7%/层' },
+    liusha: { key: 'liusha', name: '陷沙', color: '#d9bd8a', max: 1, dur: 1600, per: 0, who: 'shaseng', hint: '脚陷流沙：减速、被锁链一绊就定住' },
+    jingu: { key: 'jingu', name: '紧箍', color: '#ffd479', max: 5, dur: 10000, per: 0.12, who: 'tangseng', hint: '受唐僧伤害 +12%/层（念一次紧一分）' },
+    shuihen: { key: 'shuihen', name: '水痕', color: '#9be7ff', max: 1, dur: 8000, per: 0.3, who: 'bailongma', hint: '龙息伤害 +30%，被龙身一撞就冻住' },
+  };
+
+  // ===== 技能（每位 3 个）=====
+  // 每个角色一套「施加印记 → 引动印记」的闭环，字段：
+  //   apply    打中时挂什么印记（印记 key）
+  //   applyN   挂几层
+  //   use      引动哪种印记（打完清空）
+  //   perStack 引动时每层额外伤害（相对本次攻击力）
+  //   link     给界面看的一句话联动说明
   XY.SKILLS = {
-    wk_smash: { id: 'wk_smash', name: '如意棒击', characterId: 'wukong', kind: 'melee', anim: 'giantChop', cast: 640, strike: 0.66, multiplier: 1.55, cooldown: 1300, cost: 16, range: 168, description: '金箍棒骤然暴涨十丈，自天而降一记重劈。' },
-    wk_dash: { id: 'wk_dash', name: '筋斗云突', characterId: 'wukong', kind: 'dash', anim: 'cloudDash', cast: 380, strike: 0.14, multiplier: 0.85, cooldown: 1500, cost: 22, range: 320, dashMul: 3.9, dashMs: 340, cloud: true, description: '踏筋斗云疾突，祥云缠身，一撞丈外。' },
-    wk_spin: { id: 'wk_spin', name: '定海神针', characterId: 'wukong', kind: 'aoe', anim: 'throw', cast: 520, strike: 0.5, multiplier: 1.45, cooldown: 3800, cost: 46, range: 0, radius: 132, description: '掷出金箍棒，棒身空中急旋，插入大地激起冲击波。' },
+    // —— 孙悟空：破绽 ——（火眼照出罩门，一棒打进去）
+    wk_smash: {
+      id: 'wk_smash', name: '如意棒击', characterId: 'wukong', kind: 'melee', anim: 'giantChop',
+      cast: 640, strike: 0.66, multiplier: 1.25, cooldown: 1300, cost: 16, range: 168,
+      apply: 'bopen', applyN: 1, use: 'bopen', perStack: 0.5,
+      description: '金箍棒骤然暴涨十丈，自天而降一记重劈。没留下破绽的敌人，这一棒只照出一道；照出过的，一棒全打回去。',
+      link: '打空 → 记破绽 1 层；已有破绽 → 清空并每层 +50% 伤害',
+    },
+    wk_dash: {
+      id: 'wk_dash', name: '筋斗云突', characterId: 'wukong', kind: 'dash', anim: 'cloudDash',
+      cast: 380, strike: 0.14, multiplier: 0.8, cooldown: 1500, cost: 22, range: 320,
+      dashMul: 3.9, dashMs: 340, cloud: true,
+      use: 'bopen', bonusVs: 0.9, stunVs: 900,
+      description: '踏筋斗云疾突，云里翻身，一撞丈外。撞上的若是照出罩门的妖，这一下直取要害。',
+      link: '撞带破绽的敌人：伤害 +90% 并震住 0.9 秒',
+    },
+    wk_spin: {
+      id: 'wk_spin', name: '定海神针', characterId: 'wukong', kind: 'aoe', anim: 'throw',
+      cast: 520, strike: 0.5, multiplier: 1.3, cooldown: 3800, cost: 46, range: 0, radius: 132,
+      zone: 'needle', zoneDur: 6000, use: 'bopen', perStack: 0.4,
+      description: '掷出金箍棒，棒身空中急旋，插入大地激起冲击波，并钉在原地六息——针在，妖气就藏不住。',
+      link: '神针留场，持续照出破绽；落地冲击再引动一次破绽',
+    },
 
-    bj_rake: { id: 'bj_rake', name: '九齿钉耙', characterId: 'bajie', kind: 'melee', anim: 'rakeDown', cast: 460, strike: 0.52, multiplier: 1.4, cooldown: 650, cost: 10, range: 80, description: '钉耙前捣，势大力沉。' },
-    bj_counter: { id: 'bj_counter', name: '倒打一耙', characterId: 'bajie', kind: 'dash', anim: 'counterDash', cast: 380, strike: 0.22, multiplier: 0.9, cooldown: 1500, cost: 20, range: 200, description: '回身突进，耙击退敌。' },
-    bj_eat: { id: 'bj_eat', name: '贪吃回元', characterId: 'bajie', kind: 'heal', anim: 'eat', cast: 700, strike: 0.62, multiplier: 0, cooldown: 6000, cost: 0, range: 0, healPct: 0.3, description: '吞下灵食，回复气血。' },
+    // —— 猪八戒：耙痕 ——（一耙一道印，攒够了回身一耙掀翻）
+    bj_rake: {
+      id: 'bj_rake', name: '九齿钉耙', characterId: 'bajie', kind: 'melee', anim: 'rakeDown',
+      cast: 520, strike: 0.42, multiplier: 0.62, hits: 3, hitGap: 150, cooldown: 760, cost: 12, range: 84,
+      apply: 'pahen', applyN: 1,
+      description: '钉耙连筑三下，一下一道印子。嘴里嚼着东西的时候，手更稳，印子也扎得更深。',
+      link: '三段各留 1 层耙痕（饱食时每段 2 层，上限 5）',
+    },
+    bj_counter: {
+      id: 'bj_counter', name: '倒打一耙', characterId: 'bajie', kind: 'dash', anim: 'counterDash',
+      cast: 380, strike: 0.22, multiplier: 0.85, cooldown: 1500, cost: 20, range: 200,
+      dashMul: 3.1, dashMs: 260, use: 'pahen', perStack: 0.7, knockAt: 3,
+      description: '回身一耙，把攒下的印子一笔算清。印子够深的时候，这一耙能把妖掀出去。',
+      link: '清空耙痕：每层 +70% 伤害；3 层以上额外击退',
+    },
+    bj_eat: {
+      id: 'bj_eat', name: '贪吃回元', characterId: 'bajie', kind: 'heal', anim: 'eat',
+      cast: 700, strike: 0.62, multiplier: 0, cooldown: 6000, cost: 0, range: 0, healPct: 0.3,
+      satiated: 8000,
+      description: '吞下灵食，回一口气。肚子饱了，耙子也抡得开了——只是别在妖嘴边吃。',
+      link: '8 秒「饱食」：攻击 +25%，耙痕上限 3 → 5',
+    },
 
-    ts_zeal: { id: 'ts_zeal', name: '紧箍真言', characterId: 'tangseng', kind: 'ranged', anim: 'finger', cast: 400, strike: 0.46, multiplier: 0.6, cooldown: 1100, cost: 14, range: 320, description: '真言遥击，克制妖邪。' },
-    ts_sutra: { id: 'ts_sutra', name: '大乘真经', characterId: 'tangseng', kind: 'buff', anim: 'chant', cast: 760, strike: 0.56, multiplier: 0, cooldown: 8000, cost: 30, range: 0, description: '诵经增益，攻速与攻击提升。' },
-    ts_kasaya: { id: 'ts_kasaya', name: '袈裟护体', characterId: 'tangseng', kind: 'buff', anim: 'kasaya', cast: 620, strike: 0.52, multiplier: 0, cooldown: 6000, cost: 20, range: 0, description: '金襕袈裟护身，防御大增。' },
+    // —— 唐僧：紧箍 ——（念一次紧一分，念到第五分就该收经了）
+    ts_zeal: {
+      id: 'ts_zeal', name: '紧箍真言', characterId: 'tangseng', kind: 'ranged', anim: 'finger',
+      cast: 400, strike: 0.46, multiplier: 0.55, cooldown: 1100, cost: 14, range: 320,
+      apply: 'jingu', applyN: 1,
+      description: '真言遥击，字字箍在妖头上。念得越多，妖越受不住后头的经。',
+      link: '命中 +1 层紧箍（上限 5）',
+    },
+    ts_sutra: {
+      id: 'ts_sutra', name: '大乘真经', characterId: 'tangseng', kind: 'buff', anim: 'chant',
+      cast: 760, strike: 0.56, multiplier: 1.2, cooldown: 7000, cost: 30, range: 0,
+      use: 'jingu', perStack: 0.75, healOnCast: 0.08, radius: 240,
+      description: '诵完一篇真经，满场经文炸开。头上箍得越紧的妖，这一篇听得越疼。',
+      link: '引爆全场紧箍：每层一次经文伤害，自身回 8% 气血',
+    },
+    ts_kasaya: {
+      id: 'ts_kasaya', name: '袈裟护体', characterId: 'tangseng', kind: 'buff', anim: 'kasaya',
+      cast: 620, strike: 0.52, multiplier: 0, cooldown: 6000, cost: 20, range: 0,
+      shield: 6000, reflect: 0.45, reflectMark: 'jingu',
+      description: '金襕袈裟罩身，刀兵难近。谁碰一下，佛光就替他把这道真言记在账上。',
+      link: '6 秒护体：减伤 50%，受击反弹 45% 并给攻击者 +1 层紧箍',
+    },
 
-    ss_staff: { id: 'ss_staff', name: '降妖宝杖', characterId: 'shaseng', kind: 'melee', anim: 'staffSlam', cast: 480, strike: 0.54, multiplier: 1.45, cooldown: 600, cost: 10, range: 82, description: '宝杖砸落，稳如泰山。' },
-    ss_quicksand: { id: 'ss_quicksand', name: '流沙卷', characterId: 'shaseng', kind: 'aoe', anim: 'sandSwirl', cast: 620, strike: 0.58, multiplier: 1.15, cooldown: 2800, cost: 35, range: 0, radius: 135, description: '卷起流沙，绞杀四周。' },
-    ss_bind: { id: 'ss_bind', name: '降妖缚', characterId: 'shaseng', kind: 'ranged', anim: 'bindCast', cast: 420, strike: 0.48, multiplier: 1.0, cooldown: 1400, cost: 18, range: 300, description: '抛出缚妖索，遥击敌人。' },
+    // —— 沙僧：流沙 ——（先把地铺软，再让妖陷进去）
+    ss_staff: {
+      id: 'ss_staff', name: '降妖宝杖', characterId: 'shaseng', kind: 'melee', anim: 'staffSlam',
+      cast: 480, strike: 0.54, multiplier: 1.35, cooldown: 620, cost: 10, range: 82,
+      zone: 'sand', zoneDur: 7000, zoneRadius: 96,
+      description: '宝杖砸落，稳如泰山，把脚下砸成一片流沙。沙不深，够妖陷半只脚。',
+      link: '落点留下流沙 7 秒：范围减速 40%、持续磨血',
+    },
+    ss_quicksand: {
+      id: 'ss_quicksand', name: '流沙卷', characterId: 'shaseng', kind: 'aoe', anim: 'sandSwirl',
+      cast: 620, strike: 0.58, multiplier: 0.95, cooldown: 2800, cost: 35, range: 0, radius: 135,
+      use: 'liusha', bonusVs: 1.0, pull: 1,
+      description: '卷起流沙，把四周连沙带妖一起绞进去。陷在沙里的，被卷得最狠。',
+      link: '陷沙的敌人：伤害翻倍并被吸向漩涡中心',
+    },
+    ss_bind: {
+      id: 'ss_bind', name: '降妖缚', characterId: 'shaseng', kind: 'ranged', anim: 'bindCast',
+      cast: 420, strike: 0.48, multiplier: 0.95, cooldown: 1400, cost: 18, range: 300,
+      apply: 'liusha', applyN: 1, rootVs: 'liusha', rootMs: 1800,
+      description: '抛出缚妖索。妖若正陷在沙里，索一收，连人带沙一起钉住。',
+      link: '命中陷沙的敌人：定身 1.8 秒；否则补一层陷沙',
+    },
 
-    bl_tail: { id: 'bl_tail', name: '龙尾扫', characterId: 'bailongma', kind: 'aoe', anim: 'tailSweep', cast: 480, strike: 0.52, multiplier: 1.2, cooldown: 800, cost: 12, range: 0, radius: 95, description: '龙尾横扫身周。' },
-    bl_charge: { id: 'bl_charge', name: '化龙击', characterId: 'bailongma', kind: 'dash', anim: 'dragonDash', cast: 380, strike: 0.18, multiplier: 0.95, cooldown: 1500, cost: 22, range: 240, description: '化龙疾冲，撞飞来敌。' },
-    bl_breath: { id: 'bl_breath', name: '龙息', characterId: 'bailongma', kind: 'aoe', anim: 'breath', cast: 780, strike: 0.62, multiplier: 1.15, cooldown: 2600, cost: 35, range: 260, radius: 120, description: '喷吐龙息，焚敌一片。' },
+    // —— 白龙马：水痕 ——（一身水汽，遇寒成冰）
+    bl_tail: {
+      id: 'bl_tail', name: '龙尾扫', characterId: 'bailongma', kind: 'aoe', anim: 'tailSweep',
+      cast: 480, strike: 0.52, multiplier: 1.1, cooldown: 800, cost: 12, range: 0, radius: 95,
+      apply: 'shuihen', applyN: 1,
+      description: '龙尾横扫身周，甩出一身水汽，把妖浇透。',
+      link: '命中挂「水痕」8 秒：受龙息伤害 +30%',
+    },
+    bl_charge: {
+      id: 'bl_charge', name: '化龙击', characterId: 'bailongma', kind: 'dash', anim: 'dragonDash',
+      cast: 380, strike: 0.18, multiplier: 0.9, cooldown: 1500, cost: 22, range: 240,
+      dashMul: 3.4, dashMs: 280, rootVs: 'shuihen', rootMs: 1500, bonusVs: 0.5,
+      description: '化龙疾冲。撞上的妖若还带着水，龙身一过，水就成了冰。',
+      link: '撞带水痕的敌人：伤害 +50% 并冻住 1.5 秒',
+    },
+    bl_breath: {
+      id: 'bl_breath', name: '龙息', characterId: 'bailongma', kind: 'aoe', anim: 'breath',
+      cast: 780, strike: 0.62, multiplier: 1.0, cooldown: 2600, cost: 35, range: 260, radius: 120,
+      use: 'shuihen', bonusVs: 0.6, shatter: 2,
+      description: '喷吐西海寒息。湿透的妖会被冻得更透，冻住的妖被这一口气吹碎。',
+      link: '带水痕 +60% 伤害；已冻住的 ×2 并碎冰',
+    },
   };
   XY.getSkill = (id) => XY.SKILLS[id];
   XY.skillsOf = (cid) => Object.values(XY.SKILLS).filter((s) => s.characterId === cid);

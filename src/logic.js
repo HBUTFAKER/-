@@ -139,6 +139,52 @@
     return out;
   };
 
+  // ===== 印记：叠层 / 过期 / 增伤 =====
+  // 印记挂在敌人身上（e.marks = { bopen: { n, until } }），三个函数都只读不写，
+  // 加层走 addMark 返回新对象，方便测试也避免"某处漏清过期层"。
+  XY.markStacks = function (marks, key, now) {
+    const m = marks && marks[key];
+    if (!m || !(m.n > 0)) return 0;
+    if (m.until !== undefined && m.until <= now) return 0;
+    return m.n;
+  };
+
+  // 某个来源的伤害能吃到多少加成（0.18 = +18%）
+  XY.markBonus = function (marks, src, now) {
+    const table = XY.MARKS || {};
+    if (!marks || !src) return 0;
+    let bonus = 0;
+    for (const key in marks) {
+      const n = XY.markStacks(marks, key, now);
+      if (!n) continue;
+      const def = table[key];
+      if (!def || !def.per) continue;
+      if (def.who !== 'any' && def.who !== src) continue;
+      bonus += def.per * n;
+    }
+    return bonus;
+  };
+
+  // 加层：上限由 MARKS.max 定（八戒饱食会把这个上限顶高），返回新的 marks
+  XY.addMark = function (marks, key, n, now, maxOverride) {
+    const def = (XY.MARKS || {})[key];
+    if (!def) return marks;
+    const out = Object.assign({}, marks || {});
+    const cap = Math.max(1, maxOverride || def.max || 1);
+    const cur = out[key] && out[key].until > now ? out[key].n : 0;
+    out[key] = { n: Math.min(cap, cur + (n === undefined ? 1 : n)), until: now + (def.dur || 8000) };
+    return out;
+  };
+
+  // 引动（消耗）印记：返回 { marks, n }
+  XY.useMark = function (marks, key, now) {
+    const n = XY.markStacks(marks, key, now);
+    if (!n) return { marks, n: 0 };
+    const out = Object.assign({}, marks || {});
+    delete out[key];
+    return { marks: out, n };
+  };
+
   // 技能升到下一级所需仙玉；满级返回 null
   XY.skillUpCost = function (lv) {
     const L = Math.max(1, Math.floor(Number(lv) || 1));

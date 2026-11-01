@@ -603,10 +603,23 @@ test.it('定海神针：掷棒空中旋转，插地后产生冲击波并结算�
   assert.strictEqual(g.specials[0].state, 'stuck', '应插进地面');
   assert.ok(e.hp < hp0, '冲击波应造成伤害');
   assert.ok(Number.isFinite(e.hp), '血量必须有限');
+  // 神针留场：地面多一块持续挂破绽的区域，棒子跟着它一起留着
+  assert.strictEqual(g.zones.length, 1, '落地应留下一根定海神针');
+  assert.strictEqual(g.zones[0].kind, 'needle');
+  assert.ok(g.zones[0].until > g.now + 3000, '神针应留够时间，不能一瞬间就散');
 
-  // 一段时间后自行消散
-  for (let i = 0; i < 130; i++) { g.now += 16; g.update(0.016); }
+  // 留在场上的神针会持续照出破绽（这才是下一棒打爆发的引子）
+  let marked = false;
+  for (let i = 0; i < 120 && !marked; i++) {
+    g.now += 16; g.update(0.016);
+    marked = XY.markStacks(e.marks, 'bopen', g.now) > 0;
+  }
+  assert.ok(marked, '站在神针旁边的妖应被照出破绽');
+
+  // 时间到了连同棒子一起消散
+  for (let i = 0; i < 420; i++) { g.now += 16; g.update(0.016); }
   assert.strictEqual(g.specials.length, 0, '插地的棒子应自行消失');
+  assert.strictEqual(g.zones.length, 0, '神针法阵应自行消失');
 });
 
 test.it('三段普攻与盔甲盔缨：任意进度都能安全绘制', () => {

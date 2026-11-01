@@ -1725,7 +1725,10 @@
     ctx.translate(s.x, s.y);
     if (s.state === 'stuck') {
       const age = Math.max(0, (now - (s.landAt || now)) / 1000);
-      const a = fade * (age > 0.8 ? Math.max(0, 1 - (age - 0.8) / 0.3) : 1);
+      // 定海神针留场时（stickUntil）不提前淡出，跟着区域一起消失
+      const keep = s.stickUntil ? Math.max(0, Math.min(1, (s.stickUntil - now) / 350))
+        : (age > 0.8 ? Math.max(0, 1 - (age - 0.8) / 0.3) : 1);
+      const a = fade * keep;
       if (a <= 0.01) { ctx.restore(); return; }
       // 砸出来的坑 + 几块碎石（不做放射状裂纹，免得读成"钟面"）
       ctx.fillStyle = 'rgba(0,0,0,0.38)';

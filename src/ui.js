@@ -563,10 +563,123 @@
     ctx.restore();
   };
 
+  // 留在地上的招式区域：流沙池 / 钉在地上的定海神针
+  UI.drawZones = function (ctx, game) {
+    if (!game.zones || !game.zones.length) return;
+    const now = game.now;
+    for (const z of game.zones) {
+      const left = Math.max(0, Math.min(1, (z.until - now) / 520));
+      const age = Math.max(0, Math.min(1, (now - (z.bornAt || now)) / 260));
+      // 站在窄平台上的时候，沙坑不能铺到平台外面去（悬空的沙看着就假）
+      let vr = z.r;
+      const plats = (game.level && game.level.platforms) || [];
+      for (const p of plats) {
+        if (Math.abs((p.y || 0) - z.y) > 8) continue;
+        if (z.x < p.x - 4 || z.x > p.x + p.w + 4) continue;
+        vr = Math.min(vr, Math.max(26, Math.max(z.x - p.x, p.x + p.w - z.x) + 6));
+      }
+      ctx.save();
+      if (z.kind === 'sand') {
+        // 一汪流沙：中间亮、边缘散，再压几粒沙和一圈慢慢外扩的涟漪
+        const r = vr * (0.74 + 0.26 * age);
+        ctx.globalAlpha = 0.86 * left;
+        const gr = ctx.createRadialGradient
+          ? ctx.createRadialGradient(z.x, z.y - 6, 2, z.x, z.y - 6, r) : null;
+        if (gr && gr.addColorStop) {
+          gr.addColorStop(0, 'rgba(232,196,138,0.92)');
+          gr.addColorStop(0.55, 'rgba(196,148,92,0.72)');
+          gr.addColorStop(0.86, 'rgba(150,108,62,0.42)');
+          gr.addColorStop(1, 'rgba(120,86,48,0)');
+          ctx.fillStyle = gr;
+        } else ctx.fillStyle = 'rgba(196,148,92,0.7)';
+        ctx.beginPath();
+        if (ctx.ellipse) ctx.ellipse(z.x, z.y - 4, r, r * 0.33, 0, 0, Math.PI * 2);
+        else ctx.arc(z.x, z.y - 4, r, 0, Math.PI * 2);
+        ctx.fill();
+        // 沙粒：位置由区域的 x 定死，不会每帧乱抖
+        ctx.globalAlpha = 0.5 * left;
+        ctx.fillStyle = '#f0d8a8';
+        for (let i = 0; i < 5; i++) {
+          const a2 = z.x * 0.7 + i * 2.4;
+          const rr = r * (0.2 + (i % 3) * 0.24);
+          ctx.beginPath();
+          ctx.arc(z.x + Math.cos(a2) * rr, z.y - 4 + Math.sin(a2) * rr * 0.3, 1.1 + (i % 2), 0, Math.PI * 2);
+          ctx.fill();
+        }
+        // 一圈往外扩的沙纹
+        ctx.globalAlpha = 0.24 * left;
+        ctx.strokeStyle = '#f3dcae'; ctx.lineWidth = 1.3;
+        const k = ((now / 1300) % 1);
+        ctx.beginPath();
+        if (ctx.ellipse) ctx.ellipse(z.x, z.y - 4, r * (0.35 + k * 0.6), r * 0.33 * (0.35 + k * 0.6), 0, 0, Math.PI * 2);
+        else ctx.arc(z.x, z.y - 4, r * (0.35 + k * 0.6), 0, Math.PI * 2);
+        ctx.stroke();
+        // 坑沿：压一道暗边，免得像贴在地上的一块贴纸
+        ctx.globalAlpha = 0.3 * left;
+        ctx.strokeStyle = '#6b4a28'; ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        if (ctx.ellipse) ctx.ellipse(z.x, z.y, r * 0.98, r * 0.32, 0, 0, Math.PI * 2);
+        else ctx.arc(z.x, z.y, r * 0.98, 0, Math.PI * 2);
+        ctx.stroke();
+      } else if (z.kind === 'needle') {
+        // 神针插地留下的法阵（棒子本体由 drawSpinStaff 画）
+        ctx.globalAlpha = 0.55 * left;
+        ctx.strokeStyle = '#ffd479'; ctx.lineWidth = 1.6;
+        const pr = vr * (0.55 + 0.12 * Math.sin(now / 260));
+        ctx.beginPath();
+        if (ctx.ellipse) ctx.ellipse(z.x, z.y, pr, pr * 0.3, 0, 0, Math.PI * 2);
+        else ctx.arc(z.x, z.y, pr, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.globalAlpha = 0.22 * left;
+        ctx.strokeStyle = '#fff6cc';
+        for (let i = 0; i < 3; i++) {
+          const k = ((now / 1100) + i / 3) % 1;
+          ctx.beginPath();
+          if (ctx.ellipse) ctx.ellipse(z.x, z.y, pr * (0.3 + k * 0.9), pr * 0.3 * (0.3 + k * 0.9), 0, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+      ctx.restore();
+    }
+  };
+
+  // 敌人身上的印记：血条下面一排小方块 + 层数
+  UI.drawMarks = function (ctx, e, now) {
+    const marks = e.marks;
+    if (!marks) return;
+    const list = [];
+    for (const k in marks) {
+      const n = XY.markStacks(marks, k, now);
+      if (n > 0) list.push([k, n]);
+    }
+    if (!list.length) return;
+    const cx = e.x + e.w / 2;
+    let x = cx - (list.length * 17 - 3) / 2;
+    const y = e.y - (e.isBoss ? 26 : 22);
+    ctx.save();
+    ctx.font = 'bold 9px sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (const [k, n] of list) {
+      const def = XY.MARKS[k];
+      if (!def) continue;
+      ctx.globalAlpha = 0.9;
+      ctx.fillStyle = 'rgba(20,16,12,0.72)';
+      ctx.fillRect(x, y, 14, 11);
+      ctx.fillStyle = def.color;
+      ctx.fillRect(x + 1, y + 1, 12, 9);
+      ctx.fillStyle = '#1a1208';
+      ctx.fillText(String(n), x + 7, y + 6);
+      x += 17;
+    }
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    ctx.restore();
+  };
+
   UI.drawWorld = function (ctx, game) {
     const now = game.now;
     UI.drawPlatforms(ctx, game);
     UI.drawGoal(ctx, game);
+    UI.drawZones(ctx, game);
 
     // 残影（在角色后面）
     if (game.fx) game.fx.draw(ctx, 'back');
@@ -593,6 +706,7 @@
         const bw = Math.max(30, e.w);
         bar(ctx, e.x + (e.w - bw) / 2, e.y - 10, bw, 4.5, e.hp / e.maxHp, '#e74c3c');
       }
+      UI.drawMarks(ctx, e, now);
       if (e.stunUntil > now) {
         ctx.fillStyle = '#ffd479'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center';
         ctx.fillText('★', e.x + e.w / 2, e.y - 16);
@@ -1918,7 +2032,7 @@
     currencyChip(ctx, cx - 118 - (gw + 10) - 104, 30, '仙玉', game.jade, '#8fd48a');
 
     const ids = game.player.char.skills;
-    const cardH = 108, gap = 14, y0 = 104;
+    const cardH = 120, gap = 12, y0 = 100;
     for (let i = 0; i < ids.length; i++) {
       const base = XY.getSkill(ids[i]);
       const lv = game.persist.skillLv[ids[i]] || 1;
@@ -1946,18 +2060,26 @@
       ctx.fillStyle = '#ffd479'; ctx.font = 'bold 12px "PingFang SC", sans-serif';
       ctx.fillText(lv + ' / ' + XY.SKILL_MAX_LV + ' 重', 146 + XY.SKILL_MAX_LV * 16 + 8, y + 60);
 
+      // 联动说明：这套技能不是各打各的，得让玩家在参悟页就能看明白
+      if (base.link) {
+        ctx.fillStyle = '#d9bd8a'; ctx.font = '11px "PingFang SC", sans-serif';
+        ctx.fillText('联动 · ' + base.link, 142, y + 104);
+      }
+
       // 当前 → 下一重
       ctx.fillStyle = '#b0a385'; ctx.font = '12px "PingFang SC", sans-serif';
-      ctx.fillText('威力 ×' + cur.multiplier, 330, y + 36);
+      ctx.fillText(cur.multiplier > 0 ? ('威力 ×' + cur.multiplier) : '威力 —', 330, y + 36);
       ctx.fillText('冷却 ' + (cur.cooldown / 1000).toFixed(2) + 's', 330, y + 58);
       if (cur.radius) ctx.fillText('范围 ' + cur.radius, 330, y + 80);
       else if (cur.range) ctx.fillText('射程 ' + cur.range, 330, y + 80);
 
       if (next) {
         ctx.fillStyle = '#8fd48a'; ctx.font = 'bold 12.5px "PingFang SC", sans-serif';
-        ctx.fillText('→ 威力 ×' + next.multiplier + '   冷却 ' + (next.cooldown / 1000).toFixed(2) + 's', 470, y + 36);
+        const dmgTxt = (cur.multiplier > 0 && next.multiplier > 0) ? ('→ 威力 ×' + next.multiplier) : '→ 冷却缩短';
+        ctx.fillText(dmgTxt + '   冷却 ' + (next.cooldown / 1000).toFixed(2) + 's', 470, y + 36);
         ctx.fillStyle = '#7d7157'; ctx.font = '11px "PingFang SC", sans-serif';
-        ctx.fillText('+' + Math.round((next.multiplier / cur.multiplier - 1) * 100) + '% 伤害 · ' + Math.round((1 - next.cooldown / cur.cooldown) * 100) + '% 冷却', 470, y + 58);
+        const pct = (cur.multiplier > 0 && next.multiplier > 0) ? (Math.round((next.multiplier / cur.multiplier - 1) * 100) + '% 伤害 · ') : '';
+        ctx.fillText(pct + Math.round((1 - next.cooldown / cur.cooldown) * 100) + '% 冷却', 470, y + 58);
       } else {
         ctx.fillStyle = '#a89a7d'; ctx.font = 'bold 13px "PingFang SC", sans-serif';
         ctx.fillText('已至化境', 470, y + 46);

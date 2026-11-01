@@ -181,6 +181,7 @@
       this.noWeaponUntil = 0;        // 掷出兵器后，手上暂时是空的
       this.dashHits = null;
       this.buffAtkUntil = 0; this.buffSpdUntil = 0; this.buffDefUntil = 0; this.shieldUntil = 0;
+      this.satiatedUntil = 0;   // 八戒「饱食」：攻击加成 + 耙痕上限提高
       this.slowUntil = 0;            // 中毒/缠丝：移速下降
       this.level = 1; this.exp = 0;
       // —— 动画状态 ——
@@ -214,7 +215,11 @@
       if (this.now < this.slowUntil) m *= 0.55;
       return m;
     }
-    get atkMul() { return (this.now < this.buffAtkUntil) ? 1.4 : 1; }
+    get atkMul() {
+      let m = (this.now < this.buffAtkUntil) ? 1.4 : 1;
+      if (this.now < (this.satiatedUntil || 0)) m *= 1.25;
+      return m;
+    }
     get defMul() { return (this.now < this.buffDefUntil) ? 2 : 1; }
 
     update(dt, input, level, now) {
@@ -467,6 +472,11 @@
       this.hp = stats.maxHp; this.maxHp = stats.maxHp;
       this.atkReady = 0; this.stunUntil = 0;
       this.dotUntil = 0; this.dotTick = 0;
+      // 印记（破绽/耙痕/紧箍/水痕/陷沙）与减速：招式联动的载体
+      this.marks = null;
+      this.slowUntil = 0;
+      this.frozenUntil = 0;
+      this.sandUntil = 0;
       this.alive = true;
       this.hitFlash = 0;
       this.atkUntil = 0;
@@ -582,7 +592,8 @@
       const dir = dx >= 0 ? 1 : -1;
       const aggro = dist < this.stats.aggroRange;
       const alive = player.hp > 0;
-      const speed = this.stats.moveSpeed * (this.enraged ? 1.12 : 1);
+      const speed = this.stats.moveSpeed * (this.enraged ? 1.12 : 1)
+        * (now < (this.slowUntil || 0) ? 0.6 : 1);
       const steer = (target, rate) => { this.vx = approach(this.vx, target, rate); };
 
       if (this.state === 'windup') {

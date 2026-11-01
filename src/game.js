@@ -22,6 +22,7 @@
       this.pendingLevel = 0;     // 看过场 CG 时，等会儿要进的那一关
       this.projectiles = [];
       this.specials = [];       // 掷出的兵器等"有自己生命周期的招式"
+      this.zones = [];          // 留在地上的招式区域（流沙 / 定海神针）
       this.pending = [];        // 延迟结算（重劈的落点判定）
       this.cam = { x: 0 };
       this.bossRef = null;       // 场上的首领（血条读它）
@@ -301,7 +302,7 @@
       this.levelIndex = idx;
       this.level = new XY.Level(XY.LEVELS[idx]);
       this.projectiles = []; this.floaters = []; this.expPops = [];
-      this.specials = []; this.pending = [];
+      this.specials = []; this.pending = []; this.zones = [];
       this.fx.clear();
       this.bossRef = null; this.bossBarA = 0; this.bossDeadAt = 0;
       this.exitOpen = false; this.exitNear = false;
@@ -592,7 +593,13 @@
           this.fx.trail(s.x, s.y, 'rgba(255,214,120,0.9)', 4);
           if (s.vy > 0 && s.y >= s.ground) {
             s.y = s.ground; s.state = 'stuck'; s.landAt = now;
-            this.aoeHitAt(s.x, s.y - 12, s.radius, s.mult2);
+            this.skillAoeAt(s.x, s.y - 12, s.radius, s.mult2, s.skill || {});
+            // 钉子留在原地：针在，妖气就藏不住（持续照出破绽）
+            if (s.skill && s.skill.zone === 'needle') {
+              const dur = s.skill.zoneDur || 6000;
+              this.addZone({ kind: 'needle', x: s.x, y: s.y, r: 96, until: now + dur, src: 'wukong' });
+              s.stickUntil = now + dur;    // 棒子跟着区域一起留在场上
+            }
             this.fx.ring(s.x, s.y, 12, s.radius * 1.05, '#ffd479', 0.5, 10);
             this.fx.ring(s.x, s.y, 6, s.radius * 0.7, '#fff6cc', 0.38, 5);
             this.fx.spark(s.x, s.y, 26, '#ffe9a8', { speed: 380, spread: 2.4, gravity: 700, jitter: 10 });
@@ -600,8 +607,9 @@
             this.shake = Math.min(18, this.shake + 14);
           }
         } else if (s.state === 'stuck') {
-          s.fade = Math.max(0, 1 - (now - s.landAt - 700) / 400);
-          if (s.fade <= 0) s.dead = true;
+          const endAt = s.stickUntil || (s.landAt + 1100);
+          s.fade = Math.max(0, Math.min(1, (endAt - now) / 350));
+          if (now > endAt) s.dead = true;
         }
       }
       if (this.specials.length) this.specials = this.specials.filter((s) => !s.dead);
@@ -617,6 +625,7 @@
       }
 
       for (const e of lv.enemies) if (e.alive) e.update(dt, pl, lv, now);
+      this.updateZones(now);
       // 灼烧/持续伤害致死：补一次统一结算（掉落、经验、特效）
       for (const e of lv.enemies) if (e.alive && e.pendingKill) this.killEnemy(e);
 
@@ -628,7 +637,8 @@
           for (const e of lv.enemies) {
             if (!e.alive) continue;
             if (XY.aabb({ x: p.x - p.r, y: p.y - p.r, w: p.r * 2, h: p.r * 2 }, e)) {
-              this.damageEnemy(e, p.damage, true, true);
+              if (p.skill) this.hitWithSkill(e, p.mult || 0, p.skill);
+              else this.damageEnemy(e, p.damage, true, true);
               this.fx.spark(p.x, p.y, 8, p.color, { speed: 200 });
               p.alive = false; break;
             }
@@ -664,7 +674,7 @@
         for (const e of lv.enemies) {
           if (!e.alive || pl.dashHits.has(e)) continue;
           if (XY.aabb(e, pl)) {
-            this.damageEnemy(e, (pl.dashMult || 0.8) * pl.atkMul, false, false);
+            this.hitWithSkill(e, pl.dashMult || 0.8, pl.dashSkill || {});
             pl.dashHits.add(e);
             e.knockUntil = now + 320;
             e.vx = pl.dashDir * (pl.dashSpeed > 600 ? 460 : 360);
@@ -935,7 +945,7 @@
             run: () => {
               if (this.level !== lv) return;
               if (XY.Audio) XY.Audio.sfx('smash');
-              this.meleeHit(a.range, mult, true);
+              this.skillMelee(a, mult, dir);
               this.fx.ring(tipX, tipY, 8, 148, '#ffd479', 0.5, 12);
               this.fx.ring(tipX, tipY, 4, 88, '#fff6cc', 0.36, 5);
               this.fx.ring(tipX, tipY, 2, 42, '#ffffff', 0.22, 14);
@@ -958,9 +968,10 @@
         // 否则刀光先出、伤害再落，看着就假。
         const lvAtk = this.level;
         const strikeAt = now + (a.dur || 260) * (a.strike === undefined ? 0.45 : a.strike);
-        this.pending.push({
-          at: strikeAt,
-          run: () => {
+        // 多段近身（九齿钉耙三连）：同一套判定按 hitGap 连打几次，每段各自算印记
+        const swings = Math.max(1, a.hits || 1);
+        const gap = a.hitGap || 0;
+        const swing = () => {
             if (this.level !== lvAtk) return;
             const me = this.player;
             if (!me) return;
@@ -997,7 +1008,7 @@
               // 唐僧：佛光金粉
               this.fx.spark(elX, fxY, 6, '#ffe9a8', { speed: 150, spread: 1.1, angle: dirNow > 0 ? 0 : Math.PI, gravity: 260 });
             }
-            let hits = this.meleeHit(a.range, mult, a.heavy, dirNow);
+            let hits = this.skillMelee(a, mult, dirNow);
             if (a.backRange > 0) hits += this.meleeHit(a.backRange, mult * 0.72, false, -dirNow);
             if (hits > 0) {
               const hitX = mx + dirNow * a.range * 0.72;
@@ -1006,8 +1017,18 @@
               this.shake = Math.min(9, this.shake + (a.shake || (a.heavy ? 5 : 2.4)));
               this.hitStop = Math.max(this.hitStop, (a.hitLag || 40) / 1000);   // 顿帧：甩最重
             }
-          },
-        });
+        };
+        for (let hi = 0; hi < swings; hi++) this.pending.push({ at: strikeAt + hi * gap, run: swing });
+        // 降妖宝杖砸过的地会塌成流沙：先铺沙，后头两招才有得打
+        if (a.zone === 'sand') {
+          const gx = cx + dir * 54;
+          this.addZone({
+            // 沙铺在"自己脚下"：用地面探测会挑到头顶那块平台，沙坑就飘到半空了
+            kind: 'sand', x: gx, y: pl.y + pl.h,
+            r: a.zoneRadius || 96, until: now + (a.zoneDur || 7000), src: 'shaseng',
+          });
+          this.fx.smoke(gx, pl.y + pl.h - 4, 10, { color: '#d9bd8a', r: 12, speed: 70, lift: 6 });
+        }
       } else if (a.kind === 'aoe') {
         if (a.anim === 'throw') {
           // —— 定海神针：把棒子掷出去，空中急旋 → 插地 → 冲击波 ——
@@ -1019,7 +1040,7 @@
           this.specials.push({
             x: sx, y: sy, vx: dir * 300, vy: -440, spin: 0, state: 'fly',
             ground: ground, radius: a.radius || 132, mult2: mult,
-            dir: dir, landAt: 0, fade: 1, dead: false,
+            dir: dir, landAt: 0, fade: 1, dead: false, skill: a,
           });
           this.fx.spark(sx, sy, 10, '#ffd479', { speed: 220, angle: dir > 0 ? 0 : Math.PI, spread: 1.2 });
           this.shake = Math.min(6, this.shake + 2);
@@ -1051,7 +1072,17 @@
           this.fx.spark(cx, cy, 14, pl.char.accent, { speed: 260, jitter: 20 });
           if (XY.Audio) XY.Audio.sfx('aoe');
         }
-        this.aoeHit(a.radius || 140, mult);
+        const hits = this.skillAoeAt(cx, cy, a.radius || 140, mult, a);
+        // 流沙卷把沙里的妖往漩涡中心卷，聚起来下一招收得更狠
+        if (a.pull && hits) {
+          for (const e of this.level.enemies) {
+            if (!e.alive) continue;
+            const dx = cx - (e.x + e.w / 2), dy = (cy - (e.y + e.h / 2)) * 0.4;
+            if (Math.hypot(dx, dy) > (a.radius || 140) + e.w) continue;
+            e.vx += (dx > 0 ? 1 : -1) * Math.min(320, Math.abs(dx) * 2.2);
+            e.knockUntil = now + 240;
+          }
+        }
         this.shake = Math.min(9, this.shake + 4);
       } else if (a.kind === 'dash') {
         const ms = a.dashMs || 260;
@@ -1061,6 +1092,7 @@
         pl.dashSpeed = pl.stats.moveSpeed * pl.speedMul * mul;
         pl.dashMult = mult;
         pl.dashHits = new Set();
+        pl.dashSkill = a;                  // 冲撞命中时要按这一招的印记规则结算
         pl.invuln = now + ms + 60;
         if (XY.Audio) XY.Audio.sfx('dash');
         if (a.cloud) {
@@ -1086,16 +1118,20 @@
       } else if (a.kind === 'ranged') {
         const d = XY.computeDamage({ attack: pl.stats.attack * pl.atkMul, critRate: pl.stats.critRate }, { defense: 0 }, a.multiplier, Math.random).amount;
         if (XY.Audio) XY.Audio.sfx('shoot');
+        let pr;
         if (a.id === 'ts_zeal') {
           // 紧箍真言：金色符文弹，出手时先起一枚符环
           this.fx.runeRing(cx + pl.facing * 22, cy, 4, 30, '#ffd479');
-          this.projectiles.push(new XY.Projectile(cx + pl.facing * 18, cy, pl.facing * 540, 0, d, 'player', 10, '#ffd479', (a.range || 320) / 540));
+          pr = new XY.Projectile(cx + pl.facing * 18, cy, pl.facing * 540, 0, d, 'player', 10, '#ffd479', (a.range || 320) / 540);
         } else if (a.id === 'ss_bind') {
           // 降妖缚：暗金锁链弹
-          this.projectiles.push(new XY.Projectile(cx + pl.facing * 18, cy, pl.facing * 480, 0, d, 'player', 12, '#d8a84a', (a.range || 320) / 480));
+          pr = new XY.Projectile(cx + pl.facing * 18, cy, pl.facing * 480, 0, d, 'player', 12, '#d8a84a', (a.range || 320) / 480);
         } else {
-          this.projectiles.push(new XY.Projectile(cx + pl.facing * 18, cy, pl.facing * 540, 0, d, 'player', 9, pl.char.color, (a.range || 320) / 540));
+          pr = new XY.Projectile(cx + pl.facing * 18, cy, pl.facing * 540, 0, d, 'player', 9, pl.char.color, (a.range || 320) / 540);
         }
+        // 弹道要记得自己是谁打的：命中时才知道该挂/该引哪一种印记
+        pr.skill = a; pr.mult = a.multiplier;
+        this.projectiles.push(pr);
         this.fx.spark(cx + pl.facing * 22, cy, 7, pl.char.color, { speed: 170, angle: pl.facing > 0 ? 0 : Math.PI, spread: 0.9 });
         this.shake = Math.min(5, this.shake + 1.6);
       } else if (a.kind === 'heal') {
@@ -1109,6 +1145,10 @@
               { speed: 130, angle: a2 + Math.PI, spread: 0.1, life: 0.5, gravity: 0 });
           }
           this.fx.runeRing(cx, pl.y - 10, 4, 34, '#ffd479');
+          // 饱食：肚里有食，耙子抡得开、印子也扎得深
+          pl.satiatedUntil = now + (a.satiated || 8000);
+          this.floater(cx, pl.y - 26, '饱食 · 攻 +25%', '#ffb648');
+          this.toast('饱食 8 秒 · 耙痕上限提到 5 层');
         } else {
           this.fx.dust(cx, pl.y + pl.h, 16, '#8fd48a', 46, 90);
           this.fx.ring(cx, cy, 8, 60, '#7CFC9B', 0.4, 3);
@@ -1117,17 +1157,167 @@
       } else if (a.kind === 'buff') {
         if (XY.Audio) XY.Audio.sfx('treasure');
         if (a.id === 'ts_sutra') {
-          // 大乘真经：金页从天而降，页页打着旋
-          pl.buffAtkUntil = now + 6000; this.toast('大乘真经 · 攻击大增');
+          // 大乘真经：把场上每一条紧箍都念爆——层数越多，经文炸得越重
+          let total = 0, hit = 0;
+          for (const e of this.level.enemies) {
+            if (!e.alive) continue;
+            const n = this.markN(e, 'jingu');
+            if (!n) continue;
+            const m = a.multiplier * (1 + a.perStack * (n - 1));
+            this.useMark(e, 'jingu');
+            this.damageEnemy(e, m * pl.atkMul, false, false, 'tangseng');
+            this.fx.pageRain(e.x + e.w / 2, e.y + e.h, 6 + n * 2, 60);
+            this.fx.ring(e.x + e.w / 2, e.y + e.h * 0.5, 6, 40 + n * 6, '#ffd479', 0.36, 3);
+            this.floater(e.x + e.w / 2, e.y - 34, '真经 ×' + n, '#ffd479');
+            total += n; hit++;
+          }
+          pl.hp = Math.min(pl.maxHp, pl.hp + pl.maxHp * (a.healOnCast || 0.08));
           this.fx.pageRain(cx, pl.y + pl.h, 12, 110);
+          if (XY.Audio) XY.Audio.sfx(hit ? 'crit' : 'charge');
+          this.toast(hit ? ('大乘真经 · 引爆 ' + total + ' 层紧箍') : '大乘真经 · 场上没妖戴着紧箍');
+          this.shake = Math.min(12, this.shake + 3 + total);
         } else if (a.id === 'ts_kasaya') {
-          // 袈裟护体：脚下起一圈符文金环，菱形光罩罩住全身
-          pl.buffDefUntil = now + 6000; this.toast('袈裟护体 · 防御大增');
+          // 袈裟护体：金襕罩身，谁碰一下就把一道真言记在账上
+          pl.shieldUntil = now + (a.shield || 6000);
+          pl.reflectUntil = now + (a.shield || 6000);
+          pl.reflectPct = a.reflect || 0.45;
+          pl.reflectMark = a.reflectMark || 'jingu';
+          this.toast('袈裟护体 · 减伤 + 反弹记紧箍');
           this.fx.runeRing(cx, pl.y + pl.h - 4, 10, 64, '#ffd479');
           this.fx.ring(cx, cy, 24, 26, '#ffe9a8', 0.5, 3);
         }
         this.fx.ring(cx, cy, 6, 54, '#ffe9a8', 0.36, 3);
       } else if (a.kind === 'treasure') this.execTreasure(a.treasure);
+    }
+
+    // ===== 印记：招式之间的接口 =====
+    // 一招负责"留痕"，另一招负责"引动"。所有数值都在 data.js 的 MARKS / SKILLS 里，
+    // 这里只管读写与表现，别再往分支里塞一次性 if。
+    markN(e, key) { return XY.markStacks(e.marks, key, this.now); }
+    addMark(e, key, n) {
+      const def = XY.MARKS[key];
+      if (!def || !e.alive) return 0;
+      // 八戒「饱食」期间耙痕能多记两层
+      const sat = key === 'pahen' && this.player && this.now < (this.player.satiatedUntil || 0);
+      const before = this.markN(e, key);
+      e.marks = XY.addMark(e.marks, key, n, this.now, sat ? def.max + 2 : undefined);
+      const after = this.markN(e, key);
+      if (after > before) {
+        this.floater(e.x + e.w / 2, e.y - 14, def.name + ' ×' + after, def.color);
+        this.fx.ring(e.x + e.w / 2, e.y + e.h * 0.5, 3, 20 + after * 5, def.color, 0.26, 2);
+      }
+      return after;
+    }
+    useMark(e, key) {
+      const r = XY.useMark(e.marks, key, this.now);
+      e.marks = r.marks;
+      return r.n;
+    }
+    // 这一招在目标身上能吃到多少倍率，以及要不要把印记清掉
+    skillBonus(e, a) {
+      const key = a.use || a.bonusMark || a.rootVs;
+      if (!key) return { mul: 1, n: 0 };
+      const n = this.markN(e, key);
+      if (!n) return { mul: 1, n: 0 };
+      let mul = 1;
+      if (a.perStack) mul *= 1 + a.perStack * n;
+      if (a.bonusVs) mul *= 1 + a.bonusVs;
+      if (a.use) this.useMark(e, key);
+      return { mul, n };
+    }
+    // 联动打出来的时候给一句"看得懂"的反馈
+    linkFx(e, a, n) {
+      if (!n) return;
+      const def = XY.MARKS[a.use || a.bonusMark];
+      if (!def) return;
+      this.floater(e.x + e.w / 2, e.y - 34, '联动 · ' + def.name + '×' + n, '#ffd479');
+      this.fx.ring(e.x + e.w / 2, e.y + e.h * 0.5, 6, 46, def.color, 0.3, 4);
+      this.fx.spark(e.x + e.w / 2, e.y + e.h * 0.5, 8 + n * 2, def.color, { speed: 220 });
+      if (XY.Audio) XY.Audio.sfx('crit');
+      this.shake = Math.min(12, this.shake + 1.6 + n * 0.8);
+    }
+    // 定身 / 冻结：眩晕 + 一段"结住"的表现
+    rootEnemy(e, ms, color) {
+      if (!e.alive || !ms) return;
+      e.stunUntil = Math.max(e.stunUntil || 0, this.now + ms);
+      e.frozenUntil = this.now + ms;
+      e.cur = null; e.tele = 0; e.strike = null;
+      this.fx.ring(e.x + e.w / 2, e.y + e.h * 0.5, 4, 34, color || '#9be7ff', 0.34, 3);
+      this.floater(e.x + e.w / 2, e.y - 26, '定住', color || '#9be7ff');
+    }
+
+    // 技能命中一名敌人：先算印记加成/消耗，再结算伤害，最后补挂这一招该留的痕迹
+    hitWithSkill(e, mult, a) {
+      if (!e || !e.alive) return 0;
+      const pl = this.player;
+      const b = this.skillBonus(e, a);
+      let m = mult * b.mul;
+      // 冻住的目标被寒气一激就碎
+      if (a.shatter && this.now < (e.frozenUntil || 0)) {
+        m *= a.shatter;
+        e.frozenUntil = 0;
+        e.stunUntil = Math.min(e.stunUntil || 0, this.now);
+        this.fx.splash(e.x + e.w / 2, e.y + e.h * 0.5, 14, { dir: 1, color: '#dff4ff', r: 26 });
+        this.floater(e.x + e.w / 2, e.y - 40, '碎冰', '#dff4ff');
+      }
+      this.damageEnemy(e, m * pl.atkMul, false, false, a.characterId);
+      // 有"引动"的招式，只有在没引到东西时才补一道痕；纯叠层的招式每一下都记
+      if (a.apply && (!a.use || !b.n)) this.addMark(e, a.apply, a.applyN || 1);
+      if (b.n) this.linkFx(e, a, b.n);
+      if (a.rootVs && this.markN(e, a.rootVs)) this.rootEnemy(e, a.rootMs, (XY.MARKS[a.rootVs] || {}).color);
+      if (a.knockAt && b.n >= a.knockAt) {
+        e.knockUntil = this.now + 360;
+        e.vx = (e.x + e.w / 2 < pl.x + pl.w / 2 ? -1 : 1) * 420;
+      }
+      return m;
+    }
+    // 近身范围（技能版）：命中谁就算谁的印记，别用一次通用结算糊过去
+    skillMelee(a, mult, dir) {
+      const pl = this.player;
+      const d = dir === undefined ? pl.facing : (dir >= 0 ? 1 : -1);
+      const rx = d > 0 ? pl.x + pl.w : pl.x - a.range;
+      const rect = { x: rx, y: pl.y + 4, w: a.range, h: pl.h - 8 };
+      let hits = 0;
+      for (const e of this.level.enemies) {
+        if (!e.alive || !XY.aabb(rect, e)) continue;
+        this.hitWithSkill(e, mult, a); hits++;
+      }
+      return hits;
+    }
+    skillAoeAt(x, y, radius, mult, a) {
+      let hits = 0;
+      for (const e of this.level.enemies) {
+        if (!e.alive) continue;
+        const dx = (e.x + e.w / 2) - x, dy = (e.y + e.h / 2) - y;
+        if (Math.hypot(dx, dy) <= radius + e.w * 0.4) { this.hitWithSkill(e, mult, a); hits++; }
+      }
+      return hits;
+    }
+
+    // ===== 留在地上的招式区域（流沙 / 定海神针）=====
+    addZone(z) {
+      this.zones.push(Object.assign({ tickAt: 0, bornAt: this.now }, z));
+    }
+    updateZones(now) {
+      if (!this.zones.length) return;
+      for (const z of this.zones) {
+        if (now < (z.tickAt || 0) || now >= z.until) continue;
+        z.tickAt = now + (z.kind === 'needle' ? 1200 : 600);
+        for (const e of this.level.enemies) {
+          if (!e.alive) continue;
+          const dx = (e.x + e.w / 2) - z.x;
+          const dy = (e.y + e.h) - z.y;
+          if (Math.hypot(dx, dy * 0.7) > z.r + e.w * 0.35) continue;
+          if (z.kind === 'sand') {
+            this.addMark(e, 'liusha', 1);
+            e.slowUntil = now + 800;                       // 陷在沙里，脚步慢
+            this.damageEnemy(e, 0.12 * this.player.atkMul, false, false, 'shaseng');
+          } else if (z.kind === 'needle') {
+            this.addMark(e, 'bopen', 1);                   // 神针定住妖气，罩门持续外露
+          }
+        }
+      }
+      this.zones = this.zones.filter((z) => now < z.until);
     }
 
     meleeHit(range, mult, heavy, dir) {
@@ -1151,13 +1341,16 @@
         if (Math.hypot(dx, dy) <= radius + e.w * 0.4) this.damageEnemy(e, mult * this.player.atkMul, false, false);
       }
     }
-    damageEnemy(e, multOrDmg, isAbs, isCrit) {
+    damageEnemy(e, multOrDmg, isAbs, isCrit, src) {
       let dmg;
       if (isAbs) dmg = multOrDmg;
       else {
         const r = XY.computeDamage({ attack: this.player.stats.attack, critRate: this.player.stats.critRate }, { defense: e.stats.defense }, multOrDmg, Math.random);
         dmg = r.amount; isCrit = r.crit;
       }
+      // 身上留着的印记会放大会挨的这一下（消耗型印记在结算前已清空，不会算两遍）
+      const mb = XY.markBonus(e.marks, src, this.now);
+      if (mb) dmg *= 1 + mb;
       if (!Number.isFinite(dmg)) dmg = 1;           // 兜底：绝不让 NaN 进入血量
       dmg = Math.max(1, Math.round(dmg));
       e.hp = Math.max(0, (Number.isFinite(e.hp) ? e.hp : e.maxHp) - dmg);
@@ -1224,6 +1417,13 @@
       const pl = this.player, o = opts || {};
       if (pl.hp <= 0 || pl.invuln > this.now) return false;
       this.hurtPlayer(this.enemyDamage(e, mult));
+      // 袈裟护体：挨的这一下折回去，还给动手的妖记一道紧箍
+      if (e && this.now < (pl.reflectUntil || 0)) {
+        this.addMark(e, pl.reflectMark || 'jingu', 1);
+        this.damageEnemy(e, Math.round(this.enemyDamage(e, mult) * (pl.reflectPct || 0.4)), true, false, 'tangseng');
+        this.fx.ring(pl.x + pl.w / 2, pl.y + pl.h / 2, 8, 46, '#ffd479', 0.3, 4);
+        this.floater(pl.x + pl.w / 2, pl.y - 30, '袈裟反弹', '#ffd479');
+      }
       if (o.tag === 'charge') this.shake = Math.min(16, this.shake + 5);
       return true;
     }
@@ -1599,6 +1799,13 @@
       if (params.get('foe')) {
         this.foePin = { key: params.get('foe'), p: Math.min(0.99, Math.max(0, parseFloat(params.get('foep') || '0.6') || 0.6)) };
       }
+      // ?marks=bopen,jingu 给场上每个敌人挂上印记（校验印记图标与联动数值）
+      if (params.get('marks')) {
+        const keys = String(params.get('marks')).split(',').map((s) => s.trim()).filter(Boolean);
+        for (const e of this.level.enemies) {
+          for (const k of keys) if (XY.MARKS[k]) e.marks = XY.addMark(e.marks, k, 3, this.now);
+        }
+      }
       // 技能定格：?cast=wk_smash&castp=0.5 把技能动作钉在指定进度（校验动作模组用）
       if (params.get('cast')) {
         const sid = params.get('cast');
@@ -1681,6 +1888,7 @@
         const pl = this.player, lv = this.level;
         const data = {
           state: this.state, cam: Math.round(this.cam.x),
+          zones: (this.zones || []).map((z) => [z.kind, Math.round(z.x), Math.round(z.y), Math.round(z.r)]),
           player: pl ? { x: Math.round(pl.x), y: Math.round(pl.y), onGround: pl.onGround, vy: Math.round(pl.vy) } : null,
           platforms: lv ? lv.platforms.map((q) => [q.x, q.y, q.w, q.h]) : null,
           enemies: lv ? lv.enemies.map((e) => ({ k: e.kind, x: Math.round(e.x), y: Math.round(e.y), w: e.w, h: e.h, hp: Math.round(e.hp), alive: e.alive, s: e.state, m: e.cur ? e.cur.key : null, t: +(e.tele || 0).toFixed(2) })) : null,
