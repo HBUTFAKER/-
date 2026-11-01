@@ -1350,8 +1350,8 @@
       const artOk = artShown;
       if (!artOk && XY.Art && XY.Art.drawCharacter) {
         ctx.globalAlpha = 0.36;
-        // 剪影走矢量：3.15 倍下像素块会大到糊成一坨，剪影要的是轮廓不是颗粒
-        XY.Art.drawCharacter(ctx, W / 2, 398 + bob, 3.15, charId, { state: 'idle', t, facing: 1, vector: true });
+        // 过场剪影也走 Q 版卡通层（3.15 倍下轮廓更圆润，和游戏内同一套造型）
+        XY.Art.drawCharacter(ctx, W / 2, 398 + bob, 3.15, charId, { state: 'idle', t, facing: 1 });
       }
       ctx.restore();
     }

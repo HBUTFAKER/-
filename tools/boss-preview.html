@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh">
+<head><meta charset="utf-8"><title>首领预览</title></head>
+<body style="margin:0;background:#1b2028">
+<canvas id="c" width="1200" height="960"></canvas>
+<script src="../src/data.js"></script>
+<script src="../src/art.js"></script>
+<script src="../src/toon.js"></script>
+<script>
+  const c = document.getElementById('c'), ctx = c.getContext('2d');
+  const g = ctx.createLinearGradient(0, 0, 0, 960);
+  g.addColorStop(0, '#26313f'); g.addColorStop(1, '#14181e');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, 1200, 960);
+  const ids = XY.BOSS_ORDER;
+  ids.forEach((id, i) => {
+    const b = XY.BOSSES[id];
+    const col = i % 4, row = Math.floor(i / 4);
+    const x = 150 + col * 290, y = 200 + row * 250;
+    const e = {
+      x: 0, y: 0, w: 62, h: 86, kind: 'boss', isBoss: true,
+      art: b.art, facing: 1, state: 'idle', tele: 0, atkUntil: 0, hitFlash: 0,
+    };
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(1.25, 1.25);
+    XY.Toon.drawEnemy(ctx, e, 900);
+    ctx.restore();
+    ctx.fillStyle = '#9fb0c4'; ctx.font = '13px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(id + ' · ' + b.name, x, y + 26);
+  });
+</script>
+</body>
+</html>

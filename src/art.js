@@ -634,6 +634,56 @@
       }
     }
   };
+  // 轮廓光：把"朝光侧露在外面的墨线"染成高光色，一圈金边把角色从背景里抠出来。
+  // 必须在 outline() 之后调用。dirX/dirY 是光的来向（默认右上）。
+  Painter.prototype.rimLight = function (lineCol, rimCol, dirX, dirY) {
+    const w = this.w, h = this.h, src = this.px.slice(0);
+    const dx = dirX === undefined ? 1 : dirX;
+    const dy = dirY === undefined ? -1 : dirY;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const i = y * w + x;
+        if (src[i] !== lineCol) continue;
+        const nx = x + dx, ny = y + dy;
+        const outside = nx < 0 || nx >= w || ny < 0 || ny >= h;
+        if (outside || !src[ny * w + nx]) this.px[i] = rimCol;
+      }
+    }
+  };
+  // 颜色明暗：把 uint32 颜色乘一个系数（<1 压暗，>1 提亮）
+  function shadeCol(c, mul) {
+    const a = (c >>> 24) & 255;
+    const r = Math.min(255, Math.round(((c >>> 16) & 255) * mul));
+    const g = Math.min(255, Math.round(((c >>> 8) & 255) * mul));
+    const b = Math.min(255, Math.round((c & 255) * mul));
+    return ((a << 24) | (r << 16) | (g << 8) | b) >>> 0;
+  }
+  // 自动暗部（AO）：贴着墨线或虚空的下/左侧压暗一档，平涂立刻有体积
+  Painter.prototype.ao = function (lineCol, mul) {
+    const w = this.w, h = this.h, src = this.px.slice(0);
+    const k = mul === undefined ? 0.8 : mul;
+    for (let y = 1; y < h; y++) {
+      for (let x = 1; x < w; x++) {
+        const i = y * w + x;
+        const v = src[i];
+        if (!v || v === lineCol) continue;
+        const l = src[i - 1];
+        const d = y + 1 < h ? src[i + w] : 0;
+        if (l === lineCol || !l || d === lineCol || !d) this.px[i] = shadeCol(v, k);
+      }
+    }
+  };
+  // 落地投影：椭圆软影，让角色"站在地上"而不是贴在背景上
+  function groundShadow(ctx, cx, footY, halfW, alpha) {
+    if (!ctx.ellipse) return;
+    ctx.save();
+    ctx.globalAlpha = alpha === undefined ? 0.3 : alpha;
+    ctx.fillStyle = '#0a0705';
+    ctx.beginPath();
+    ctx.ellipse(cx, footY - 1.5, halfW, halfW * 0.24, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
 
   const _pxCv = {};
   function pxBlit(ctx, p, dx, dy, k) {
@@ -1106,6 +1156,9 @@
 
     const k = PX_UNIT * scale;
     const dx = cx - OX * k, dy = footY - OY * k;
+    p.ao(OUT, 0.82);
+    p.rimLight(OUT, C('#e8b45e'), facing < 0 ? -1 : 1, -1);
+    groundShadow(ctx, cx, footY, 20 * scale, 0.32);
     ctx.save();
     ctx.imageSmoothingEnabled = false;
     if (facing < 0) {
@@ -1141,6 +1194,9 @@
   };
   function drawCharacterInner(ctx, cx, footY, scale, charId, pose) {
     // pose.vector 可以强制走矢量（过场剪影这类大倍率场景用）
+    if (!pose.vector && XY.Toon && XY.Toon.enabled && XY.Toon.has(charId)) {
+      return XY.Toon.drawCharacter(ctx, cx, footY, scale, charId, pose);
+    }
     if (Art.pixelMode && !pose.vector && canPixel()) return drawCharacterPx(ctx, cx, footY, scale, charId, pose);
     return drawCharVector(ctx, cx, footY, scale, charId, pose);
   }
@@ -2051,6 +2107,7 @@
     const lunge = atkLeft > 0 ? Math.sin(Math.min(1, atkLeft / 260) * Math.PI) * 7 : 0;
     ctx.save();
     ctx.translate(e.x + e.w / 2, e.y + e.h);
+    groundShadow(ctx, 0, 0, e.w * 0.42, 0.34);
     const sx = (e.facing || -1) < 0 ? -1 : 1;
     ctx.scale(sx * k, k);
     ctx.translate(lunge, 0);
@@ -2140,7 +2197,11 @@
       rect(-2.2, -7.5 + bob, 1, 1.6, L.fang);
       rect(1.2, -7.5 + bob, 1, 1.6, L.fang);
     }
-    if (e.kind !== 'spider') p.outline(OUT);   // 蛛腿细密，整体描边会把腿缝填黑
+    if (e.kind !== 'spider') {
+      p.outline(OUT);
+      p.ao(OUT, 0.8);
+      p.rimLight(OUT, C('#e8b45e'), sx > 0 ? 1 : -1, -1);
+    }
     const kk = PX_UNIT;
     ctx.imageSmoothingEnabled = false;
     pxBlit(ctx, p, -OX * kk, -OY * kk, kk);
@@ -2322,7 +2383,7 @@
 
     // —— 蛇形龙（鹰愁涧毒龙）——
     dragon: { w: 78, h: 74, ox: 44, oy: 68, bodyH: 58, draw(pen, art, t) {
-      const sc = art.scale || '#2f7d6b', belly = art.belly || '#d9e8a8';
+      const sc = art.sc || '#2f7d6b', belly = art.belly || '#d9e8a8';
       const sway = Math.sin(t / 420) * 1.4;
       // 尾 → 身 → 肩 的蛇形链
       pen.chain([[-38, -8], [-24, -13], [-10, -26], [2, -40]], 5.2, sc);
@@ -2501,10 +2562,12 @@
     const def = BOSS_PX_DEF[kind] || BOSS_PX_DEF.bull;
     const flash = e.hitFlash > 0;
     // 像素密度与小怪对齐（约 2.8 世界单位/格）；变体按开方温和放大
-    const pk = 2.8 * (def.scaleMul || 1) * (art.small ? 0.86 : Math.sqrt(art.scale || 1));
+    const rawScale = typeof art.scale === 'number' && art.scale > 0 ? art.scale : 1;
+    const pk = 2.8 * (def.scaleMul || 1) * (art.small ? 0.86 : Math.sqrt(rawScale));
 
     ctx.save();
     ctx.translate(e.x + e.w / 2, e.y + e.h);
+    groundShadow(ctx, 0, 0, e.w * 0.46, 0.38);
     const sx = (e.facing || -1) < 0 ? -1 : 1;
     ctx.scale(sx, 1);
     // 出手前冲 / 受击顿身 / 起手下蹲（位移按像素格换算，量级与小怪一致）
@@ -2520,7 +2583,11 @@
     const p = new Painter(def.w, def.h);
     const pen = makePen(p, def.ox, def.oy, flash);
     def.draw(pen, art, t);
-    if (!def.noOutline) p.outline(pen.OUT);
+    if (!def.noOutline) {
+      p.outline(pen.OUT);
+      p.ao(pen.OUT, 0.8);
+      p.rimLight(pen.OUT, pxC('#e8b45e'), sx > 0 ? 1 : -1, -1);
+    }
     ctx.imageSmoothingEnabled = false;
     pxBlit(ctx, p, -def.ox * pk, -def.oy * pk, pk);
     ctx.imageSmoothingEnabled = true;
@@ -2528,6 +2595,8 @@
   }
 
   Art.drawEnemy = function (ctx, e, t, scale) {
+    // Q 版卡通层优先（人物/小怪同风格）；像素层保留作兜底
+    if (XY.Toon && XY.Toon.enabled && XY.Toon.drawEnemy && XY.Toon.drawEnemy(ctx, e, t)) return;
     // 小怪与首领都走像素层（与角色同一套像素笔、同一档像素密度）；测试环境（无 document）走矢量
     if (Art.pixelMode && canPixel()) {
       if (e.isBoss) { drawBossPx(ctx, e, t); return; }

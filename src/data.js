@@ -304,7 +304,7 @@
       dropTable: bossDrop([2, 3], ['mat_stone', 2, 0.9], ['mat_wood', 2]) },
     dragon: { name: '毒龙', title: '涧底沉鳞', hp: 520, attack: 18, defense: 9, moveSpeed: 92, aggroRange: 640,
       moves: ['charge', 'volley', 'sweep'],
-      art: { kind: 'dragon', scale: '#2f7d6b', belly: '#d9e8a8', horn: '#e6dcc4', eye: '#ffd479' },
+      art: { kind: 'dragon', sc: '#2f7d6b', belly: '#d9e8a8', horn: '#e6dcc4', eye: '#ffd479' },
       dropTable: bossDrop([2, 4], ['mat_herb', 2], ['mat_fire', 1]) },
     bear: { name: '黑熊精', title: '黑风大王', hp: 560, attack: 20, defense: 14, moveSpeed: 66, aggroRange: 640,
       moves: ['slam', 'charge', 'quake'],

@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh">
+<head><meta charset="utf-8"><title>卡通层预览</title></head>
+<body style="margin:0;background:#1b2028">
+<canvas id="c" width="960" height="540"></canvas>
+<script src="../src/toon.js"></script>
+<script>
+  const c = document.getElementById('c'), ctx = c.getContext('2d');
+  const bg = ctx.createLinearGradient(0, 0, 0, 540);
+  bg.addColorStop(0, '#243040'); bg.addColorStop(1, '#151a20');
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, 960, 540);
+
+  const ids = ['wukong', 'bajie', 'shaseng', 'tangseng', 'bailongma'];
+  const st = new URLSearchParams(location.search).get('st') || 'idle';
+  ids.forEach((id, i) => {
+    const x = 96 + i * 190, y = 400;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(3.0, 3.0);
+    XY.Toon.drawCharacter(ctx, 0, 0, 1, id, { t: 700, state: st, facing: 1 });
+    ctx.restore();
+    ctx.fillStyle = '#9fb0c4'; ctx.font = '14px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(id, x, 440);
+  });
+  // 尺寸参考：一条 74 单位高的框（角色应有这么高）
+  ctx.strokeStyle = 'rgba(255,120,120,0.5)'; ctx.lineWidth = 1;
+  ctx.strokeRect(20, 400 - 74 * 3, 920, 74 * 3);
+</script>
+</body>
+</html>
