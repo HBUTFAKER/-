@@ -164,7 +164,7 @@
     }
 
     toast(text) { this.toasts.push({ text, left: 1700 }); if (this.toasts.length > 4) this.toasts.shift(); }
-    floater(x, y, text, color) { this.floaters.push({ x, y, text, color: color || '#fff', life: 0.85 }); }
+    floater(x, y, text, color, big) { this.floaters.push({ x, y, text, color: color || '#fff', big: !!big, life: 0.85 }); }
 
     // —— 角色创建 / 重建 ——
     rebuildPlayer() {
@@ -958,13 +958,13 @@
       } else if (a.kind === 'heal') {
         pl.hp = Math.min(pl.maxHp, pl.hp + pl.maxHp * (a.healPct || 0.3));
         if (XY.Audio) XY.Audio.sfx('heal');
-        this.fx.dust(cx, pl.y + pl.h, 16, '#7CFC9B', 46, 90);
+        this.fx.dust(cx, pl.y + pl.h, 16, '#8fd48a', 46, 90);
         this.fx.ring(cx, cy, 8, 60, '#7CFC9B', 0.4, 3);
         this.floater(cx, pl.y - 6, '回复', '#7CFC9B');
       } else if (a.kind === 'buff') {
         if (XY.Audio) XY.Audio.sfx('treasure');
         if (a.id === 'ts_sutra') { pl.buffAtkUntil = now + 6000; this.toast('大乘真经 · 攻击大增'); this.fx.dust(cx, pl.y + pl.h, 14, '#ffd479', 40, 80); }
-        else if (a.id === 'ts_kasaya') { pl.buffDefUntil = now + 6000; this.toast('袈裟护体 · 防御大增'); this.fx.dust(cx, pl.y + pl.h, 14, '#8bc8ff', 40, 80); }
+        else if (a.id === 'ts_kasaya') { pl.buffDefUntil = now + 6000; this.toast('袈裟护体 · 防御大增'); this.fx.dust(cx, pl.y + pl.h, 14, '#ffd479', 40, 80); }
         this.fx.ring(cx, cy, 6, 54, '#ffe9a8', 0.36, 3);
       } else if (a.kind === 'treasure') this.execTreasure(a.treasure);
     }
@@ -1009,7 +1009,7 @@
         this.floater(e.x + e.w / 2, e.y - 22, '打断', '#7fd0ff');
       }
       if (XY.Audio) XY.Audio.sfx(isCrit ? 'crit' : 'hit');
-      this.floater(e.x + e.w / 2, e.y, '-' + dmg + (isCrit ? '!' : ''), isCrit ? '#ff5e5e' : '#fff');
+      this.floater(e.x + e.w / 2, e.y, '-' + dmg + (isCrit ? '!' : ''), isCrit ? '#ffd479' : '#f4edd9', isCrit);
       this.fx.spark(e.x + e.w / 2, e.y + e.h / 2, isCrit ? 10 : 5, isCrit ? '#ff8a5e' : '#ffe9a8', { speed: 190 });
       if (e.hp <= 0) this.killEnemy(e);
     }
@@ -1130,7 +1130,7 @@
         minion.summoned = true;
         this.level.enemies.push(minion);
         this.fx.ring(minion.x + minion.w / 2, minion.y + minion.h, 4, 30, '#9ad0ff', 0.45, 4);
-        this.fx.dust(minion.x + minion.w / 2, minion.y + minion.h, 8, '#9ad0ff', 30, 50);
+        this.fx.dust(minion.x + minion.w / 2, minion.y + minion.h, 8, '#6fb8b2', 30, 50);
         made++;
       }
       if (made) {
@@ -1160,7 +1160,7 @@
       this.toast('施放 ' + t.name);
       if (XY.Audio) XY.Audio.sfx('treasure');
       this.fx.ring(cx, cy, 8, 90, '#d6b3ff', 0.4, 5);
-      this.fx.dust(cx, pl.y + pl.h, 10, '#d6b3ff', 36, 70);
+      this.fx.dust(cx, pl.y + pl.h, 10, '#d9a441', 36, 70);
       switch (t.effect) {
         case 'aoe_damage': {
           const list = inR(t.radius || 140);
@@ -1533,12 +1533,21 @@
       ctx.save(); ctx.translate(-this.cam.x + ox, oy);
       XY.UI.drawWorld(ctx, this);
       for (const f of this.floaters) {
+        // 出场前 0.14s 从 1.55 倍缩到 1：数字"弹"出来，打击感全在这一下
+        const age = 0.85 - f.life;
+        const pop = age < 0.14 ? 1.55 - 0.55 * (age / 0.14) : 1;
+        ctx.save();
+        ctx.translate(f.x, f.y);
+        ctx.scale(pop, pop);
         ctx.globalAlpha = Math.max(0, Math.min(1, f.life / 0.45));
-        ctx.fillStyle = f.color;
-        ctx.font = 'bold 14px "PingFang SC", sans-serif';
+        ctx.font = 'bold ' + (f.big ? 20 : 14) + 'px "KaiTi","STKaiti","SimKai",serif';
         ctx.textAlign = 'center';
-        ctx.fillText(f.text, f.x, f.y);
-        ctx.textAlign = 'left'; ctx.globalAlpha = 1;
+        ctx.strokeStyle = 'rgba(18,10,5,0.85)';
+        ctx.lineWidth = f.big ? 3 : 2;
+        ctx.strokeText(f.text, 0, 0);
+        ctx.fillStyle = f.color;
+        ctx.fillText(f.text, 0, 0);
+        ctx.restore();
       }
       ctx.restore();
       // 受击红晕

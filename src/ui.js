@@ -431,7 +431,7 @@
       }
       ctx.globalAlpha = 1;
       if (now < pl.buffSpdUntil) {
-        ctx.fillStyle = 'rgba(127,208,255,0.85)';
+        ctx.fillStyle = 'rgba(111,184,178,0.85)';
         for (let i = 0; i < 3; i++) {
           const yy = pl.y + 14 + i * 16;
           ctx.fillRect(pl.x - 14 - i * 5, yy, 10, 2);
