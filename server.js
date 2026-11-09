@@ -12,6 +12,9 @@ const MIME = {
   '.css': 'text/css; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
   '.png': 'image/png',
+  // 立绘是 JPEG，漏了会以 application/octet-stream 发出，受限浏览器里可能不显示
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
 };
 
 const server = http.createServer((req, res) => {

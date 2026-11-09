@@ -2,7 +2,7 @@
 
 一款西游记题材的 2D 横版动作闯关小游戏，浏览器直接运行，零依赖。
 
-5 名角色（悟空 / 八戒 / 唐僧 / 沙僧 / 白龙马）、15 个可升级技能、12 件法宝、九件可锻造装备、金币商店、12 关（8 主线 + 4 支线）三套主题立绘背景、**12 只各不相同的首领**，小怪和首领都会普攻 + 技能，起手有预警、能躲能打断。
+5 名角色（悟空 / 八戒 / 唐僧 / 沙僧 / 白龙马）、15 个可升级技能、12 件法宝、九件可锻造装备、金币商店、12 关（8 主线 + 4 支线）、六套主题立绘背景、**12 只各不相同的首领**，小怪和首领都会普攻 + 技能，起手有预警、能躲能打断。
 
 五个人物是**逐像素画**的（不是矢量缩小、也不是贴图）：同一张像素图在游戏里、选角卡上、大立绘上按倍数放大，放大多少倍都不糊。做法见下面的「角色是一格一格画出来的像素」。
 
@@ -22,14 +22,15 @@
 | --- | --- |
 | `A` `D` | 左右移动（连按两次触发奔跑） |
 | `W` | 跳跃 / 空中再按一次二段跳 |
-| `S` | 下蹲 |
+| `S` | 快落（下落中加速落地；菜单里用作下移光标） |
 | `J` | 普通攻击（连按走四段连招，五个角色各有一套动作，见下节） |
 | `K` `U` `I` | 技能 1 / 2 / 3（每个角色各不相同） |
-| `B` | 背包 |
+| `1` `2` `3` | 法宝 1 / 2 / 3 |
+| `B` | 背包（背包里 `Q` `E` 翻页） |
 | `L` 或 `C` | 锻造坊（材料换兵器 / 护甲 / 佩饰） |
 | `G` | 属性商店（金币买属性） |
 | `H` | 技能参悟（仙玉升技能） |
-| `P` / `Esc` | 暂停 |
+| `P` / `Esc` | 暂停（暂停菜单里 `Q` 直接返回标题） |
 | `M` | 音乐与音效开关（会记住偏好） |
 | `Enter` | 开始游戏 / 确认菜单 |
 
@@ -122,7 +123,7 @@
 音乐和音效都是运行时用 WebAudio 合成的，没有任何音频文件，单文件版照样有声音。
 
 - **每个界面一首曲子**：主菜单（天宫序曲）· 战斗（战鼓）· 商店（集市）· 锻造坊（铁砧）· 技能参悟（空灵）· 过关（凯歌）· 落败（下行）
-- **音效**：挥棒、命中、暴击、挨打、起跳、二段跳、落地、冲刺、技能、法宝、拾取金币/仙玉、升级、购买、锻造、失败提示
+- **31 种音效**：挥棒、命中、暴击、挨打、起跳、二段跳、落地、冲刺、技能、法宝、拾取金币/仙玉、升级、购买、锻造、失败提示等（全表在 `src/audio.js` 的 `SFX`）
 - 浏览器要求先有一次按键或点击才能出声，所以第一次按 `Enter` 之后音乐才会起来
 - `M` 一键静音，偏好写进 `localStorage`
 
@@ -182,7 +183,7 @@ cd xiyou
 
 node server.js                 # 本地起服务，浏览器打开 http://localhost:8080
 node build.js                  # 把 src/ 打包成单文件 西游降妖录.html
-node --test tests/*.test.js    # 跑测试，146 项全过才算没改坏
+node --test tests/*.test.js    # 跑测试，159 项全过才算没改坏
 ```
 
 **重要**：改完 `src/` 里任意文件后，必须重新执行 `node build.js`，否则 `西游降妖录.html` 还是旧的。想边改边看，直接双击 `index.html` 也行（它引用 `src/` 下的源文件，不走打包）。
@@ -192,17 +193,17 @@ node --test tests/*.test.js    # 跑测试，146 项全过才算没改坏
 ```
 src/data.js       角色、技能、法宝、怪物、关卡配置（改数值先看这里）
 src/logic.js      纯函数逻辑：伤害、掉落、成长、商店定价、技能换算、锻造
-src/audio.js      WebAudio 合成：七首循环曲 + 二十多种音效，无音频文件
-src/engine.js     游戏主循环、物理、碰撞、角色动作状态机
+src/audio.js      WebAudio 合成：七首循环曲 + 31 种音效，无音频文件
+src/engine.js     物理与实体：输入、碰撞、玩家/敌人、弹道、重力跳跃常量
 src/art.js        角色美术：像素栅格层（人物）+ 矢量层（场景道具/兜底）
 src/toon.js       卡通 Q 版层：三头身角色、小怪、七种首领的绘制（吃 moves 的姿态）
 src/moves.js      动作模组层：玩家四段普攻 + 三个技能的骨架关键帧，以及怪物/首领的招式表
 src/portraits.js  角色立绘加载（AI 生成，双通道：单文件内嵌 base64 / 开发模式读 assets）
 assets/portraits/ 五张角色立绘 JPEG（标题 / 选角 / 过场用，打包时内嵌）
 src/fx.js         特效层：刀光、火花、冲击环、巨棒、祥云，以及火/雷/水/尘四种元素
-src/scenery.js    三套主题背景立绘与视差（按关卡的 theme 取）
+src/scenery.js    六套主题背景立绘与视差（按关卡的 theme 取：0 云海 / 1 洞窟 / 2 火山 / 3 涧峡 / 4 村庄 / 5 大河）
 src/ui.js         HUD、背包、商店、技能、锻造、过关结算、菜单
-src/game.js       状态机与场景调度，串起上面所有模块
+src/game.js       状态机与主循环：场景调度、战斗结算、背包、存档、过场
 build.js          单文件打包脚本
 server.js         本地预览用的小服务
 tools/            离线预览页：动作表、怪物招式表、元素特效对照（见下）
@@ -216,7 +217,7 @@ tests/            Node 原生测试，覆盖核心逻辑、成长系统与渲染
 | 页面 | 看什么 | 参数 |
 | --- | --- | --- |
 | `tools/move-sheet.html` | 一个角色 7 个动作（4 段普攻 + 3 技能）的对照表，上排蓄力、下排出手 | `?char=wukong` |
-| `tools/move-preview.html` | 单招逐帧放大 | `?char=&k=` |
+| `tools/move-preview.html` | 单招逐帧放大 | `?char=&k=`（k 可为技能 id 或普攻 path 名）；也可用 `?move=&skill=&n=&s=` |
 | `tools/foe-sheet.html` | 一种怪的全部招式 × 四帧（蓄力中 / 满蓄 / 打完 / 落定） | `?k=imp|wolf|spider|demon|bear|bone|bull|beast|queen|dragon&m=claw&z=2&p=0.5` |
 | `tools/fx-preview.html` | 火 / 雷 / 水 / 尘四格并排，同一个时间点对照 | `?age=0.3`（秒） |
 | `tools/zone-preview.html` | 流沙池与定海神针法阵：看边缘、浓淡、贴不贴地 | `?t=0.6`（存在秒数） |
@@ -237,7 +238,7 @@ tests/            Node 原生测试，覆盖核心逻辑、成长系统与渲染
 - **加角色**：`src/data.js` 的 `CHARACTERS` 加配置 → `src/art.js` 的 `PX_LOOK` 加一行造型与色板 → `HEADS` / `HEAD_PAL` 画一张十行的脸
 - **加技能**：`src/data.js` 的 `SKILLS`，`kind` 支持 `melee` / `dash` / `aoe` / `ranged` / `buff` / `heal`，`anim` 决定演出；`apply` 写它留什么印记、`use` / `bonusMark` / `rootVs` 写它吃谁的印记，结算全在 `game.js` 的 `hitWithSkill()` 里，不用再写分支
 - **改数值**（伤害、血量、冷却）：只动 `src/data.js`，不用碰引擎
-- **加怪物 / 关卡**：`src/data.js` 的 `ENEMIES` 与 `LEVELS`，背景在 `src/scenery.js`
+- **加怪物 / 关卡**：`src/data.js` 的 `ENEMY_BASE`（杂兵属性）、`ENEMY_MOVES`（招式）与 `LEVELS`（关卡，`kind` 区分主线 / 支线），背景在 `src/scenery.js`
 - **改怪物招式**：杂兵在 `XY.ENEMY_MOVES`，首领在 `XY.BOSS_MOVES`（六个公共招式）和 `XY.BOSSES[*].moves`（挑哪几个）；一套招式写 `type / range / windup / active / recover / cd / tell` 就够，引擎不用动
 - **改普攻 / 技能动作**：`src/moves.js` 的 `BASIC` / `SKILL`，一招一行关键帧（重心、躯干倾角、双手、兵器角度），加一招不用碰绘制层
 - **改怪物动作**：`src/moves.js` 的 `FOE_MOVE` / `BOSS_MOVE`，`claw`（爪）`slam`（砸）这种一行一势；招式本身在哪一帧出手仍在 `src/data.js` 的招式表里
@@ -248,7 +249,7 @@ tests/            Node 原生测试，覆盖核心逻辑、成长系统与渲染
 - **改音乐 / 加曲子**：`src/audio.js` 顶部的 `TRACKS`，`bpm` + 32 步的 `drums` / `bass` / `lead` 数组；新界面在 `game.js` 的 `musicScene()` 里指过去
 - **加音效**：`src/audio.js` 的 `SFX` 里加一个函数，再用 `XY.Audio.sfx('名字')` 调
 
-脚本加载顺序是 `data → logic → audio → art → fx → scenery → engine → ui → game`，`index.html` 和 `build.js` 里各有一份，新增模块时两处都要加。
+脚本加载顺序是 `data → logic → audio → art → moves → toon → portraits → fx → scenery → engine → ui → game`，`index.html` 和 `build.js` 里各有一份，新增模块时两处都要加。
 
 ## 许可
 
