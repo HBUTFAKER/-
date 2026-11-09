@@ -15,8 +15,11 @@
   ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
 
   const char = q.get('char') || 'wukong';
-  const basic = q.get('move');        // 普攻 path 名
-  const skill = q.get('skill');       // 技能 id
+  // README 里写的 ?k= 是老别名：没显式给 move/skill 时才用，命中技能 id 就按技能画
+  const k = (q.get('move') || q.get('skill')) ? null : q.get('k');
+  const kSkill = k && XY.SKILLS && XY.SKILLS[k] ? k : null;
+  const basic = q.get('move') || (k && !kSkill ? k : null);  // 普攻 path 名
+  const skill = q.get('skill') || kSkill;                    // 技能 id
   const N = +(q.get('n') || 6);
   const s = +(q.get('s') || 2.0);
   const baseY = H - 70;

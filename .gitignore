@@ -4,3 +4,5 @@ node_modules/
 .DS_Store
 Thumbs.db
 .tmp_*
+# 旧机器上混进仓库的显卡驱动日志，别再带进来
+NVIDIA Corporation/
